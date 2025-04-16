@@ -14,13 +14,18 @@ interface AddWindowProps {
 
 const AddWindow = ({ id, onOpenOption }: AddWindowProps) => {
   const removeWindow = useWindowStore((state) => state.removeWindows);
-  const type = useWindowStore(
-    (state) => state.windows.find((w) => w.id === id)?.type
-  );
-  const zIndex = useWindowStore(
-    (state) => state.windows.find((w) => w.id === id)?.zIndex || 1
-  );
   const bringToFront = useWindowStore((state) => state.bringToFront);
+  const updateWindowBounds = useWindowStore(
+    (state) => state.updateWindowBounds
+  );
+
+  const window = useWindowStore((state) =>
+    state.windows.find((w) => w.id === id)
+  );
+
+  if (!window) return null;
+
+  const { type, zIndex, x, y, width, height } = window;
 
   const handleClose = () => {
     removeWindow(id);
@@ -28,19 +33,15 @@ const AddWindow = ({ id, onOpenOption }: AddWindowProps) => {
 
   return (
     <Rnd
-      default={{
-        x: 100,
-        y: 100,
-        width: 320,
-        height: 180,
-      }}
+      position={{ x, y }}
+      size={{ width, height }}
       minWidth={240}
-      minHeight={135} // 16:9 비율 고려한 최소 높이
-      bounds="window" // 화면 전체 기준으로 드래그
+      minHeight={135}
+      bounds="window"
       lockAspectRatio
       style={{
         zIndex,
-        position: "fixed", // fixed로 변경해서 window 기준으로 이동
+        position: "fixed",
       }}
       enableResizing={{
         top: true,
@@ -54,6 +55,16 @@ const AddWindow = ({ id, onOpenOption }: AddWindowProps) => {
       }}
       onDragStart={() => bringToFront(id)}
       onResizeStart={() => bringToFront(id)}
+      onDragStop={(e, d) => updateWindowBounds(id, d.x, d.y, width, height)}
+      onResizeStop={(e, direction, ref, delta, position) => {
+        updateWindowBounds(
+          id,
+          position.x,
+          position.y,
+          ref.offsetWidth,
+          ref.offsetHeight
+        );
+      }}
       dragHandleClassName="drag-handle"
     >
       <div className="w-full h-full border-2 border-[#255f38] rounded-2xl overflow-hidden bg-[#a0c878] relative">

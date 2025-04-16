@@ -21,7 +21,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${dunggeunmo.variable} h-screen`}>
+    <html lang="en" className={`${dunggeunmo.variable}`}>
       <body className={dunggeunmo.className}>
         <Navigation />
         {children}
