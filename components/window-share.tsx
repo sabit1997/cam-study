@@ -67,7 +67,7 @@ const WindowShare = () => {
   };
 
   return (
-    <div className="flex justify-center items-center w-full">
+    <div className="flex justify-center items-center w-full h-auto">
       {started ? (
         <>
           <video
@@ -88,9 +88,9 @@ const WindowShare = () => {
         <>
           <button
             onClick={handleStartSharing}
-            className="px-4 py-2 bg-[#0070f3] text-white border-none rounded-md cursor-pointer absolute left-1/2 top-1/2 -transform -translate-1/2"
+            className="px-4 py-2 bg-[#255f38] text-white border-none rounded-md cursor-pointer absolute left-1/2 top-1/2 -transform -translate-1/2"
           >
-            화면 공유 시작
+            START
           </button>
         </>
       )}

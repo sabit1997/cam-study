@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useWindowStore } from "@/stores/window-state";
 import useClickOutside from "@/hooks/useClickOutside";
 import useEscapeKey from "@/hooks/useEscapeKey";
+import WindowControlButton from "../circle-button";
 
 type TypeList = "none" | "youtube" | "camera" | "window";
 
@@ -34,47 +35,31 @@ const OptionModal = ({ id, onClose }: OptionModalProps) => {
   };
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        backgroundColor: "rgba(0,0,0,0.5)",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-      }}
-    >
+    <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-20">
       <div
         ref={modalRef}
-        style={{
-          backgroundColor: "#fff",
-          padding: "20px",
-          borderRadius: "10px",
-          width: "300px",
-        }}
+        className="w-[300px] min-w-80 border-2 border-[#255f38] rounded-2xl min-h-50 overflow-hidden bg-[#a0c878]"
       >
-        <span style={{ float: "right", cursor: "pointer" }} onClick={onClose}>
-          ❌
-        </span>
-        <h2>OPTION</h2>
-        <ul style={{ listStyle: "none", padding: 0 }}>
+        <div className="flex w-full bg-[#255f38] px-3 py-2 items-center gap-3">
+          <WindowControlButton type="close" onClick={onClose} />
+
+          <h2 className="text-white">OPTION</h2>
+        </div>
+        <ul className="p-2">
           {typeList.map((type) => (
             <li
               key={type}
               onClick={() => setSelectedType(type)}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                padding: "8px 12px",
-                marginBottom: "6px",
-                border: "1px solid #ccc",
-                borderRadius: "6px",
-                cursor: "pointer",
-                backgroundColor: selectedType === type ? "#0070f3" : "#fff",
-                color: selectedType === type ? "#fff" : "#000",
-              }}
+              className={`
+  flex items-center px-3 py-2 mb-[6px] border rounded-md cursor-pointer
+  ${
+    selectedType === type
+      ? "bg-[#255f38] text-white"
+      : "text-black border-[#ccc]"
+  }
+`}
             >
-              <span style={{ marginRight: "8px" }}>
+              <span className="mr-2">
                 {selectedType === type ? "✅" : "⬜️"}
               </span>
               {type.toUpperCase()}
@@ -82,21 +67,11 @@ const OptionModal = ({ id, onClose }: OptionModalProps) => {
           ))}
         </ul>
 
-        {/* ✅ 확인 버튼 */}
         <button
           onClick={handleConfirm}
-          style={{
-            marginTop: "1rem",
-            width: "100%",
-            padding: "10px",
-            backgroundColor: "#0070f3",
-            color: "#fff",
-            border: "none",
-            borderRadius: "6px",
-            cursor: "pointer",
-          }}
+          className="my-4 w-[60%] p-[10px] bg-[#255f38] text-white border-none rounded-md cursor-pointer mx-auto block"
         >
-          확인
+          APPLY
         </button>
       </div>
     </div>

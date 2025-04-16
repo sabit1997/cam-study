@@ -11,10 +11,13 @@ const Navigation = () => {
   const pathname = usePathname();
   const addWindow = useWindowStore((state) => state.addWindows);
 
-  const isActive = (path: string) =>
+  const isActiveP = (path: string) =>
     pathname === path
       ? "bg-[#255f38] text-white"
       : "bg-[#a0c878] text-[#255f38]";
+
+  const isActiveImage = (path: string) =>
+    pathname === path ? "bg-[#727D73]/50 border border-[#255f38]/50" : "";
 
   return (
     <ul className="flex gap-10 px-20 py-5">
@@ -28,9 +31,11 @@ const Navigation = () => {
       </li>
       <li>
         <button onClick={() => router.push("/")}>
-          <IoHomeSharp className="text-8xl mb-3 text-[#255f38]" />
+          <IoHomeSharp
+            className={`text-8xl mb-3 text-[#255f38] ${isActiveImage("/")}`}
+          />
           <p
-            className={`p-0.5 border-2 rounded-md border-[#255f38] ${isActive(
+            className={`p-0.5 border-2 rounded-md border-[#255f38] ${isActiveP(
               "/"
             )}`}
           >
@@ -40,9 +45,13 @@ const Navigation = () => {
       </li>
       <li>
         <button onClick={() => router.push("/mypage")}>
-          <GoPersonFill className="text-8xl mb-3 text-[#255f38]" />
+          <GoPersonFill
+            className={`text-8xl mb-3 text-[#255f38] ${isActiveImage(
+              "/mypage"
+            )}`}
+          />
           <p
-            className={`p-0.5 border-2 rounded-md border-[#255f38] ${isActive(
+            className={`p-0.5 border-2 rounded-md border-[#255f38] ${isActiveP(
               "/mypage"
             )}`}
           >

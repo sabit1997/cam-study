@@ -39,33 +39,20 @@ const YouTubePlayer = ({ id }: YouTubePlayerProps) => {
 
   if (!window.url || window.url.trim() === "") {
     return (
-      <div style={{ padding: "1rem" }}>
+      <div className="flex flex-col justify-center items-center gap-3 p-3">
         <p>유튜브 링크를 입력해주세요:</p>
         <input
           type="text"
           value={inputUrl}
           onChange={(e) => setInputUrl(e.target.value)}
           placeholder="https://www.youtube.com/watch?v=..."
-          style={{
-            width: "100%",
-            marginBottom: "0.5rem",
-            padding: "0.5rem",
-            borderRadius: "4px",
-            border: "1px solid #ccc",
-          }}
+          className="w-full mb-2 p-2 rounded border border-[#ccc]"
         />
         <button
           onClick={handleSubmit}
-          style={{
-            padding: "0.5rem 1rem",
-            borderRadius: "4px",
-            backgroundColor: "#0070f3",
-            color: "#fff",
-            border: "none",
-            cursor: "pointer",
-          }}
+          className="px-4 py-2 rounded bg-[#255f38] text-white border-none cursor-pointer"
         >
-          확인
+          DONE
         </button>
       </div>
     );

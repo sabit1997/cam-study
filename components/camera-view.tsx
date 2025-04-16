@@ -37,7 +37,9 @@ const CameraView = () => {
     };
   }, []);
 
-  return <video ref={videoRef} autoPlay muted className="max-w-120 bg-black" />;
+  return (
+    <video ref={videoRef} autoPlay muted className="w-full h-auto bg-black" />
+  );
 };
 
 export default CameraView;

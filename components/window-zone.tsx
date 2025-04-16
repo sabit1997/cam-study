@@ -10,7 +10,7 @@ const WindowZone = () => {
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
   return (
-    <div className="flex flex-wrap gap-5">
+    <div className="relative w-full h-full overflow-hidden">
       {windows.map((w) => (
         <div key={w.id}>
           <AddWindow id={w.id} onOpenOption={() => setSelectedId(w.id)} />
