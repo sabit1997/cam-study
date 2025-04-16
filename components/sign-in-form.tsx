@@ -1,5 +1,6 @@
 "use client";
 
+import { supabase } from "@/utils/supabase";
 import { useRouter } from "next/navigation";
 import { useSignIn } from "@/hooks/useAuthMutations";
 import InputWithLabel from "@/components/input-with-label";
@@ -19,12 +20,17 @@ const SignInForm = () => {
     signIn(
       { email, password },
       {
-        onSuccess: async () => {
+        onSuccess: async (data) => {
           try {
+            if (data?.session) {
+              await supabase.auth.setSession(data.session); // ✅ 세션 저장
+            }
+
             const user = await getCurrentUser();
             const userId = user?.id;
             if (userId) {
               useSessionStore.getState().setUserId(userId);
+              console.log("✅ 로그인 성공, userId:", userId);
             }
             router.push("/");
           } catch (e) {

@@ -1,4 +1,3 @@
-// components/InputWithLabel.tsx
 import React from "react";
 
 interface InputWithLabelProps {
