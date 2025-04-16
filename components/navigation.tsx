@@ -22,9 +22,9 @@ const Navigation = () => {
   return (
     <ul className="flex gap-10 px-20 py-5">
       <li>
-        <button onClick={addWindow}>
-          <FaCirclePlus className="text-8xl mb-3 text-[#255f38]" />
-          <p className="p-0.5 border-2 rounded-md border-[#255f38] bg-[#a0c878] text-black">
+        <button onClick={addWindow} className="group">
+          <FaCirclePlus className="text-8xl mb-3 text-[#255f38] group-active:bg-[#727D73]/50 group-active:border group-active:border-[#255f38]/50" />
+          <p className="p-0.5 border-2 rounded-md border-[#255f38] bg-[#a0c878] text-black group-active:bg-[#255f38] group-active:text-white">
             ADD
           </p>
         </button>
