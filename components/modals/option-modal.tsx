@@ -1,26 +1,25 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useWindowStore } from "@/stores/window-state";
 import useClickOutside from "@/hooks/useClickOutside";
 import useEscapeKey from "@/hooks/useEscapeKey";
 import WindowControlButton from "../circle-button";
+import RectangleButton from "../rectangle-button";
+import { WindowData } from "@/types/windows";
+import { useUpdateWindow } from "@/hooks/useWindows";
 
 type TypeList = "none" | "youtube" | "camera" | "window";
 
 interface OptionModalProps {
-  id: number;
+  window: WindowData;
   onClose: () => void;
 }
 
-const OptionModal = ({ id, onClose }: OptionModalProps) => {
+const OptionModal = ({ window, onClose }: OptionModalProps) => {
   const typeList: TypeList[] = ["youtube", "camera", "window"];
-  const window = useWindowStore((state) =>
-    state.windows.find((w) => w.id === id)
-  );
-  const updateType = useWindowStore((state) => state.updateWindowType);
-
   const [selectedType, setSelectedType] = useState<TypeList>("none");
+
+  const { mutate: updateWindow } = useUpdateWindow();
 
   useEffect(() => {
     if (window) setSelectedType(window.type);
@@ -30,7 +29,7 @@ const OptionModal = ({ id, onClose }: OptionModalProps) => {
   useEscapeKey(onClose);
 
   const handleConfirm = () => {
-    updateType(id, selectedType);
+    updateWindow({ id: window.id, updates: { type: selectedType } });
     onClose();
   };
 
@@ -67,12 +66,9 @@ const OptionModal = ({ id, onClose }: OptionModalProps) => {
           ))}
         </ul>
 
-        <button
-          onClick={handleConfirm}
-          className="my-4 w-[60%] p-[10px] bg-[#255f38] text-white border-none rounded-md cursor-pointer mx-auto block"
-        >
+        <RectangleButton width="w-[60%]" onClick={handleConfirm}>
           APPLY
-        </button>
+        </RectangleButton>
       </div>
     </div>
   );

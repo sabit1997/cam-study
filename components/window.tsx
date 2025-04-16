@@ -1,34 +1,38 @@
 "use client";
 
-import { useWindowStore } from "@/stores/window-state";
 import CameraView from "./camera-view";
 import YouTubePlayer from "./youtube-player";
 import WindowShare from "./window-share";
 import WindowControlButton from "./circle-button";
 import { Rnd } from "react-rnd";
+import { WindowData } from "@/types/windows";
+import { useUpdateWindow, useDeleteWindow } from "@/hooks/useWindows";
 
 interface AddWindowProps {
-  id: number;
+  window: WindowData;
   onOpenOption: () => void;
 }
 
-const AddWindow = ({ id, onOpenOption }: AddWindowProps) => {
-  const removeWindow = useWindowStore((state) => state.removeWindows);
-  const bringToFront = useWindowStore((state) => state.bringToFront);
-  const updateWindowBounds = useWindowStore(
-    (state) => state.updateWindowBounds
-  );
+const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
+  const { mutate: updateWindow } = useUpdateWindow();
+  const { mutate: deleteWindow } = useDeleteWindow();
 
-  const window = useWindowStore((state) =>
-    state.windows.find((w) => w.id === id)
-  );
-
-  if (!window) return null;
-
-  const { type, zIndex, x, y, width, height } = window;
+  const { id, type, z_index, x, y, width, height } = window;
 
   const handleClose = () => {
-    removeWindow(id);
+    deleteWindow(id);
+  };
+
+  const handleMoveOrResize = (
+    x: number,
+    y: number,
+    width: number,
+    height: number
+  ) => {
+    updateWindow({
+      id,
+      updates: { x, y, width, height, z_index },
+    });
   };
 
   return (
@@ -40,7 +44,7 @@ const AddWindow = ({ id, onOpenOption }: AddWindowProps) => {
       bounds="window"
       lockAspectRatio
       style={{
-        zIndex,
+        zIndex: z_index,
         position: "fixed",
       }}
       enableResizing={{
@@ -53,12 +57,9 @@ const AddWindow = ({ id, onOpenOption }: AddWindowProps) => {
         bottomLeft: true,
         topLeft: true,
       }}
-      onDragStart={() => bringToFront(id)}
-      onResizeStart={() => bringToFront(id)}
-      onDragStop={(e, d) => updateWindowBounds(id, d.x, d.y, width, height)}
+      onDragStop={(e, d) => handleMoveOrResize(d.x, d.y, width, height)}
       onResizeStop={(e, direction, ref, delta, position) => {
-        updateWindowBounds(
-          id,
+        handleMoveOrResize(
           position.x,
           position.y,
           ref.offsetWidth,
@@ -74,7 +75,7 @@ const AddWindow = ({ id, onOpenOption }: AddWindowProps) => {
         </div>
         <div className="w-full h-full">
           {type === "camera" && <CameraView />}
-          {type === "youtube" && <YouTubePlayer id={id} />}
+          {type === "youtube" && <YouTubePlayer window={window} />}
           {type === "window" && <WindowShare />}
         </div>
       </div>

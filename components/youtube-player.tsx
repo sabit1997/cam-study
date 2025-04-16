@@ -1,18 +1,16 @@
 "use client";
 
-import { useWindowStore } from "@/stores/window-state";
 import YouTube from "react-youtube";
 import { useState, useEffect } from "react";
+import { useUpdateWindow } from "@/hooks/useWindows";
+import { WindowData } from "@/types/windows";
 
 interface YouTubePlayerProps {
-  id: number;
+  window: WindowData;
 }
 
-const YouTubePlayer = ({ id }: YouTubePlayerProps) => {
-  const window = useWindowStore((state) =>
-    state.windows.find((w) => w.id === id)
-  );
-  const updateUrl = useWindowStore((state) => state.updateYoutubeUrl);
+const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
+  const { mutate: updateWindow } = useUpdateWindow();
 
   const [inputUrl, setInputUrl] = useState("");
 
@@ -31,7 +29,7 @@ const YouTubePlayer = ({ id }: YouTubePlayerProps) => {
 
   const handleSubmit = () => {
     if (inputUrl.includes("youtube.com/watch")) {
-      updateUrl(id, inputUrl.trim());
+      updateWindow({ id: window.id, updates: { url: inputUrl.trim() } });
     } else {
       alert("유효한 유튜브 링크를 입력해주세요.");
     }

@@ -1,15 +1,13 @@
 "use client";
 
-import { useWindowStore } from "@/stores/window-state";
 import { useRouter, usePathname } from "next/navigation";
-import { FaCirclePlus } from "react-icons/fa6";
 import { IoHomeSharp } from "react-icons/io5";
 import { GoPersonFill } from "react-icons/go";
+import { useCurrentUser } from "@/hooks/useAuth";
 
 const Navigation = () => {
   const router = useRouter();
   const pathname = usePathname();
-  const addWindow = useWindowStore((state) => state.addWindows);
 
   const isActiveP = (path: string) =>
     pathname === path
@@ -19,18 +17,17 @@ const Navigation = () => {
   const isActiveImage = (path: string) =>
     pathname === path ? "bg-[#727D73]/50 border border-[#255f38]/50" : "";
 
+  const { data: user } = useCurrentUser();
+  const username = user?.email?.split("@")[0];
+
   return (
     <ul className="flex gap-10 px-20 py-5">
       <li>
-        <button onClick={addWindow} className="cursor-pointer group">
-          <FaCirclePlus className="text-8xl mb-3 text-[#255f38] group-active:bg-[#727D73]/50 group-active:border group-active:border-[#255f38]/50" />
-          <p className="p-0.5 border-2 rounded-md border-[#255f38] bg-[#a0c878] text-black group-active:bg-[#255f38] group-active:text-white">
-            ADD
-          </p>
-        </button>
-      </li>
-      <li>
-        <button onClick={() => router.push("/")} className="cursor-pointer">
+        <button
+          onClick={() => router.push("/")}
+          className="cursor-pointer"
+          type="button"
+        >
           <IoHomeSharp
             className={`text-8xl mb-3 text-[#255f38] ${isActiveImage("/")}`}
           />
@@ -45,20 +42,21 @@ const Navigation = () => {
       </li>
       <li>
         <button
-          onClick={() => router.push("/mypage")}
+          onClick={() => router.push("/my-page")}
           className="cursor-pointer"
+          type="button"
         >
           <GoPersonFill
             className={`text-8xl mb-3 text-[#255f38] ${isActiveImage(
-              "/mypage"
+              "/my-page"
             )}`}
           />
           <p
             className={`p-0.5 border-2 rounded-md border-[#255f38] ${isActiveP(
-              "/mypage"
+              "/my-page"
             )}`}
           >
-            MY PAGE
+            {username || "MY PAGE"}
           </p>
         </button>
       </li>

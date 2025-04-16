@@ -1,21 +1,25 @@
 "use client";
 
-import { useWindowStore } from "@/stores/window-state";
-import AddWindow from "./window";
 import { useState } from "react";
+import { useWindows } from "@/hooks/useWindows";
 import OptionModal from "./modals/option-modal";
+import { WindowData } from "@/types/windows";
+import AddWindow from "./window";
 
 const WindowZone = () => {
-  const windows = useWindowStore((state) => state.windows);
+  const { data: windows = [] } = useWindows();
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
   return (
     <div className="relative w-full h-full overflow-hidden">
-      {windows.map((w) => (
-        <div key={w.id}>
-          <AddWindow id={w.id} onOpenOption={() => setSelectedId(w.id)} />
-          {selectedId === w.id && (
-            <OptionModal id={w.id} onClose={() => setSelectedId(null)} />
+      {windows.map((window: WindowData) => (
+        <div key={window.id}>
+          <AddWindow
+            window={window}
+            onOpenOption={() => setSelectedId(window.id)}
+          />
+          {selectedId === window.id && (
+            <OptionModal window={window} onClose={() => setSelectedId(null)} />
           )}
         </div>
       ))}

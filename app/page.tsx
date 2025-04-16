@@ -1,3 +1,4 @@
+import AddButton from "@/components/add-button";
 import WindowZone from "@/components/window-zone";
 
 export const metadata = {
@@ -8,7 +9,10 @@ export const metadata = {
 export default function Home() {
   return (
     <div className="p-10">
-      <h1 className="text-7xl">HOME</h1>
+      <div className="flex gap-10">
+        <h1 className="text-7xl">HOME</h1>
+        <AddButton />
+      </div>
       <WindowZone />
     </div>
   );
