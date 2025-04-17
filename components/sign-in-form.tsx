@@ -23,7 +23,7 @@ const SignInForm = () => {
         onSuccess: async (data) => {
           try {
             if (data?.session) {
-              await supabase.auth.setSession(data.session); // ✅ 세션 저장
+              await supabase.auth.setSession(data.session);
             }
 
             const user = await getCurrentUser();

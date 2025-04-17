@@ -1,4 +1,9 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  UseQueryOptions,
+} from "@tanstack/react-query";
 import {
   fetchWindows,
   createWindow,
@@ -8,10 +13,12 @@ import {
 import { WindowData } from "@/types/windows";
 
 export function useWindows() {
-  return useQuery<WindowData[]>({
+  return useQuery<WindowData[], Error>({
     queryKey: ["windows"],
     queryFn: fetchWindows,
-  });
+    staleTime: 1000 * 60,
+    keepPreviousData: true,
+  } as UseQueryOptions<WindowData[], Error>);
 }
 
 export function useCreateWindow() {
@@ -34,7 +41,28 @@ export function useUpdateWindow() {
       id: number;
       updates: Partial<WindowData>;
     }) => updateWindow(id, updates),
-    onSuccess: () => {
+    onMutate: async ({ id, updates }) => {
+      await queryClient.cancelQueries({ queryKey: ["windows"] });
+
+      const previousWindows = queryClient.getQueryData<WindowData[]>([
+        "windows",
+      ]);
+
+      queryClient.setQueryData<WindowData[]>(
+        ["windows"],
+        (old) =>
+          old?.map((win) => (win.id === id ? { ...win, ...updates } : win)) ||
+          []
+      );
+
+      return { previousWindows };
+    },
+    onError: (_err, _variables, context) => {
+      if (context?.previousWindows) {
+        queryClient.setQueryData(["windows"], context.previousWindows);
+      }
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ["windows"] });
     },
   });

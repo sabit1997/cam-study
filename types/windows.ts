@@ -12,3 +12,16 @@ export interface WindowData {
   height: number;
   created_at: string;
 }
+
+export interface Window {
+  id: number;
+  type: "none" | "camera" | "youtube" | "window";
+  url?: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  zIndex: number;
+  userId: string;
+  createdAt: string;
+}
