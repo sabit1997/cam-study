@@ -2,7 +2,7 @@ import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 
 export const client = (() => {
   return axios.create({
-    baseURL: "http://15.165.120.75:8080",
+    baseURL: process.env.NEXT_PUBLIC_API_URL,
     headers: {
       Accept: "application/json, text/plain, */*",
     },
