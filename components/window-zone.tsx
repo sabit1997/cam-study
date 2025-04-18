@@ -24,7 +24,7 @@ const WindowZone = () => {
   }, [serverWindows]);
 
   return (
-    <div className="relative w-full h-full overflow-hidden">
+    <div className="w-full h-full overflow-hidden">
       {localWindows.map((window) => (
         <div key={window.id}>
           <AddWindow

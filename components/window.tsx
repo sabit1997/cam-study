@@ -64,8 +64,9 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
       size={{ width, height }}
       minWidth={240}
       minHeight={135}
+      maxHeight={390}
+      maxWidth={645}
       bounds="window"
-      lockAspectRatio
       style={{
         zIndex: zindex,
         position: "fixed",
