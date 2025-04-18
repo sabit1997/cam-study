@@ -6,7 +6,7 @@ import useEscapeKey from "@/hooks/useEscapeKey";
 import WindowControlButton from "../circle-button";
 import RectangleButton from "../rectangle-button";
 import { Window } from "@/types/windows";
-import { useUpdateWindow } from "@/hooks/useWindows";
+import { usePatchWindow } from "@/apis/services/window-services/mutation";
 
 type TypeList = "none" | "youtube" | "camera" | "window";
 
@@ -19,7 +19,7 @@ const OptionModal = ({ window, onClose }: OptionModalProps) => {
   const typeList: TypeList[] = ["youtube", "camera", "window"];
   const [selectedType, setSelectedType] = useState<TypeList>("none");
 
-  const { mutate: updateWindow } = useUpdateWindow();
+  const { mutate: updateWindow } = usePatchWindow();
 
   useEffect(() => {
     if (window) setSelectedType(window.type);
@@ -29,7 +29,7 @@ const OptionModal = ({ window, onClose }: OptionModalProps) => {
   useEscapeKey(onClose);
 
   const handleConfirm = () => {
-    updateWindow({ id: window.id, updates: { type: selectedType } });
+    updateWindow({ id: window.id, data: { type: selectedType } });
     onClose();
   };
 

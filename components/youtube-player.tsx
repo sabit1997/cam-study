@@ -2,15 +2,15 @@
 
 import YouTube from "react-youtube";
 import { useState, useEffect } from "react";
-import { useUpdateWindow } from "@/hooks/useWindows";
 import { Window } from "@/types/windows";
+import { usePatchWindow } from "@/apis/services/window-services/mutation";
 
 interface YouTubePlayerProps {
   window: Window;
 }
 
 const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
-  const { mutate: updateWindow } = useUpdateWindow();
+  const { mutate: updateWindow } = usePatchWindow();
 
   const [inputUrl, setInputUrl] = useState("");
 
@@ -29,7 +29,7 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
 
   const handleSubmit = () => {
     if (inputUrl.includes("youtube.com/watch")) {
-      updateWindow({ id: window.id, updates: { url: inputUrl.trim() } });
+      updateWindow({ id: window.id, data: { url: inputUrl.trim() } });
     } else {
       alert("유효한 유튜브 링크를 입력해주세요.");
     }
