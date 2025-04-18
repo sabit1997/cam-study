@@ -30,7 +30,7 @@ export const useWindowStore = create<WindowState>()(
       // TODO: 지우기
       addWindows: () =>
         set((state) => {
-          const maxZ = Math.max(0, ...state.windows.map((w) => w.zIndex || 0));
+          const maxZ = Math.max(0, ...state.windows.map((w) => w.zindex || 0));
           const offset = state.windows.length * 20;
 
           const newId = Date.now();
@@ -41,7 +41,7 @@ export const useWindowStore = create<WindowState>()(
                 id: newId,
                 type: "none",
                 url: undefined,
-                zIndex: maxZ + 1,
+                zindex: maxZ + 1,
                 x: 100 + offset,
                 y: 100 + offset,
                 width: 320,
@@ -70,10 +70,10 @@ export const useWindowStore = create<WindowState>()(
 
       bringToFront: (id) =>
         set((state) => {
-          const maxZ = Math.max(...state.windows.map((w) => w.zIndex || 0));
+          const maxZ = Math.max(...state.windows.map((w) => w.zindex || 0));
           return {
             windows: state.windows.map((w) =>
-              w.id === id ? { ...w, zIndex: maxZ + 1 } : w
+              w.id === id ? { ...w, zindex: maxZ + 1 } : w
             ),
           };
         }),

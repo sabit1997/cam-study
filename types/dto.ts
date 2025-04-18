@@ -5,5 +5,5 @@ export interface WindowPatchDto {
   y?: number;
   width?: number;
   height?: number;
-  zIndex?: number;
+  zindex?: number;
 }

@@ -22,17 +22,28 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
   const { mutate: updateWindow } = usePatchWindow();
   const { mutate: deleteWindow } = useDeleteWindow();
 
-  const { bringToFront, updateWindowBounds } = useWindowStore();
+  const { bringToFront, updateWindowBounds, windows } = useWindowStore();
 
-  const { id, type, zIndex, x, y, width, height } = window;
+  const { id, type, zindex, x, y, width, height } = window;
+  const currentWindow = windows.find((w) => w.id === window.id);
 
   const handleClose = () => {
     deleteWindow(id);
   };
 
+  const handleClickOrFocus = () => {
+    bringToFront(id);
+    debouncedZIndexUpdate();
+  };
+
+  const debouncedZIndexUpdate = useDebouncedCallback(() => {
+    const maxZ = currentWindow?.zindex || 0;
+    updateWindow({ id, data: { zindex: maxZ + 1 } });
+  }, 300);
+
   const debouncedServerUpdate = useDebouncedCallback(
     (x: number, y: number, width: number, height: number) => {
-      updateWindow({ id, data: { x, y, width, height, zIndex } });
+      updateWindow({ id, data: { x, y, width, height } });
     },
     500
   );
@@ -56,7 +67,7 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
       bounds="window"
       lockAspectRatio
       style={{
-        zIndex,
+        zIndex: zindex,
         position: "fixed",
       }}
       enableResizing={{
@@ -69,8 +80,8 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
         bottomLeft: true,
         topLeft: true,
       }}
-      onDragStart={() => bringToFront(id)}
-      onResizeStart={() => bringToFront(id)}
+      onDragStart={handleClickOrFocus}
+      onResizeStart={handleClickOrFocus}
       onDragStop={(e, d) => handleMoveOrResize(d.x, d.y, width, height)}
       onResizeStop={(e, direction, ref, delta, position) => {
         handleMoveOrResize(

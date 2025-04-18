@@ -12,7 +12,7 @@ const AddButton = () => {
     createWindow(
       {
         type: "none",
-        zIndex: 1,
+        zindex: 1,
         x: 100 + offset,
         y: 100 + offset,
         width: 320,

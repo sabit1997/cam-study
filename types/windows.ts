@@ -21,7 +21,7 @@ export interface Window {
   y: number;
   width: number;
   height: number;
-  zIndex: number;
+  zindex: number;
   userId: string;
   createdAt: string;
 }
