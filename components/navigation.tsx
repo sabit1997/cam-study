@@ -3,7 +3,6 @@
 import { useRouter, usePathname } from "next/navigation";
 import { IoHomeSharp } from "react-icons/io5";
 import { GoPersonFill } from "react-icons/go";
-import { useCurrentUser } from "@/hooks/useAuth";
 
 const Navigation = () => {
   const router = useRouter();
@@ -16,9 +15,6 @@ const Navigation = () => {
 
   const isActiveImage = (path: string) =>
     pathname === path ? "bg-[#727D73]/50 border border-[#255f38]/50" : "";
-
-  const { data: user } = useCurrentUser();
-  const username = user?.email?.split("@")[0];
 
   return (
     <ul className="flex gap-10 px-20 py-5">
@@ -56,7 +52,7 @@ const Navigation = () => {
               "/my-page"
             )}`}
           >
-            {username || "MY PAGE"}
+            MY PAGE
           </p>
         </button>
       </li>
