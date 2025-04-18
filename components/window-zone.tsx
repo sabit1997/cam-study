@@ -5,10 +5,12 @@ import { useWindowStore } from "@/stores/window-state";
 import OptionModal from "./modals/option-modal";
 import AddWindow from "./window";
 import { useWindows } from "@/apis/services/window-services/query";
-import useAuthRedirect from "@/hooks/useAuthRedirect";
 
 const WindowZone = () => {
-  const { isLoggedIn } = useAuthRedirect();
+  const isLoggedIn =
+    typeof document !== "undefined"
+      ? document.cookie.includes("AccessToken=")
+      : false;
   const { data: serverWindows = [] } = useWindows(isLoggedIn);
   const setWindows = useWindowStore((state) => state.setWindows);
   const localWindows = useWindowStore((state) => state.windows);

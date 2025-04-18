@@ -2,31 +2,26 @@
 
 import NoAuthMyPage from "@/components/no-auth-mypage";
 import RectangleButton from "@/components/rectangle-button";
-import { useCurrentUser, useSignOut } from "@/hooks/useAuth";
+import { useWindowStore } from "@/stores/window-state";
+import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 
 const MyPage = () => {
-  const { data: user, isLoading, isPending } = useCurrentUser();
-  const { mutate: signOut } = useSignOut();
+  const [logoutTrigger, setLogoutTrigger] = useState(false);
+  const setWindows = useWindowStore((state) => state.setWindows);
+  const queryClient = useQueryClient();
 
   const handleSignOut = () => {
-    signOut(undefined, {
-      onSuccess: () => {
-        alert("로그아웃 성공!");
-      },
-      onError: () => {
-        alert("로그아웃 실패. 다시 시도해주세요.");
-      },
-    });
+    document.cookie = "AccessToken=; path=/; max-age=0";
+    localStorage.clear();
+    queryClient.clear();
+    setWindows([]);
+    setLogoutTrigger(true);
   };
 
-  if (isLoading) return <p>Loading...</p>;
-  if (!user) return <NoAuthMyPage />;
+  if (logoutTrigger) return <NoAuthMyPage />;
   return (
-    <RectangleButton
-      width="w-[200px]"
-      onClick={handleSignOut}
-      disabled={isPending}
-    >
+    <RectangleButton width="w-[200px]" onClick={handleSignOut}>
       Sign Out
     </RectangleButton>
   );

@@ -11,7 +11,14 @@ export const client = (() => {
 
 client.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("AccessToken");
+    const getAccessTokenFromCookie = () => {
+      const match = document.cookie.match(
+        new RegExp("(^| )AccessToken=([^;]+)")
+      );
+      return match ? match[2] : null;
+    };
+
+    const token = getAccessTokenFromCookie();
 
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -28,7 +35,7 @@ client.interceptors.response.use(
     const status = err.response?.status;
 
     if (status === 401) {
-      localStorage.removeItem("AccessToken");
+      document.cookie = "AccessToken=; path=/; max-age=0";
       alert("로그인이 만료되었습니다. 다시 로그인해주세요.");
       window.location.href = "/sign-in";
       return Promise.reject(err);

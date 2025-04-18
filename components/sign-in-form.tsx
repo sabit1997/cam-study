@@ -14,11 +14,15 @@ const SignInForm = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     signIn(
       { email, password },
       {
         onSuccess: (res) => {
-          localStorage.setItem("AccessToken", res.accessToken);
+          document.cookie = `AccessToken=${res.accessToken}; path=/; max-age=${
+            60 * 60 * 24 * 30
+          }; secure; samesite=strict`;
+
           router.push("/");
         },
       }
