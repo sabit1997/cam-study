@@ -3,10 +3,11 @@ import WindowService from "./service";
 
 export const WINDOW_QUERY_KEY = ["windows"];
 
-export const useWindows = () => {
+export const useWindows = (enabled?: boolean) => {
   return useQuery({
     queryKey: WINDOW_QUERY_KEY,
     queryFn: WindowService.getWindows,
+    enabled: enabled,
     meta: {
       ERROR_SOURCE: "[창 목록 불러오기 실패]",
       SUCCESS_MESSAGE: "창 데이터를 불러왔습니다.",

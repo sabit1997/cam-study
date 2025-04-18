@@ -5,9 +5,11 @@ import { useWindowStore } from "@/stores/window-state";
 import OptionModal from "./modals/option-modal";
 import AddWindow from "./window";
 import { useWindows } from "@/apis/services/window-services/query";
+import useAuthRedirect from "@/hooks/useAuthRedirect";
 
 const WindowZone = () => {
-  const { data: serverWindows = [] } = useWindows();
+  const { isLoggedIn } = useAuthRedirect();
+  const { data: serverWindows = [] } = useWindows(isLoggedIn);
   const setWindows = useWindowStore((state) => state.setWindows);
   const localWindows = useWindowStore((state) => state.windows);
 
