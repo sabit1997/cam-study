@@ -1,16 +1,16 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useSignUp } from "@/hooks/useAuthMutations";
+import { useSignup } from "@/apis/services/auth-services/mutation";
 import InputWithLabel from "@/components/input-with-label";
 import RectangleButton from "@/components/rectangle-button";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 const SignUpForm = () => {
   const router = useRouter();
-  const { mutate: signUp, isPending, error } = useSignUp();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const { mutate: signUp, isPending } = useSignup();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,8 +18,10 @@ const SignUpForm = () => {
       { email, password },
       {
         onSuccess: () => {
-          alert("회원가입 성공!");
           router.push("/sign-in");
+        },
+        onError: () => {
+          alert("회원가입 실패");
         },
       }
     );
@@ -45,9 +47,6 @@ const SignUpForm = () => {
       <RectangleButton type="submit" disabled={isPending}>
         {isPending ? "Signing up..." : "SIGN UP"}
       </RectangleButton>
-      {error instanceof Error && (
-        <p className="text-red-500 text-sm">{error.message}</p>
-      )}
     </form>
   );
 };

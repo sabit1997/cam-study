@@ -1,18 +1,27 @@
 "use client";
 
-import { useState } from "react";
-import { useWindows } from "@/hooks/useWindows";
+import { useEffect, useState } from "react";
+import { useWindowStore } from "@/stores/window-state";
 import OptionModal from "./modals/option-modal";
-import { WindowData } from "@/types/windows";
 import AddWindow from "./window";
+import { useWindows } from "@/apis/services/window-services/query";
 
 const WindowZone = () => {
-  const { data: windows = [] } = useWindows();
+  const { data: serverWindows = [] } = useWindows();
+  const setWindows = useWindowStore((state) => state.setWindows);
+  const localWindows = useWindowStore((state) => state.windows);
+
   const [selectedId, setSelectedId] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (serverWindows.length > 0) {
+      setWindows(serverWindows);
+    }
+  }, [serverWindows]);
 
   return (
     <div className="relative w-full h-full overflow-hidden">
-      {windows.map((window: WindowData) => (
+      {localWindows.map((window) => (
         <div key={window.id}>
           <AddWindow
             window={window}
@@ -26,5 +35,4 @@ const WindowZone = () => {
     </div>
   );
 };
-
 export default WindowZone;

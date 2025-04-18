@@ -2,7 +2,7 @@ import "./globals.css";
 import Navigation from "@/components/navigation";
 import localFont from "next/font/local";
 import type { Metadata } from "next";
-import Providers from "./providers";
+import { Providers } from "./providers";
 
 export const metadata: Metadata = {
   title: { template: "%s | CAM STUDY", default: "CAM STUDY" },

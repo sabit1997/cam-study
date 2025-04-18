@@ -3,10 +3,10 @@
 import YouTube from "react-youtube";
 import { useState, useEffect } from "react";
 import { useUpdateWindow } from "@/hooks/useWindows";
-import { WindowData } from "@/types/windows";
+import { Window } from "@/types/windows";
 
 interface YouTubePlayerProps {
-  window: WindowData;
+  window: Window;
 }
 
 const YouTubePlayer = ({ window }: YouTubePlayerProps) => {

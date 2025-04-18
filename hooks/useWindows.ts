@@ -10,7 +10,7 @@ import {
   updateWindow,
   deleteWindow,
 } from "@/lib/api/windows";
-import { WindowData } from "@/types/windows";
+import { Window, WindowData } from "@/types/windows";
 
 export function useWindows() {
   return useQuery<WindowData[], Error>({
@@ -34,13 +34,8 @@ export function useCreateWindow() {
 export function useUpdateWindow() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      id,
-      updates,
-    }: {
-      id: number;
-      updates: Partial<WindowData>;
-    }) => updateWindow(id, updates),
+    mutationFn: ({ id, updates }: { id: number; updates: Partial<Window> }) =>
+      updateWindow(id, updates),
     onMutate: async ({ id, updates }) => {
       await queryClient.cancelQueries({ queryKey: ["windows"] });
 

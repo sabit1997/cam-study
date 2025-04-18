@@ -5,13 +5,13 @@ import useClickOutside from "@/hooks/useClickOutside";
 import useEscapeKey from "@/hooks/useEscapeKey";
 import WindowControlButton from "../circle-button";
 import RectangleButton from "../rectangle-button";
-import { WindowData } from "@/types/windows";
+import { Window } from "@/types/windows";
 import { useUpdateWindow } from "@/hooks/useWindows";
 
 type TypeList = "none" | "youtube" | "camera" | "window";
 
 interface OptionModalProps {
-  window: WindowData;
+  window: Window;
   onClose: () => void;
 }
 

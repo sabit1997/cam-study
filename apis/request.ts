@@ -9,18 +9,28 @@ export const client = (() => {
   });
 })();
 
+client.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem("AccessToken");
+
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 client.interceptors.response.use(
   (res: AxiosResponse) => res,
   async (err) => {
     const status = err.response?.status;
 
     if (status === 401) {
-      localStorage.removeItem("ACCESS_TOKEN");
-
+      localStorage.removeItem("AccessToken");
       alert("로그인이 만료되었습니다. 다시 로그인해주세요.");
-
       window.location.href = "/sign-in";
-
       return Promise.reject(err);
     }
 
@@ -34,11 +44,10 @@ client.interceptors.response.use(
 
 const request = async (options: AxiosRequestConfig) => {
   const onSuccess = (response: AxiosResponse) => {
-    const { data } = response;
-    return data;
+    return response.data;
   };
 
-  const onError = function (error: AxiosError) {
+  const onError = (error: AxiosError) => {
     return Promise.reject({
       message: error.message,
       code: error.code,

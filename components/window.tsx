@@ -5,11 +5,11 @@ import YouTubePlayer from "./youtube-player";
 import WindowShare from "./window-share";
 import WindowControlButton from "./circle-button";
 import { Rnd } from "react-rnd";
-import { WindowData } from "@/types/windows";
+import { Window } from "@/types/windows";
 import { useUpdateWindow, useDeleteWindow } from "@/hooks/useWindows";
 
 interface AddWindowProps {
-  window: WindowData;
+  window: Window;
   onOpenOption: () => void;
 }
 
@@ -17,7 +17,7 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
   const { mutate: updateWindow } = useUpdateWindow();
   const { mutate: deleteWindow } = useDeleteWindow();
 
-  const { id, type, z_index, x, y, width, height } = window;
+  const { id, type, zIndex, x, y, width, height } = window;
 
   const handleClose = () => {
     deleteWindow(id);
@@ -31,7 +31,7 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
   ) => {
     updateWindow({
       id,
-      updates: { x, y, width, height, z_index },
+      updates: { x, y, width, height, zIndex },
     });
   };
 
@@ -44,7 +44,7 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
       bounds="window"
       lockAspectRatio
       style={{
-        zIndex: z_index,
+        zIndex: zIndex,
         position: "fixed",
       }}
       enableResizing={{

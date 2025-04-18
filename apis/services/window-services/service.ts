@@ -2,6 +2,7 @@ import request from "@/apis/request";
 import { WindowEndpoints } from "../config";
 import { WindowPatchDto } from "@/types/dto";
 import { AxiosMethod } from "@/types/axios";
+import { Window } from "@/types/windows";
 
 export default class WindowService {
   public static readonly getWindows = (): Promise<Window[]> => {

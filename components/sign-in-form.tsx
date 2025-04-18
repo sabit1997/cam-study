@@ -1,17 +1,14 @@
 "use client";
 
-import { supabase } from "@/utils/supabase";
 import { useRouter } from "next/navigation";
-import { useSignIn } from "@/hooks/useAuthMutations";
 import InputWithLabel from "@/components/input-with-label";
 import RectangleButton from "@/components/rectangle-button";
 import { useState } from "react";
-import { getCurrentUser } from "@/lib/api/auth";
-import { useSessionStore } from "@/stores/user";
+import { useLogin } from "@/apis/services/auth-services/mutation";
 
 const SignInForm = () => {
   const router = useRouter();
-  const { mutate: signIn, isPending, error } = useSignIn();
+  const { mutate: signIn, isPending, error } = useLogin();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -20,22 +17,9 @@ const SignInForm = () => {
     signIn(
       { email, password },
       {
-        onSuccess: async (data) => {
-          try {
-            if (data?.session) {
-              await supabase.auth.setSession(data.session);
-            }
-
-            const user = await getCurrentUser();
-            const userId = user?.id;
-            if (userId) {
-              useSessionStore.getState().setUserId(userId);
-              console.log("✅ 로그인 성공, userId:", userId);
-            }
-            router.push("/");
-          } catch (e) {
-            console.error("유저 정보 가져오기 실패:", e);
-          }
+        onSuccess: (res) => {
+          localStorage.setItem("AccessToken", res.accessToken);
+          router.push("/");
         },
       }
     );

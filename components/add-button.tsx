@@ -1,6 +1,6 @@
 "use client";
 
-import { useCreateWindow } from "@/hooks/useWindows";
+import { useCreateWindow } from "@/apis/services/window-services/mutation";
 import { FaCirclePlus } from "react-icons/fa6";
 
 const AddButton = () => {
@@ -9,14 +9,21 @@ const AddButton = () => {
   const handleClick = () => {
     const offset = Math.floor(Math.random() * 60);
 
-    createWindow({
-      type: "none",
-      z_index: 1,
-      x: 100 + offset,
-      y: 100 + offset,
-      width: 320,
-      height: 180,
-    });
+    createWindow(
+      {
+        type: "none",
+        zIndex: 1,
+        x: 100 + offset,
+        y: 100 + offset,
+        width: 320,
+        height: 180,
+      },
+      {
+        onError: () => {
+          alert("window 추가 실패!");
+        },
+      }
+    );
   };
 
   return (

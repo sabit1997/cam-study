@@ -1,23 +1,15 @@
 "use client";
 
+import { Window } from "@/types/windows";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 
-interface WidowData {
-  id: number;
-  type: "none" | "camera" | "youtube" | "window";
-  url?: string;
-  zIndex: number;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
 interface WindowState {
-  windows: WidowData[];
+  windows: Window[];
+  setWindows: (windows: Window[]) => void;
+  // TODO: addWindows 필요 없음 다 수정하면 지우기
   addWindows: () => void;
-  updateWindowType: (id: number, type: WidowData["type"]) => void;
+  updateWindowType: (id: number, type: Window["type"]) => void;
   removeWindows: (id: number) => void;
   updateYoutubeUrl: (id: number, url: string) => void;
   bringToFront: (id: number) => void;
@@ -34,7 +26,8 @@ export const useWindowStore = create<WindowState>()(
   persist(
     (set) => ({
       windows: [],
-
+      setWindows: (windows) => set(() => ({ windows })),
+      // TODO: 지우기
       addWindows: () =>
         set((state) => {
           const maxZ = Math.max(0, ...state.windows.map((w) => w.zIndex || 0));
@@ -53,6 +46,8 @@ export const useWindowStore = create<WindowState>()(
                 y: 100 + offset,
                 width: 320,
                 height: 180,
+                userId: "",
+                createdAt: new Date().toISOString(),
               },
             ],
           };
