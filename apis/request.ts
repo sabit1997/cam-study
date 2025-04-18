@@ -2,7 +2,7 @@ import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 
 export const client = (() => {
   return axios.create({
-    baseURL: process.env.REACT_BASE_URL,
+    baseURL: "http://15.165.120.75:8080",
     headers: {
       Accept: "application/json, text/plain, */*",
     },
