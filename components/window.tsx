@@ -6,7 +6,12 @@ import WindowShare from "./window-share";
 import WindowControlButton from "./circle-button";
 import { Rnd } from "react-rnd";
 import { Window } from "@/types/windows";
-import { useUpdateWindow, useDeleteWindow } from "@/hooks/useWindows";
+import {
+  useDeleteWindow,
+  usePatchWindow,
+} from "@/apis/services/window-services/mutation";
+import { useDebouncedCallback } from "use-debounce";
+import { useWindowStore } from "@/stores/window-state";
 
 interface AddWindowProps {
   window: Window;
@@ -14,8 +19,10 @@ interface AddWindowProps {
 }
 
 const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
-  const { mutate: updateWindow } = useUpdateWindow();
+  const { mutate: updateWindow } = usePatchWindow();
   const { mutate: deleteWindow } = useDeleteWindow();
+
+  const { bringToFront, updateWindowBounds } = useWindowStore();
 
   const { id, type, zIndex, x, y, width, height } = window;
 
@@ -23,16 +30,21 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
     deleteWindow(id);
   };
 
+  const debouncedServerUpdate = useDebouncedCallback(
+    (x: number, y: number, width: number, height: number) => {
+      updateWindow({ id, data: { x, y, width, height, zIndex } });
+    },
+    500
+  );
+
   const handleMoveOrResize = (
     x: number,
     y: number,
     width: number,
     height: number
   ) => {
-    updateWindow({
-      id,
-      updates: { x, y, width, height, zIndex },
-    });
+    updateWindowBounds(id, x, y, width, height);
+    debouncedServerUpdate(x, y, width, height);
   };
 
   return (
@@ -44,7 +56,7 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
       bounds="window"
       lockAspectRatio
       style={{
-        zIndex: zIndex,
+        zIndex,
         position: "fixed",
       }}
       enableResizing={{
@@ -57,6 +69,8 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
         bottomLeft: true,
         topLeft: true,
       }}
+      onDragStart={() => bringToFront(id)}
+      onResizeStart={() => bringToFront(id)}
       onDragStop={(e, d) => handleMoveOrResize(d.x, d.y, width, height)}
       onResizeStop={(e, direction, ref, delta, position) => {
         handleMoveOrResize(
