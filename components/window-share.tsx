@@ -1,11 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
-
-type ExtendedVideoConstraints = MediaTrackConstraints & {
-  displaySurface?: "window" | "application" | "browser" | "monitor";
-  cursor?: "always" | "motion" | "never";
-};
+import { useRef, useState, useEffect } from "react";
 
 const WindowShare = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -14,37 +9,15 @@ const WindowShare = () => {
 
   const handleStartSharing = async () => {
     try {
-      const videoConstraints: ExtendedVideoConstraints = {
-        displaySurface: "window",
-        cursor: "always",
-      };
-
       const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: videoConstraints,
         audio: false,
       });
 
       streamRef.current = stream;
-
-      const video = videoRef.current;
-      if (video) {
-        video.srcObject = stream;
-        video.muted = true;
-
-        video.onloadedmetadata = () => {
-          video.play().catch((err) => {
-            console.error("video play 실패:", err);
-          });
-        };
-      }
+      setStarted(true);
 
       const [track] = stream.getVideoTracks();
-      track.onended = () => {
-        console.log("사용자가 브라우저에서 공유를 중단했습니다.");
-        stopSharing();
-      };
-
-      setStarted(true);
+      track.onended = () => stopSharing();
     } catch (err) {
       console.error("화면 공유 실패:", err);
       alert("화면 공유를 취소했거나 사용할 수 없습니다.");
@@ -52,19 +25,23 @@ const WindowShare = () => {
   };
 
   const stopSharing = () => {
-    const stream = streamRef.current;
-
-    if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
 
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
-
     setStarted(false);
   };
+
+  useEffect(() => {
+    if (started && streamRef.current && videoRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      videoRef.current
+        .play()
+        .catch((err) => console.error("video 재생 실패:", err));
+    }
+  }, [started]);
 
   return (
     <div className="flex justify-center items-center w-full h-auto">
@@ -72,27 +49,25 @@ const WindowShare = () => {
         <>
           <video
             ref={videoRef}
-            autoPlay
             muted
             playsInline
-            className="bg-black w-full h-auto min-w-180"
+            className="bg-black w-full h-auto"
+            controls
           />
           <button
             onClick={stopSharing}
-            className="mt-4 px-3 py-2 bg-[#ff5252] text-white border-none rounded-md cursor-pointer absolute bottom-2 left-1/2 transform -translate-x-1/2"
+            className="absolute bottom-4 px-4 py-2 bg-red-500 text-white rounded-md"
           >
             STOP
           </button>
         </>
       ) : (
-        <>
-          <button
-            onClick={handleStartSharing}
-            className="px-4 py-2 bg-[#255f38] text-white border-none rounded-md cursor-pointer absolute left-1/2 top-1/2 -transform -translate-1/2"
-          >
-            START
-          </button>
-        </>
+        <button
+          onClick={handleStartSharing}
+          className="absolute px-4 py-2 bg-[#255f38] text-white rounded-md top-1/2 transform -translate-y-1/2"
+        >
+          START
+        </button>
       )}
     </div>
   );
