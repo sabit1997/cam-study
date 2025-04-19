@@ -1,18 +1,22 @@
 "use client";
 
 import { useCreateWindow } from "@/apis/services/window-services/mutation";
+import { useWindowStore } from "@/stores/window-state";
 import { FaCirclePlus } from "react-icons/fa6";
 
 const AddButton = () => {
   const { mutate: createWindow, isPending } = useCreateWindow();
+  const windows = useWindowStore((state) => state.windows);
 
   const handleClick = () => {
+    const maxZIndex =
+      windows.length > 0 ? Math.max(...windows.map((w) => w.zindex)) : 0;
     const offset = Math.floor(Math.random() * 60);
 
     createWindow(
       {
         type: "none",
-        zindex: 1,
+        zindex: maxZIndex + 1,
         x: 100 + offset,
         y: 100 + offset,
         width: 320,

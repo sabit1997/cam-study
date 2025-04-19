@@ -99,7 +99,7 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
           <WindowControlButton type="close" onClick={handleClose} />
           <WindowControlButton type="option" onClick={onOpenOption} />
         </div>
-        <div className="w-full h-full">
+        <div className="w-full h-full" onClick={handleClickOrFocus}>
           {type === "camera" && <CameraView />}
           {type === "youtube" && <YouTubePlayer window={window} />}
           {type === "window" && <WindowShare />}

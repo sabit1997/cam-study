@@ -21,7 +21,7 @@ const OptionModal = ({ window, onClose }: OptionModalProps) => {
   const [selectedType, setSelectedType] = useState<TypeList>("none");
 
   const { mutate: updateWindow } = usePatchWindow();
-  const { windows } = useWindowStore();
+  const windows = useWindowStore((state) => state.windows);
   const maxZIndex =
     windows.length > 0 ? Math.max(...windows.map((w) => w.zindex)) : 0;
 
