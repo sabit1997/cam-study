@@ -7,11 +7,7 @@ import { persist } from "zustand/middleware";
 interface WindowState {
   windows: Window[];
   setWindows: (windows: Window[]) => void;
-  // TODO: addWindows 필요 없음 다 수정하면 지우기
-  addWindows: () => void;
   updateWindowType: (id: number, type: Window["type"]) => void;
-  removeWindows: (id: number) => void;
-  updateYoutubeUrl: (id: number, url: string) => void;
   bringToFront: (id: number) => void;
   updateWindowBounds: (
     id: number,
@@ -27,45 +23,9 @@ export const useWindowStore = create<WindowState>()(
     (set) => ({
       windows: [],
       setWindows: (windows) => set(() => ({ windows })),
-      // TODO: 지우기
-      addWindows: () =>
-        set((state) => {
-          const maxZ = Math.max(0, ...state.windows.map((w) => w.zindex || 0));
-          const offset = state.windows.length * 20;
-
-          const newId = Date.now();
-          return {
-            windows: [
-              ...state.windows,
-              {
-                id: newId,
-                type: "none",
-                url: undefined,
-                zindex: maxZ + 1,
-                x: 100 + offset,
-                y: 100 + offset,
-                width: 320,
-                height: 180,
-                userId: "",
-                createdAt: new Date().toISOString(),
-              },
-            ],
-          };
-        }),
-
       updateWindowType: (id, type) =>
         set((state) => ({
           windows: state.windows.map((w) => (w.id === id ? { ...w, type } : w)),
-        })),
-
-      removeWindows: (id) =>
-        set((state) => ({
-          windows: state.windows.filter((w) => w.id !== id),
-        })),
-
-      updateYoutubeUrl: (id, url) =>
-        set((state) => ({
-          windows: state.windows.map((w) => (w.id === id ? { ...w, url } : w)),
         })),
 
       bringToFront: (id) =>
