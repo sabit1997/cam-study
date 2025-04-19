@@ -7,6 +7,7 @@ import WindowControlButton from "../circle-button";
 import RectangleButton from "../rectangle-button";
 import { Window } from "@/types/windows";
 import { usePatchWindow } from "@/apis/services/window-services/mutation";
+import { useWindowStore } from "@/stores/window-state";
 
 type TypeList = "none" | "youtube" | "camera" | "window";
 
@@ -20,6 +21,9 @@ const OptionModal = ({ window, onClose }: OptionModalProps) => {
   const [selectedType, setSelectedType] = useState<TypeList>("none");
 
   const { mutate: updateWindow } = usePatchWindow();
+  const { windows } = useWindowStore();
+  const maxZIndex =
+    windows.length > 0 ? Math.max(...windows.map((w) => w.zindex)) : 0;
 
   useEffect(() => {
     if (window) setSelectedType(window.type);
@@ -34,7 +38,10 @@ const OptionModal = ({ window, onClose }: OptionModalProps) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-20">
+    <div
+      className="fixed inset-0 bg-black/50 flex justify-center items-center z-20"
+      style={{ zIndex: maxZIndex + 10 }}
+    >
       <div
         ref={modalRef}
         className="w-[300px] min-w-80 border-2 border-[#255f38] rounded-2xl min-h-50 overflow-hidden bg-[#a0c878]"
