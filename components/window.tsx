@@ -12,6 +12,7 @@ import {
 } from "@/apis/services/window-services/mutation";
 import { useDebouncedCallback } from "use-debounce";
 import { useWindowStore } from "@/stores/window-state";
+import Todos from "./todos";
 
 interface AddWindowProps {
   window: Window;
@@ -103,6 +104,7 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
           {type === "camera" && <CameraView />}
           {type === "youtube" && <YouTubePlayer window={window} />}
           {type === "window" && <WindowShare />}
+          {type === "todo" && <Todos />}
         </div>
       </div>
     </Rnd>

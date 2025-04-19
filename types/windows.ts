@@ -1,3 +1,5 @@
+import { TypeList } from "./dto";
+
 export type WindowType = "none" | "camera" | "youtube" | "window";
 
 export interface WindowData {
@@ -15,7 +17,7 @@ export interface WindowData {
 
 export interface Window {
   id: number;
-  type: "none" | "camera" | "youtube" | "window";
+  type: TypeList;
   url?: string;
   x: number;
   y: number;
