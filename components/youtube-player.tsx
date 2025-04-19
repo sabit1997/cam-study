@@ -14,11 +14,11 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
   const { mutate: updateWindow } = usePatchWindow();
 
   const [inputUrl, setInputUrl] = useState(window.url ?? "");
-  const [isSubmitted, setIsSubmitted] = useState(!!window.url); // 제출 여부
+  const [isSubmitted, setIsSubmitted] = useState(!!window.url);
 
   useEffect(() => {
     setInputUrl(window.url ?? "");
-    setIsSubmitted(!!window.url); // window 변경되면 상태 초기화
+    setIsSubmitted(!!window.url);
   }, [window.url]);
 
   const handleSubmit = () => {
