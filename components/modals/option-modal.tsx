@@ -8,8 +8,7 @@ import RectangleButton from "../rectangle-button";
 import { Window } from "@/types/windows";
 import { usePatchWindow } from "@/apis/services/window-services/mutation";
 import { useWindowStore } from "@/stores/window-state";
-
-type TypeList = "none" | "youtube" | "camera" | "window";
+import { TypeList } from "@/types/dto";
 
 interface OptionModalProps {
   window: Window;
@@ -17,7 +16,7 @@ interface OptionModalProps {
 }
 
 const OptionModal = ({ window, onClose }: OptionModalProps) => {
-  const typeList: TypeList[] = ["youtube", "camera", "window"];
+  const typeList: TypeList[] = ["youtube", "camera", "window", "todo"];
   const [selectedType, setSelectedType] = useState<TypeList>("none");
 
   const { mutate: updateWindow } = usePatchWindow();

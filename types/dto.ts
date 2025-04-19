@@ -1,5 +1,7 @@
+export type TypeList = "none" | "youtube" | "camera" | "window" | "todo";
+
 export interface WindowPatchDto {
-  type?: "none" | "camera" | "youtube" | "window";
+  type?: TypeList;
   url?: string;
   x?: number;
   y?: number;
