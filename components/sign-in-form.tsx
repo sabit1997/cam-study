@@ -52,6 +52,9 @@ const SignInForm = () => {
       {error instanceof Error && (
         <p className="text-red-500 text-sm">{error.message}</p>
       )}
+      <RectangleButton onClick={() => router.push("/sign-up")}>
+        Go to Sign up Page
+      </RectangleButton>
     </form>
   );
 };

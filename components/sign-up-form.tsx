@@ -47,6 +47,9 @@ const SignUpForm = () => {
       <RectangleButton type="submit" disabled={isPending}>
         {isPending ? "Signing up..." : "SIGN UP"}
       </RectangleButton>
+      <RectangleButton onClick={() => router.push("/sign-in")}>
+        Go to Sign in Page
+      </RectangleButton>
     </form>
   );
 };
