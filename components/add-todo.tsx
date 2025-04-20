@@ -15,8 +15,10 @@ const AddTodo = ({ window }: AddTodoProps) => {
   const [todo, setTodo] = useState("");
 
   const handleAdd = ({ id, text }: AddTodoVars) => {
-    addTodo({ id, text });
-    setTodo("");
+    if (!!todo) {
+      addTodo({ id, text });
+      setTodo("");
+    }
   };
   return (
     <div className="flex justify-center items-center gap-3">
