@@ -7,7 +7,7 @@ const NoAuthMyPage = () => {
   const router = useRouter();
 
   return (
-    <div className="p-5">
+    <div className="p-5 flex flex-col gap-3">
       <RectangleButton
         onClick={() => router.push("/sign-in")}
         width="w-[50%] min-w-[200px]"
