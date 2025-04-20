@@ -29,7 +29,7 @@ const Todos = ({ window }: TodosProps) => {
                 doneTodo({
                   winId: window.id,
                   todoId: todo.id,
-                  done: !todo.done,
+                  done: !!todo.done,
                 })
               }
               className={`
