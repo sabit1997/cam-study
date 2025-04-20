@@ -21,15 +21,18 @@ const AddTodo = ({ window }: AddTodoProps) => {
     }
   };
   return (
-    <div className="flex justify-center items-center gap-3">
+    <div className="flex justify-center items-center gap-3 h-fit">
       <input
         type="text"
         placeholder="Enter your todo..."
-        className="rounded-md border-2 border-[#255f38] p-[10px]"
+        className="rounded-md border-2 border-[#255f38] p-[10px] w-full"
         value={todo}
         onChange={(e) => setTodo(e.target.value)}
       />
-      <RectangleButton onClick={() => handleAdd({ id: window.id, text: todo })}>
+      <RectangleButton
+        width="w-[30%] min-w-[60px]"
+        onClick={() => handleAdd({ id: window.id, text: todo })}
+      >
         ADD
       </RectangleButton>
     </div>

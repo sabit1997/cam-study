@@ -19,7 +19,7 @@ const RectangleButton = ({
     <button
       onClick={onClick}
       type={type}
-      className={`my-4 ${width} p-[10px] bg-[#255f38] text-white border-none rounded-md cursor-pointer mx-auto block`}
+      className={`${width} p-[10px] bg-[#255f38] text-white border-none rounded-md cursor-pointer mx-auto block`}
       disabled={disabled}
     >
       {children}
