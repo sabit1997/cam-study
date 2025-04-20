@@ -33,8 +33,8 @@ const Todos = ({ window }: TodosProps) => {
                 })
               }
               className={`
-  flex items-center px-3 py-2 mb-[6px] border rounded-md cursor-pointer
-  ${todo.done ? "bg-[#255f38] text-white" : "text-black border-[#ccc] relative"}
+  flex items-center px-3 py-2 mb-[6px] border rounded-md cursor-pointer relative
+  ${todo.done ? "bg-[#255f38] text-white" : "text-black border-[#ccc]"}
 `}
             >
               <span className="mr-2">{todo.done ? "✅" : "⬜️"}</span>
