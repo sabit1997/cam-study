@@ -16,3 +16,20 @@ input:-webkit-autofill:active {
   font-family: inherit !important;
   transition: background-color 5000s ease-in-out 0s !important;
 }
+
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #a0c878;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #255f38;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #255f38;
+}

@@ -18,9 +18,9 @@ const Todos = ({ window }: TodosProps) => {
   const { mutate: deleteTodo } = useDeleteTodo();
   const { mutate: doneTodo } = useDoneTodo();
   return (
-    <div className="p-4 flex flex-col gap-2">
+    <div className="p-4 flex flex-col gap-2 h-full">
       <AddTodo window={window} />
-      <ul>
+      <ul className="overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-[#a0c878] [&::-webkit-scrollbar-thumb]:bg-[#255f38] [&::-webkit-scrollbar-thumb]:rounded-lg [scrollbar-width:thin] [scrollbar-color:#255f38_#a0c878]">
         {todos.length > 0 &&
           todos.map((todo) => (
             <li

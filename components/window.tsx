@@ -95,12 +95,17 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
       }}
       dragHandleClassName="drag-handle"
     >
-      <div className="w-full h-full border-2 border-[#255f38] rounded-2xl overflow-hidden bg-[#a0c878] relative">
-        <div className="drag-handle flex gap-2 w-full bg-[#255f38] px-3 py-2 cursor-move">
+      <div
+        className={`w-full h-full border-2 border-[#255f38] rounded-2xl bg-[#a0c878] relative pt-2`}
+      >
+        <div className="drag-handle flex gap-2 w-full bg-[#255f38] px-3 py-2 cursor-move fixed rounded-t-2xl left-0 z-10 top-0">
           <WindowControlButton type="close" onClick={handleClose} />
           <WindowControlButton type="option" onClick={onOpenOption} />
         </div>
-        <div className="w-full h-full" onClick={handleClickOrFocus}>
+        <div
+          className={"w-full h-full overflow-hidden"}
+          onClick={handleClickOrFocus}
+        >
           {type === "camera" && <CameraView />}
           {type === "youtube" && <YouTubePlayer window={window} />}
           {type === "window" && <WindowShare />}
