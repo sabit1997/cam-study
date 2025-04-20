@@ -11,17 +11,26 @@ const WindowZone = () => {
     typeof document !== "undefined"
       ? document.cookie.includes("AccessToken=")
       : false;
+
   const { data: serverWindows = [] } = useWindows(isLoggedIn);
-  const setWindows = useWindowStore((state) => state.setWindows);
+
   const localWindows = useWindowStore((state) => state.windows);
+  const setWindows = useWindowStore((state) => state.setWindows);
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
   useEffect(() => {
-    if (serverWindows.length > 0) {
+    const serverIds = serverWindows.map((w) => w.id);
+    const localIds = localWindows.map((w) => w.id);
+
+    const hasChanged =
+      serverIds.length !== localIds.length ||
+      serverIds.some((id, idx) => id !== localIds[idx]);
+
+    if (hasChanged) {
       setWindows(serverWindows);
     }
-  }, [serverWindows]);
+  }, [serverWindows, localWindows, setWindows]);
 
   return (
     <div className="w-full h-full overflow-hidden">
@@ -39,4 +48,5 @@ const WindowZone = () => {
     </div>
   );
 };
+
 export default WindowZone;
