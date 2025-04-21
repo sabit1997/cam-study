@@ -63,8 +63,8 @@
 | 분류                 | 사용 패키지                                                       |
 | -------------------- | ----------------------------------------------------------------- |
 | UI 및 인터랙션       | react-rnd, react-webcam, react-youtube, react-icons, use-debounce |
-| 데이터 관리          | axios, localforage, crypto-js, dayjs                              |
-| 인증 및 데이터베이스 | @supabase/ssr, @supabase/supabase-js                              |
+| 데이터 관리          | axios                                                             |
+| 인증 및 데이터베이스 | Java17, Spring Boot, Docker                                       |
 
 ## 📥 설치 및 실행 방법
 
