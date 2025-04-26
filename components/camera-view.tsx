@@ -22,7 +22,7 @@ const CameraView = () => {
         videoElement.srcObject = stream;
         videoElement.addEventListener("loadedmetadata", handleLoadedMetadata);
       } catch (err) {
-        console.error("카메라 접근 실패:", err);
+        console.error("카메라 접근 실패!:", err);
       }
     };
 
