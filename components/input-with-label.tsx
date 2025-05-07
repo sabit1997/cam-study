@@ -28,7 +28,7 @@ const InputWithLabel = ({
         placeholder={placeholder}
         value={value}
         onChange={onChange}
-        className="p-2 border-2 border-transparent focus:outline-0 focus:border-2 focus:border-[#255f38] rounded-md autofill:bg-transparent autofill:text-transparent"
+        className="p-2 border-2 border-[#B4B4B8] focus:outline-0 focus:border-2 focus:border-[#255f38] rounded-md autofill:bg-transparent autofill:text-transparent"
       />
     </div>
   );

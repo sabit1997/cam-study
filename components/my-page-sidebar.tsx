@@ -27,7 +27,7 @@ export const MyPageSidebar = () => {
   };
 
   return (
-    <div className="w-[15%] w-max-[160px] w-min-[120px] flex flex-col items-center gap-2 sticky top-0 left-0 pt-8">
+    <div className="flex justfiy-center gap-2 sticky top-0 left-0 pt-8">
       <MypageButton
         className={`${isActive("/my-page/record")}`}
         onClick={() => router.push("/my-page/record")}
