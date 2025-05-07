@@ -42,7 +42,10 @@ export const MyPageSidebar = () => {
         <IoLibrary />
         시간 통계
       </MypageButton>
-      <MypageButton onClick={handleSignOut} className="bg-[#255f38] text-white">
+      <MypageButton
+        onClick={handleSignOut}
+        className="active:bg-[#255f38] active:text-white bg-[#a0c878]"
+      >
         <IoLogOutOutline />
         Sign Out
       </MypageButton>
