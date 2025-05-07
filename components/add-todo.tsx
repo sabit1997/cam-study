@@ -15,13 +15,22 @@ const AddTodo = ({ window }: AddTodoProps) => {
   const [todo, setTodo] = useState("");
 
   const handleAdd = ({ id, text }: AddTodoVars) => {
+    addTodo({ id, text });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
     if (!!todo) {
-      addTodo({ id, text });
+      handleAdd({ id: window.id, text: todo });
       setTodo("");
     }
   };
+
   return (
-    <div className="flex justify-center items-center gap-3 h-fit">
+    <form
+      className="flex justify-center items-center gap-3 h-fit"
+      onSubmit={handleSubmit}
+    >
       <input
         type="text"
         placeholder="Enter your todo..."
@@ -29,13 +38,8 @@ const AddTodo = ({ window }: AddTodoProps) => {
         value={todo}
         onChange={(e) => setTodo(e.target.value)}
       />
-      <RectangleButton
-        width="w-[30%] min-w-[60px]"
-        onClick={() => handleAdd({ id: window.id, text: todo })}
-      >
-        ADD
-      </RectangleButton>
-    </div>
+      <RectangleButton width="w-[30%] min-w-[60px]">ADD</RectangleButton>
+    </form>
   );
 };
 
