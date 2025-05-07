@@ -9,13 +9,21 @@ const Navigation = () => {
   const router = useRouter();
   const pathname = usePathname();
 
-  const isActiveP = (path: string) =>
-    pathname === path
-      ? "bg-[#255f38] text-white"
-      : "bg-[#a0c878] text-[#255f38]";
+  const isActiveP = (path: string) => {
+    const isActive =
+      path === "/"
+        ? pathname === path
+        : pathname === path || pathname.startsWith(`${path}/`);
+    return isActive ? "bg-[#255f38] text-white" : "bg-[#a0c878] text-[#255f38]";
+  };
 
-  const isActiveImage = (path: string) =>
-    pathname === path ? "bg-[#727D73]/50 border border-[#255f38]/50" : "";
+  const isActiveImage = (path: string) => {
+    const isActive =
+      path === "/"
+        ? pathname === path
+        : pathname === path || pathname.startsWith(`${path}/`);
+    return isActive ? "bg-[#727D73]/50 border border-[#255f38]/50" : "";
+  };
 
   return (
     <div className="flex justify-between items-center">
@@ -40,7 +48,7 @@ const Navigation = () => {
         </li>
         <li>
           <button
-            onClick={() => router.push("/my-page")}
+            onClick={() => router.push("/my-page/record")}
             className="cursor-pointer"
             type="button"
           >
