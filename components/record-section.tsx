@@ -3,8 +3,7 @@
 import { useGetMonthTime } from "@/apis/services/timer-services/query";
 import { formatSeconds } from "@/utils/formatSeconds";
 import { useState } from "react";
-import { IoChevronDownOutline } from "react-icons/io5";
-import { IoChevronUp } from "react-icons/io5";
+import YearMonthSelector from "./year-month-selector";
 
 export const RecordSection = () => {
   const today = new Date();
@@ -16,66 +15,17 @@ export const RecordSection = () => {
 
   const { data } = useGetMonthTime(year, month);
 
-  const handleYearChange = (diff: number) => {
-    const newYear = year + diff;
-    const isTooOld = newYear < currentYear - 2;
-    const isInFuture =
-      newYear > currentYear ||
-      (newYear === currentYear && month > currentMonth);
-    if (!isTooOld && !isInFuture) {
-      setYear(newYear);
-    }
-  };
-
-  const handleMonthChange = (diff: number) => {
-    let newMonth = month + diff;
-    let newYear = year;
-
-    if (newMonth > 12) {
-      newMonth = 1;
-      newYear += 1;
-    } else if (newMonth < 1) {
-      newMonth = 12;
-      newYear -= 1;
-    }
-
-    const isTooOld = newYear < currentYear - 2;
-    const isInFuture =
-      newYear > currentYear ||
-      (newYear === currentYear && newMonth > currentMonth);
-
-    if (!isTooOld && !isInFuture) {
-      setYear(newYear);
-      setMonth(newMonth);
-    }
-  };
-
   return (
     <div className="pt-8">
-      <div className="flex items-center gap-4 mb-4 text-xl">
-        <div className="flex items-center gap-2">
-          <button onClick={() => handleYearChange(-1)}>
-            <IoChevronDownOutline />
-          </button>
-          <p>year : </p>
-          <span className="text-[#255f38]">{year}</span>
-          <button onClick={() => handleYearChange(1)}>
-            <IoChevronUp />
-          </button>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button onClick={() => handleMonthChange(-1)}>
-            <IoChevronDownOutline />
-          </button>
-          <p>month : </p>
-          <span className="text-[#255f38]">{month}</span>
-          <button onClick={() => handleMonthChange(1)}>
-            <IoChevronUp />
-          </button>
-        </div>
-      </div>
-
+      <YearMonthSelector
+        year={year}
+        month={month}
+        currentYear={currentYear}
+        currentMonth={currentMonth}
+        setYear={setYear}
+        setMonth={setMonth}
+      />
+      <span className="text-sm">* 최대 2년간의 기록을 볼 수 있습니다.</span>
       <section>
         <table className="min-w-full border border-gray-300 text-sm text-left">
           <thead className="bg-gray-100">
