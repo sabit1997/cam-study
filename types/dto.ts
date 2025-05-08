@@ -1,4 +1,10 @@
-export type TypeList = "none" | "youtube" | "camera" | "window" | "todo";
+export type TypeList =
+  | "none"
+  | "youtube"
+  | "camera"
+  | "window"
+  | "todo"
+  | "timer";
 
 export interface WindowPatchDto {
   type?: TypeList;

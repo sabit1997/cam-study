@@ -1,27 +1,17 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
+import { IoPlay, IoPauseSharp } from "react-icons/io5";
+import { formatSeconds } from "@/utils/formatSeconds";
 
 const Timer = () => {
-  const [time, setTime] = useState({ hour: 0, min: 0, sec: 0 });
+  const [seconds, setSeconds] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const startTimer = () => {
     if (timerRef.current) return;
     timerRef.current = setInterval(() => {
-      setTime((prev) => {
-        let { hour, min, sec } = prev;
-        sec++;
-        if (sec >= 60) {
-          sec = 0;
-          min++;
-        }
-        if (min >= 60) {
-          min = 0;
-          hour++;
-        }
-        return { hour, min, sec };
-      });
+      setSeconds((prev) => prev + 1);
     }, 1000);
   };
 
@@ -39,26 +29,23 @@ const Timer = () => {
     };
   }, []);
 
-  const { hour, min, sec } = time;
   return (
-    <div className="flex flex-col items-center gap-2 text-[#255f38]">
-      <span className="text-2xl font-mono">{`${hour
-        .toString()
-        .padStart(2, "0")} : ${min.toString().padStart(2, "0")} : ${sec
-        .toString()
-        .padStart(2, "0")}`}</span>
+    <div className="flex flex-col items-center justify-center gap-2 text-[#255f38] h-full">
+      <span className="text-2xl font-mono">{formatSeconds(seconds)}</span>
       <div className="flex gap-2">
         <button
-          className="px-4 py-2 bg-green-500 text-white rounded"
+          disabled={!!timerRef.current}
+          className="p-5 rounded-full text-white bg-[#255f38] disabled:bg-gray-400 disabled:cursor-not-allowed"
           onClick={startTimer}
         >
-          시작
+          <IoPlay />
         </button>
         <button
-          className="px-4 py-2 bg-red-500 text-white rounded"
+          disabled={!timerRef.current}
+          className="p-5 bg-[#255f38] text-white rounded-full disabled:bg-gray-400 disabled:cursor-not-allowed"
           onClick={stopTimer}
         >
-          멈춤
+          <IoPauseSharp />
         </button>
       </div>
     </div>

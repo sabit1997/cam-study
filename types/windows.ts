@@ -1,6 +1,6 @@
 import { TypeList } from "./dto";
 
-export type WindowType = "none" | "camera" | "youtube" | "window";
+export type WindowType = "none" | "camera" | "youtube" | "window" | "timer";
 
 export interface WindowData {
   id: number;

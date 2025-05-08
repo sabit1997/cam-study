@@ -13,6 +13,7 @@ import {
 import { useDebouncedCallback } from "use-debounce";
 import { useWindowStore } from "@/stores/window-state";
 import Todos from "./todos";
+import Timer from "./timer";
 
 interface AddWindowProps {
   window: Window;
@@ -110,6 +111,7 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
           {type === "youtube" && <YouTubePlayer window={window} />}
           {type === "window" && <WindowShare />}
           {type === "todo" && <Todos window={window} />}
+          {type === "timer" && <Timer />}
         </div>
       </div>
     </Rnd>
