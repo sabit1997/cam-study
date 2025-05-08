@@ -18,3 +18,14 @@ export const TodosEndPoints = {
   doneTodo: (winId: number, todoId: number) =>
     `/windows/${winId}/todos/${todoId}`,
 };
+
+export const TimerEndPoints = {
+  postTime: () => "/timer",
+  getMonthTime: (year: number, month: number) =>
+    `/timer?year=${year}&month=${month}`,
+  getTodayTime: () => "/timer/today",
+  getTimerGoal: () => "/timer/goal",
+  postTiemrGoal: () => "/timer/goal",
+  getTimerAnalytics: (year: number, month: number) =>
+    `/timer/analytics?year=${year}&month=${month}`,
+};
