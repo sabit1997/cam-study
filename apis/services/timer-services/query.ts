@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import TimerService from "./service";
-import { WINDOW_QUERY_KEY } from "../window-services/query";
 
 export const TIMER_QUERY_KEY = ["timer"];
 export const TIMER_GOAL_KEY = ["goal"];
@@ -19,7 +18,7 @@ export const useGetMonthTime = (year: number, month: number) => {
 
 export const useGetTodayTime = () => {
   return useQuery({
-    queryKey: WINDOW_QUERY_KEY,
+    queryKey: TIMER_QUERY_KEY,
     queryFn: TimerService.getTodayTime,
     meta: {
       ERROR_SOURCE: "[오늘 타이머 기록 불러오기 실패]",

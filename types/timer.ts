@@ -11,11 +11,12 @@ export type GetMonthTimeRes = {
 };
 
 export type GetTodayTimeRes = {
-  id: number;
-  userId: string;
-  date: string;
-  totalSeconds: number;
   dailyHourGoal: number;
+  date: string;
+  goalInSeconds: number;
+  id: number;
+  totalSeconds: number;
+  userId: string;
 };
 
 export type GetTimerGoalRes = {

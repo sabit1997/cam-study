@@ -26,6 +26,8 @@ const WindowZone = () => {
     setWindows(serverWindows);
   }, [serialized, setWindows]);
 
+  console.log(localWindows);
+
   return (
     <div className="w-full h-full overflow-hidden">
       {localWindows.map((win: WindowType) => (
