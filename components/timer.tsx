@@ -1,90 +1,111 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import { IoPlay, IoPauseSharp } from "react-icons/io5";
 import { formatSeconds } from "@/utils/formatSeconds";
 import { useGetTodayTime } from "@/apis/services/timer-services/query";
 import { usePostTime } from "@/apis/services/timer-services/mutation";
 
-const Timer = () => {
-  const [seconds, setSeconds] = useState(0);
-  const [startAt, setStartAt] = useState<Date | null>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const autoSaveRef = useRef<ReturnType<typeof setInterval> | null>(null);
-
-  const { data: todayTimeRes } = useGetTodayTime();
-  const todayTime = todayTimeRes?.totalSeconds ?? 0;
-
+const Timer: React.FC = () => {
+  const { data: todayTimeRes, isLoading, isError } = useGetTodayTime();
   const { mutate: postTime } = usePostTime();
 
-  const startTimer = () => {
-    if (timerRef.current) return;
+  const [elapsed, setElapsed] = useState(0);
+  const [startAt, setStartAt] = useState<Date | null>(null);
 
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const saveRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (startAt) {
+        const end = new Date();
+        postTime({ startAt: startAt.toISOString(), endAt: end.toISOString() });
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [startAt, postTime]);
+
+  const startTimer = useCallback(() => {
+    if (timerRef.current || !todayTimeRes) return;
     const now = new Date();
     setStartAt(now);
+    setElapsed(0);
 
     timerRef.current = setInterval(() => {
-      setSeconds((prev) => prev + 1);
+      setElapsed((prev) => prev + 1);
     }, 1000);
 
-    autoSaveRef.current = setInterval(() => {
+    saveRef.current = setInterval(() => {
       if (!startAt) return;
       const end = new Date();
       postTime({ startAt: startAt.toISOString(), endAt: end.toISOString() });
       setStartAt(end);
-      setSeconds(0);
+      setElapsed(0);
     }, 60000);
-  };
+  }, [todayTimeRes, startAt, postTime]);
 
-  const stopTimer = () => {
+  const stopTimer = useCallback(() => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
-    if (autoSaveRef.current) {
-      clearInterval(autoSaveRef.current);
-      autoSaveRef.current = null;
+    if (saveRef.current) {
+      clearInterval(saveRef.current);
+      saveRef.current = null;
     }
-
     if (startAt) {
       const end = new Date();
       postTime({ startAt: startAt.toISOString(), endAt: end.toISOString() });
     }
-
     setStartAt(null);
-    setSeconds(0);
-  };
+    setElapsed(0);
+  }, [startAt, postTime]);
 
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      stopTimer();
-    };
-    window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, [startAt]);
+  if (isLoading) {
+    return (
+      <div className="w-full h-full flex items-center justify-center">
+        Loading...
+      </div>
+    );
+  }
+  if (isError || !todayTimeRes) {
+    return (
+      <div className="w-full h-full flex items-center justify-center text-red-500">
+        ⚠️Error!
+      </div>
+    );
+  }
+
+  const { totalSeconds = 0, goalInSeconds = 1 } = todayTimeRes;
+  const current = totalSeconds + elapsed;
+  const percent = Math.min((current / goalInSeconds) * 100, 100);
 
   return (
-    <div className="flex flex-col items-center justify-center gap-2 text-[#255f38] h-full">
-      <span className="text-2xl font-mono">
-        {formatSeconds(todayTime + seconds)}
-      </span>
+    <div className="flex flex-col items-center justify-center gap-4 text-[#255f38] h-full">
+      <span className="text-2xl font-mono">{formatSeconds(current)}</span>
       <div className="flex gap-2">
         <button
-          disabled={!!timerRef.current}
-          className="p-5 rounded-full text-white bg-[#255f38] disabled:bg-gray-400 disabled:cursor-not-allowed"
+          disabled={Boolean(timerRef.current)}
           onClick={startTimer}
+          className="p-5 rounded-full text-white bg-[#255f38] disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           <IoPlay />
         </button>
         <button
           disabled={!timerRef.current}
-          className="p-5 bg-[#255f38] text-white rounded-full disabled:bg-gray-400 disabled:cursor-not-allowed"
           onClick={stopTimer}
+          className="p-5 rounded-full text-white bg-[#255f38] disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           <IoPauseSharp />
         </button>
+      </div>
+      <div className="flex items-center gap-3 w-full px-3">
+        <span>Goal</span>
+        <div className="w-full bg-gray-300 h-2 rounded-full overflow-hidden">
+          <div className="h-2 bg-[#255f38]" style={{ width: `${percent}%` }} />
+        </div>
       </div>
     </div>
   );

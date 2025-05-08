@@ -42,19 +42,20 @@ export const RecordSection = () => {
             </tr>
           </thead>
           <tbody>
-            {data?.entries.map((item, idx) => (
-              <tr key={idx} className="hover:bg-gray-50">
-                <td className="px-4 py-2 border-b border-gray-200">
-                  {item.date}
-                </td>
-                <td className="px-4 py-2 border-b border-gray-200">
-                  {formatSeconds(item.totalSeconds)}
-                </td>
-                <td className="px-4 py-2 border-b border-gray-200">
-                  {item.dailyHourGoal.toFixed(1)} hrs
-                </td>
-              </tr>
-            ))}
+            {data?.entries &&
+              data?.entries.map((item, idx) => (
+                <tr key={idx} className="hover:bg-gray-50">
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    {item.date}
+                  </td>
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    {formatSeconds(item.totalSeconds)}
+                  </td>
+                  <td className="px-4 py-2 border-b border-gray-200">
+                    {item.dailyHourGoal.toFixed(1)} hrs
+                  </td>
+                </tr>
+              ))}
             {(!data?.entries || data.entries.length === 0) && (
               <tr>
                 <td colSpan={3} className="text-center py-5">
