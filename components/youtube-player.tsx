@@ -75,13 +75,17 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
     );
 
   return (
-    <div className="relative">
+    <div className="relative w-full h-full">
       <YouTube
         videoId={videoId}
+        className="w-full h-full"
+        iframeClassName="w-full h-full"
         opts={{
           width: "100%",
+          height: "100%",
           playerVars: {
-            autoplay: 1,
+            autoplay: 0,
+            loop: 1,
           },
         }}
       />
