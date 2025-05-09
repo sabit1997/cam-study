@@ -9,19 +9,20 @@ import { Loading } from "./loading";
 import { Error } from "./error";
 
 export const GoalSetting = () => {
-  const [goal, setGoal] = useState(0);
+  const [goal, setGoal] = useState("");
   const { data, isPending, isError } = useGetTimerGoal();
   const { mutate: postGoal } = usePostTimeGoal();
 
   useEffect(() => {
     if (data) {
-      setGoal(data.hour || 0);
+      setGoal(data.hour?.toString() ?? "");
     }
   }, [data]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    postGoal({ hour: goal });
+    const parsed = parseFloat(goal);
+    if (!isNaN(parsed)) postGoal({ hour: parsed });
   };
 
   if (isPending) return <Loading />;
@@ -38,9 +39,7 @@ export const GoalSetting = () => {
         inputMode="decimal"
         value={goal}
         className="no-spin"
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-          setGoal(parseFloat(e.target.value))
-        }
+        onChange={(e) => setGoal(e.target.value)}
       />
       <MypageButton className="bg-[rgb(37,95,56)] text-white">
         설정
