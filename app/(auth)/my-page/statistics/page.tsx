@@ -51,12 +51,12 @@ const StatisticsPage = () => {
           </p>
           <p
             className={`font-bold ${
-              data?.monthComparison.difference || 0 >= 0
+              data?.monthComparison?.difference || 0 >= 0
                 ? "text-pramary"
                 : "text-[#FFA27F]"
             }`}
           >
-            {data?.monthComparison.difference || 0 >= 0 ? "+" : ""}
+            {data?.monthComparison?.difference || 0 >= 0 ? "+" : ""}
             {formatTime(data?.monthComparison?.difference || 0)} (
             {data?.monthComparison?.changeRate || 0}%)
           </p>
