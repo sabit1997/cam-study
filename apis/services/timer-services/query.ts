@@ -5,7 +5,7 @@ export const TIMER_QUERY_KEY = ["timer"];
 
 export const useGetMonthTime = (year: number, month: number) => {
   return useQuery({
-    queryKey: TIMER_QUERY_KEY,
+    queryKey: [...TIMER_QUERY_KEY, year, month],
     queryFn: () => TimerService.getMonthTime(year, month),
     meta: {
       ERROR_SOURCE: "[월 별 타이머 기록 불러오기 실패]",
