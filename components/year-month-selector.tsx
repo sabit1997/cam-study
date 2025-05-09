@@ -58,7 +58,7 @@ const YearMonthSelector = ({
           <IoChevronDownOutline />
         </button>
         <p>year : </p>
-        <span className="text-[#255f38]">{year}</span>
+        <span className="text-dark">{year}</span>
         <button onClick={() => handleYearChange(1)}>
           <IoChevronUp />
         </button>
@@ -69,7 +69,7 @@ const YearMonthSelector = ({
           <IoChevronDownOutline />
         </button>
         <p>month : </p>
-        <span className="text-[#255f38]">{month}</span>
+        <span className="text-dark">{month}</span>
         <button onClick={() => handleMonthChange(1)}>
           <IoChevronUp />
         </button>

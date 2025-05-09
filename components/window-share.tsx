@@ -64,7 +64,7 @@ const WindowShare = () => {
       ) : (
         <button
           onClick={handleStartSharing}
-          className="absolute px-4 py-2 bg-[#255f38] text-white rounded-md top-1/2 transform -translate-y-1/2"
+          className="absolute px-4 py-2 bg-dark text-white rounded-md top-1/2 transform -translate-y-1/2"
         >
           START
         </button>

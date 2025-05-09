@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { MypageButton } from "./mypage-button";
 import { IoLogOutOutline, IoLibrary, IoTime } from "react-icons/io5";
 import { useEffect, useState } from "react";
+import Link from "next/link";
 
 export const MyPageSidebar = () => {
   const setWindows = useWindowStore((state) => state.setWindows);
@@ -30,31 +31,29 @@ export const MyPageSidebar = () => {
   };
 
   const isActive = (path: string) =>
-    pathname === path
-      ? "bg-[#255f38] text-white"
-      : "bg-[#a0c878] text-[#255f38]";
+    pathname === path ? "bg-dark text-white" : "bg-pramary text-dark";
 
   return (
     <div className="flex justfiy-center gap-2 sticky top-0 left-0 pt-8">
       {isLoggedIn && (
         <>
-          <MypageButton
-            className={`${isActive("/my-page/record")}`}
-            onClick={() => router.push("/my-page/record")}
+          <Link
+            className={`${isActive("/my-page/record")} mypage-button`}
+            href="/my-page/record"
           >
             <IoTime />
             시간 기록
-          </MypageButton>
-          <MypageButton
-            className={`${isActive("/my-page/statistics")}`}
-            onClick={() => router.push("/my-page/statistics")}
+          </Link>
+          <Link
+            className={`${isActive("/my-page/statistics")} mypage-button`}
+            href="/my-page/statistics"
           >
             <IoLibrary />
             시간 통계
-          </MypageButton>
+          </Link>
           <MypageButton
             onClick={handleSignOut}
-            className="active:bg-[#255f38] active:text-white bg-[#a0c878]"
+            className="active:bg-dark active:text-white bg-pramary"
           >
             <IoLogOutOutline />
             Sign Out

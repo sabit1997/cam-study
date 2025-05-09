@@ -5,9 +5,11 @@ import { IoPlay, IoPauseSharp } from "react-icons/io5";
 import { formatSeconds } from "@/utils/formatSeconds";
 import { useGetTodayTime } from "@/apis/services/timer-services/query";
 import { usePostTime } from "@/apis/services/timer-services/mutation";
+import { Loading } from "./loading";
+import { Error } from "./error";
 
 const Timer: React.FC = () => {
-  const { data: todayTimeRes, isLoading, isError } = useGetTodayTime();
+  const { data: todayTimeRes, isPending, isError } = useGetTodayTime();
   const { mutate: postTime } = usePostTime();
 
   const [elapsed, setElapsed] = useState(0);
@@ -29,6 +31,7 @@ const Timer: React.FC = () => {
 
   const startTimer = useCallback(() => {
     if (timerRef.current || !todayTimeRes) return;
+
     const now = new Date();
     setStartAt(now);
     setElapsed(0);
@@ -63,40 +66,28 @@ const Timer: React.FC = () => {
     setElapsed(0);
   }, [startAt, postTime]);
 
-  if (isLoading) {
-    return (
-      <div className="w-full h-full flex items-center justify-center">
-        Loading...
-      </div>
-    );
-  }
-  if (isError || !todayTimeRes) {
-    return (
-      <div className="w-full h-full flex items-center justify-center text-red-500">
-        ⚠️Error!
-      </div>
-    );
-  }
+  if (isPending) return <Loading />;
+  if (isError || !todayTimeRes) return <Error />;
 
   const { totalSeconds = 0, goalInSeconds = 1 } = todayTimeRes;
   const current = totalSeconds + elapsed;
   const percent = Math.min((current / goalInSeconds) * 100, 100);
 
   return (
-    <div className="flex flex-col items-center justify-center gap-4 text-[#255f38] h-full">
+    <div className="flex flex-col items-center justify-center gap-4 text-dark h-full">
       <span className="text-2xl font-mono">{formatSeconds(current)}</span>
       <div className="flex gap-2">
         <button
           disabled={Boolean(timerRef.current)}
           onClick={startTimer}
-          className="p-5 rounded-full text-white bg-[#255f38] disabled:bg-gray-400 disabled:cursor-not-allowed"
+          className="p-5 rounded-full text-white bg-dark disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           <IoPlay />
         </button>
         <button
           disabled={!timerRef.current}
           onClick={stopTimer}
-          className="p-5 rounded-full text-white bg-[#255f38] disabled:bg-gray-400 disabled:cursor-not-allowed"
+          className="p-5 rounded-full text-white bg-dark disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           <IoPauseSharp />
         </button>
@@ -104,7 +95,7 @@ const Timer: React.FC = () => {
       <div className="flex items-center gap-3 w-full px-3">
         <span>Goal</span>
         <div className="w-full bg-gray-300 h-2 rounded-full overflow-hidden">
-          <div className="h-2 bg-[#255f38]" style={{ width: `${percent}%` }} />
+          <div className="h-2 bg-dark" style={{ width: `${percent}%` }} />
         </div>
       </div>
     </div>

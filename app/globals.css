@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+:root {
+  --color-primary: #a0c878;
+  --color-dark: #255f38;
+}
+
 html {
   background-color: #a0c878;
   background-image: linear-gradient(to right, #255f38 1px, transparent 1px),
@@ -32,4 +37,36 @@ input:-webkit-autofill:active {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #255f38;
+}
+
+/* Chrome, Safari, Edge, Opera */
+input.no-spin::-webkit-outer-spin-button,
+input.no-spin::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input.no-spin[type="number"] {
+  -moz-appearance: textfield;
+}
+
+@theme {
+  --color-pramary: #a0c878;
+  --color-dark: #255f38;
+}
+
+@layer {
+  .mypage-button {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    border: 2px solid var(--color-dark);
+    max-width: 250px;
+  }
 }

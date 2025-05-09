@@ -4,6 +4,8 @@ import { useGetMonthTime } from "@/apis/services/timer-services/query";
 import { formatSeconds } from "@/utils/formatSeconds";
 import { useState } from "react";
 import YearMonthSelector from "./year-month-selector";
+import { Loading } from "./loading";
+import { Error } from "./error";
 
 export const RecordSection = () => {
   const today = new Date();
@@ -13,7 +15,10 @@ export const RecordSection = () => {
   const [year, setYear] = useState(currentYear);
   const [month, setMonth] = useState(currentMonth);
 
-  const { data } = useGetMonthTime(year, month);
+  const { data, isPending, isError } = useGetMonthTime(year, month);
+
+  if (isPending) return <Loading />;
+  if (isError || !data) return <Error />;
 
   return (
     <div className="pt-8">
@@ -42,21 +47,20 @@ export const RecordSection = () => {
             </tr>
           </thead>
           <tbody>
-            {data?.entries &&
-              data?.entries.map((item, idx) => (
-                <tr key={idx} className="hover:bg-gray-50">
-                  <td className="px-4 py-2 border-b border-gray-200">
-                    {item.date}
-                  </td>
-                  <td className="px-4 py-2 border-b border-gray-200">
-                    {formatSeconds(item.totalSeconds)}
-                  </td>
-                  <td className="px-4 py-2 border-b border-gray-200">
-                    {item.dailyHourGoal.toFixed(1)} hrs
-                  </td>
-                </tr>
-              ))}
-            {(!data?.entries || data.entries.length === 0) && (
+            {data.entries?.map((item, idx) => (
+              <tr key={idx} className="hover:bg-gray-50">
+                <td className="px-4 py-2 border-b border-gray-200">
+                  {item.date}
+                </td>
+                <td className="px-4 py-2 border-b border-gray-200">
+                  {formatSeconds(item.totalSeconds)}
+                </td>
+                <td className="px-4 py-2 border-b border-gray-200">
+                  {item.dailyHourGoal.toFixed(1)} hrs
+                </td>
+              </tr>
+            ))}
+            {(!data?.entries || data?.entries.length === 0) && (
               <tr>
                 <td colSpan={3} className="text-center py-5">
                   데이터가 없습니다.

@@ -15,7 +15,7 @@ export default function RootLayout({
     <div className="p-10 relative">
       <h2 className="text-7xl">MY PAGE</h2>
       <MyPageSidebar />
-      <div className="w-full mt-12 bg-[#a0c878] border-2 border-[255f38] rounded-md py-10">
+      <div className="w-full mt-12 bg-pramary border-2 border-[255f38] rounded-md py-10">
         {children}
       </div>
     </div>

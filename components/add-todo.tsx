@@ -34,7 +34,7 @@ const AddTodo = ({ window }: AddTodoProps) => {
       <input
         type="text"
         placeholder="Enter your todo..."
-        className="rounded-md border-2 border-[#255f38] p-[10px] w-full"
+        className="rounded-md border-2 border-dark p-[10px] w-full"
         value={todo}
         onChange={(e) => setTodo(e.target.value)}
       />

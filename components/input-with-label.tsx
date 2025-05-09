@@ -1,22 +1,10 @@
-import React from "react";
+import React, { InputHTMLAttributes } from "react";
 
-interface InputWithLabelProps {
+interface InputWithLabelProps extends InputHTMLAttributes<HTMLInputElement> {
   label: string;
-  id: string;
-  placeholder?: string;
-  type?: string;
-  value?: string | number;
-  onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-const InputWithLabel = ({
-  label,
-  id,
-  placeholder = "",
-  type = "text",
-  value,
-  onChange,
-}: InputWithLabelProps) => {
+const InputWithLabel = ({ label, id, ...props }: InputWithLabelProps) => {
   return (
     <div className="flex gap-3 w-full items-center">
       <label htmlFor={id} className="block w-[96px]">
@@ -24,11 +12,10 @@ const InputWithLabel = ({
       </label>
       <input
         id={id}
-        type={type}
-        placeholder={placeholder}
-        value={value}
-        onChange={onChange}
-        className="p-2 border-2 border-[#B4B4B8] focus:outline-0 focus:border-2 focus:border-[#255f38] rounded-md autofill:bg-transparent autofill:text-transparent"
+        {...props}
+        className={`p-2 border-2 border-[#B4B4B8] focus:outline-0 focus:border-dark rounded-md autofill:bg-transparent autofill:text-transparent ${
+          props.className ?? ""
+        }`}
       />
     </div>
   );

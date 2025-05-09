@@ -52,7 +52,7 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
         />
         <button
           onClick={handleSubmit}
-          className="px-4 py-2 rounded bg-[#255f38] text-white border-none cursor-pointer"
+          className="px-4 py-2 rounded bg-dark text-white border-none cursor-pointer"
         >
           DONE
         </button>
