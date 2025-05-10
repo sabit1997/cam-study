@@ -29,11 +29,11 @@ const StaticSection = () => {
       />
       <span className="text-sm">* 최대 2년간의 기록을 볼 수 있습니다.</span>
 
-      <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4">
+      <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 p-4">
         <div className="p-4 border-2 border-dark rounded-xl bg-dark shadow-sm">
           <p className="text-sm font-medium text-pramary">오늘의 목표 달성률</p>
           <div className="text-3xl font-bold text-white">
-            {data?.achievementRateToday || 0}%
+            {(data?.achievementRateToday ?? 0).toFixed(2)}%
           </div>
         </div>
 
@@ -59,7 +59,7 @@ const StaticSection = () => {
           </p>
         </div>
 
-        <div className="p-4 border-2 border-dark rounded-xl bg-white shadow-sm md:col-span-2">
+        <div className="p-4 border-2 border-dark rounded-xl bg-white shadow-sm md:col-span-1">
           <p className="text-xl font-bold mb-2 text-dark">요일별 집중 시간</p>
           <ul>
             {data?.weekdayStats &&

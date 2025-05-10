@@ -34,7 +34,7 @@ export const MyPageSidebar = () => {
     pathname === path ? "bg-dark text-white" : "bg-pramary text-dark";
 
   return (
-    <div className="flex justfiy-center gap-2 sticky top-0 left-0 pt-8">
+    <div className="flex justify-center gap-2 pt-8 w-full">
       {isLoggedIn && (
         <>
           <Link
