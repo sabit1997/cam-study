@@ -5,6 +5,7 @@ import InputWithLabel from "@/components/input-with-label";
 import RectangleButton from "@/components/rectangle-button";
 import { useState } from "react";
 import { useLogin } from "@/apis/services/auth-services/mutation";
+import { NextResponse } from "next/server";
 
 const SignInForm = () => {
   const router = useRouter();
@@ -19,9 +20,22 @@ const SignInForm = () => {
       { email, password },
       {
         onSuccess: (res) => {
+          const token = res.accessToken;
           document.cookie = `AccessToken=${res.accessToken}; path=/; max-age=${
             60 * 60 * 24 * 30
           }; secure; samesite=strict`;
+
+          const response = NextResponse.json({ success: true });
+
+          response.cookies.set({
+            name: "AccessToken",
+            value: token,
+            httpOnly: true,
+            path: "/",
+            maxAge: 60 * 60 * 24 * 30,
+            sameSite: "strict",
+            secure: true,
+          });
 
           router.push("/");
         },

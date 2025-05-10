@@ -4,11 +4,11 @@ import { AxiosMethod } from "@/types/axios";
 import {
   GetMonthTimeRes,
   GetTimerGoalRes,
-  GetTodayTimeRes,
   PostTimeGoalReq,
   PostTimeReq,
 } from "@/types/timer";
 import { StatisticsdData } from "@/types/statistics";
+import { serverFetch } from "@/apis/serverFetch";
 
 export default class TimerService {
   public static readonly postTime = (data: PostTimeReq) => {
@@ -25,13 +25,6 @@ export default class TimerService {
   ): Promise<GetMonthTimeRes> => {
     return request({
       url: TimerEndPoints.getMonthTime(year, month),
-      method: AxiosMethod.GET,
-    });
-  };
-
-  public static readonly getTodayTime = (): Promise<GetTodayTimeRes> => {
-    return request({
-      url: TimerEndPoints.getTodayTime(),
       method: AxiosMethod.GET,
     });
   };
@@ -63,3 +56,14 @@ export default class TimerService {
     });
   };
 }
+
+export const fetchTodayTime = async () => {
+  try {
+    const data = await serverFetch(TimerEndPoints.getTodayTime());
+    console.log("today time:", data);
+    return data;
+  } catch (error) {
+    console.error("Failed fetch today time:", error);
+    throw error;
+  }
+};

@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
-import WindowService from "./service";
+import { fetchWindows } from "./service";
 
 export const WINDOW_QUERY_KEY = ["windows"];
 
 export const useWindows = (enabled?: boolean) => {
   return useQuery({
     queryKey: WINDOW_QUERY_KEY,
-    queryFn: WindowService.getWindows,
+    queryFn: fetchWindows,
     enabled,
     meta: {
       ERROR_SOURCE: "[창 목록 불러오기 실패]",

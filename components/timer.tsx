@@ -5,11 +5,9 @@ import { IoPlay, IoPauseSharp } from "react-icons/io5";
 import { formatSeconds } from "@/utils/formatSeconds";
 import { useGetTodayTime } from "@/apis/services/timer-services/query";
 import { usePostTime } from "@/apis/services/timer-services/mutation";
-import { Loading } from "./loading";
-import { Error } from "./error";
 
 const Timer: React.FC = () => {
-  const { data: todayTimeRes, isPending, isError } = useGetTodayTime();
+  const { data: todayTimeRes } = useGetTodayTime();
   const { mutate: postTime } = usePostTime();
 
   const [elapsed, setElapsed] = useState(0);
@@ -65,9 +63,6 @@ const Timer: React.FC = () => {
     setStartAt(null);
     setElapsed(0);
   }, [startAt, postTime]);
-
-  if (isPending) return <Loading />;
-  if (isError || !todayTimeRes) return <Error />;
 
   const { totalSeconds = 0, goalInSeconds = 1 } = todayTimeRes;
   const current = totalSeconds + elapsed;

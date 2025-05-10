@@ -1,13 +1,11 @@
 import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
 
-export const client = (() => {
-  return axios.create({
-    baseURL: process.env.NEXT_PUBLIC_API_URL,
-    headers: {
-      Accept: "application/json, text/plain, */*",
-    },
-  });
-})();
+export const client = axios.create({
+  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  headers: {
+    Accept: "application/json, text/plain, */*",
+  },
+});
 
 client.interceptors.request.use(
   (config) => {

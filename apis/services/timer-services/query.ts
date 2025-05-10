@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import TimerService from "./service";
+import TimerService, { fetchTodayTime } from "./service";
 
 export const TIMER_QUERY_KEY = ["timer"];
 
@@ -17,7 +17,7 @@ export const useGetMonthTime = (year: number, month: number) => {
 export const useGetTodayTime = () => {
   return useQuery({
     queryKey: TIMER_QUERY_KEY,
-    queryFn: TimerService.getTodayTime,
+    queryFn: fetchTodayTime,
     meta: {
       ERROR_SOURCE: "[오늘 타이머 기록 불러오기 실패]",
       SUCCESS_MESSAGE: "오늘 타이머 기록을 불러왔습니다.",

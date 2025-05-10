@@ -1,21 +1,10 @@
 import request from "@/apis/request";
-import {
-  AddTodoVars,
-  DeleteTodoVars,
-  DoneTodoVars,
-  Todos,
-} from "@/types/todos";
+import { AddTodoVars, DeleteTodoVars, DoneTodoVars } from "@/types/todos";
 import { TodosEndPoints } from "../config";
 import { AxiosMethod } from "@/types/axios";
+import { serverFetch } from "@/apis/serverFetch";
 
 export default class TodoService {
-  public static readonly getTodos = (id: number): Promise<Todos[]> => {
-    return request({
-      url: TodosEndPoints.getTodos(id),
-      method: AxiosMethod.GET,
-    });
-  };
-
   public static readonly addTodo = ({ id, text }: AddTodoVars) => {
     return request({
       url: TodosEndPoints.addTodo(id),
@@ -39,3 +28,13 @@ export default class TodoService {
     });
   };
 }
+
+export const fetchTodos = async (id: number) => {
+  try {
+    const data = await serverFetch(TodosEndPoints.getTodos(id));
+    return data;
+  } catch (error) {
+    console.error("Failed to fetch todos:", error);
+    throw error;
+  }
+};

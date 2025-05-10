@@ -3,15 +3,9 @@ import { WindowEndpoints } from "../config";
 import { WindowPatchDto } from "@/types/dto";
 import { AxiosMethod } from "@/types/axios";
 import { Window } from "@/types/windows";
+import { serverFetch } from "@/apis/serverFetch";
 
 export default class WindowService {
-  public static readonly getWindows = (): Promise<Window[]> => {
-    return request({
-      url: WindowEndpoints.getWindows(),
-      method: AxiosMethod.GET,
-    });
-  };
-
   public static readonly createWindow = (
     data: Omit<Window, "id" | "userId" | "createdAt">
   ): Promise<Window> => {
@@ -40,3 +34,13 @@ export default class WindowService {
     });
   };
 }
+
+export const fetchWindows = async () => {
+  try {
+    const data = await serverFetch(WindowEndpoints.getWindows());
+    return data;
+  } catch (error) {
+    console.error("Failed to fetch windows:", error);
+    throw error;
+  }
+};
