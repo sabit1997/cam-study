@@ -35,7 +35,7 @@ export default class WindowService {
   };
 }
 
-export const fetchWindows = async () => {
+export const fetchWindows = async (): Promise<Window[]> => {
   try {
     const data = await serverFetch(WindowEndpoints.getWindows());
     return data;

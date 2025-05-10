@@ -64,7 +64,8 @@ const Timer: React.FC = () => {
     setElapsed(0);
   }, [startAt, postTime]);
 
-  const { totalSeconds = 0, goalInSeconds = 1 } = todayTimeRes;
+  const totalSeconds = todayTimeRes?.totalSeconds ?? 0;
+  const goalInSeconds = todayTimeRes?.goalInSeconds ?? 1;
   const current = totalSeconds + elapsed;
   const percent = Math.min((current / goalInSeconds) * 100, 100);
 

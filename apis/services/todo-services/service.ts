@@ -1,5 +1,10 @@
 import request from "@/apis/request";
-import { AddTodoVars, DeleteTodoVars, DoneTodoVars } from "@/types/todos";
+import {
+  AddTodoVars,
+  DeleteTodoVars,
+  DoneTodoVars,
+  Todos,
+} from "@/types/todos";
 import { TodosEndPoints } from "../config";
 import { AxiosMethod } from "@/types/axios";
 import { serverFetch } from "@/apis/serverFetch";
@@ -29,7 +34,7 @@ export default class TodoService {
   };
 }
 
-export const fetchTodos = async (id: number) => {
+export const fetchTodos = async (id: number): Promise<Todos[]> => {
   try {
     const data = await serverFetch(TodosEndPoints.getTodos(id));
     return data;

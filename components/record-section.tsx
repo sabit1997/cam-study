@@ -6,11 +6,10 @@ import { useState } from "react";
 import YearMonthSelector from "./year-month-selector";
 import { Loading } from "./loading";
 import { Error } from "./error";
+import { getCurrentMonthYear } from "@/utils/get-current-month-year";
 
 export const RecordSection = () => {
-  const today = new Date();
-  const currentYear = today.getFullYear();
-  const currentMonth = today.getMonth() + 1;
+  const { currentYear, currentMonth } = getCurrentMonthYear();
 
   const [year, setYear] = useState(currentYear);
   const [month, setMonth] = useState(currentMonth);

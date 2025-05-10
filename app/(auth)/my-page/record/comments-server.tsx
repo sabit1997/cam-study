@@ -1,6 +1,6 @@
 import { TIMER_QUERY_KEY } from "@/apis/services/timer-services/query";
-import { fetchTimerAnalytics } from "@/apis/services/timer-services/service";
-import StaticSection from "@/components/statics-section";
+import { fetchMonthTime } from "@/apis/services/timer-services/service";
+import { RecordSection } from "@/components/record-section";
 import { getCurrentMonthYear } from "@/utils/get-current-month-year";
 import {
   dehydrate,
@@ -8,20 +8,20 @@ import {
   QueryClient,
 } from "@tanstack/react-query";
 
-const StatisticsPage = async () => {
+export const RecordSectionServerComponent = async () => {
   const queryClient = new QueryClient();
   const { currentYear, currentMonth } = getCurrentMonthYear();
 
   await queryClient.prefetchQuery({
     queryKey: [...TIMER_QUERY_KEY, currentYear, currentMonth],
-    queryFn: () => fetchTimerAnalytics(currentYear, currentMonth),
+    queryFn: () => fetchMonthTime(currentYear, currentMonth),
   });
 
   return (
     <HydrationBoundary state={dehydrate(queryClient)}>
-      <StaticSection />
+      <RecordSection />
     </HydrationBoundary>
   );
 };
 
-export default StatisticsPage;
+export default RecordSectionServerComponent;
