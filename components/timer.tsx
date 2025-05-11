@@ -11,41 +11,54 @@ const Timer: React.FC = () => {
   const { mutate: postTime } = usePostTime();
 
   const [elapsed, setElapsed] = useState(0);
-  const [startAt, setStartAt] = useState<Date | null>(null);
-
+  const [goalInSeconds, setGoalInSeconds] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const saveRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startAtRef = useRef<Date | null>(null);
 
   useEffect(() => {
     const handleBeforeUnload = () => {
-      if (startAt) {
+      if (startAtRef.current) {
         const end = new Date();
-        postTime({ startAt: startAt.toISOString(), endAt: end.toISOString() });
+        postTime({
+          startAt: startAtRef.current.toISOString(),
+          endAt: end.toISOString(),
+        });
       }
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
-    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
-  }, [startAt, postTime]);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [postTime]);
+
+  useEffect(() => {
+    if (todayTimeRes) {
+      setElapsed(todayTimeRes?.totalSeconds);
+      setGoalInSeconds(todayTimeRes?.goalInSeconds);
+    }
+  }, [todayTimeRes]);
 
   const startTimer = useCallback(() => {
-    if (timerRef.current || !todayTimeRes) return;
+    if (timerRef.current) return;
 
     const now = new Date();
-    setStartAt(now);
-    setElapsed(0);
+    startAtRef.current = now;
 
     timerRef.current = setInterval(() => {
       setElapsed((prev) => prev + 1);
     }, 1000);
 
     saveRef.current = setInterval(() => {
-      if (!startAt) return;
+      if (!startAtRef.current) return;
       const end = new Date();
-      postTime({ startAt: startAt.toISOString(), endAt: end.toISOString() });
-      setStartAt(end);
-      setElapsed(0);
+      postTime({
+        startAt: startAtRef.current.toISOString(),
+        endAt: end.toISOString(),
+      });
+      startAtRef.current = end;
     }, 60000);
-  }, [todayTimeRes, startAt, postTime]);
+  }, [postTime]);
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) {
@@ -56,22 +69,27 @@ const Timer: React.FC = () => {
       clearInterval(saveRef.current);
       saveRef.current = null;
     }
-    if (startAt) {
+    if (startAtRef.current) {
       const end = new Date();
-      postTime({ startAt: startAt.toISOString(), endAt: end.toISOString() });
+      postTime({
+        startAt: startAtRef.current.toISOString(),
+        endAt: end.toISOString(),
+      });
     }
-    setStartAt(null);
-    setElapsed(0);
-  }, [startAt, postTime]);
+    startAtRef.current = null;
+  }, [postTime]);
 
-  const totalSeconds = todayTimeRes?.totalSeconds ?? 0;
-  const goalInSeconds = todayTimeRes?.goalInSeconds ?? 1;
-  const current = totalSeconds + elapsed;
-  const percent = Math.min((current / goalInSeconds) * 100, 100);
+  const percent = (elapsed / goalInSeconds) * 100;
+
+  console.log(elapsed);
+
+  console.log(goalInSeconds);
+
+  console.log(percent);
 
   return (
     <div className="flex flex-col items-center justify-center gap-4 text-dark h-full">
-      <span className="text-2xl font-mono">{formatSeconds(current)}</span>
+      <span className="text-2xl font-mono">{formatSeconds(elapsed)}</span>
       <div className="flex gap-2">
         <button
           disabled={Boolean(timerRef.current)}
@@ -91,7 +109,10 @@ const Timer: React.FC = () => {
       <div className="flex items-center gap-3 w-full px-3">
         <span>Goal</span>
         <div className="w-full bg-gray-300 h-2 rounded-full overflow-hidden">
-          <div className="h-2 bg-dark" style={{ width: `${percent}%` }} />
+          <div
+            className="h-2 bg-dark transition-all duration-300 ease-linear "
+            style={{ width: `${percent}%` }}
+          />
         </div>
       </div>
     </div>
