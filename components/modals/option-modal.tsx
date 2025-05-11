@@ -1,5 +1,6 @@
 "use client";
 
+import { IoMdClose } from "react-icons/io";
 import { useState, useEffect } from "react";
 import useClickOutside from "@/hooks/useClickOutside";
 import useEscapeKey from "@/hooks/useEscapeKey";
@@ -46,7 +47,11 @@ const OptionModal = ({ window, onClose }: OptionModalProps) => {
         className="min-w-80 border-2 border-dark rounded-2xl min-h-50 overflow-hidden bg-pramary pb-4"
       >
         <div className="flex w-full bg-dark px-3 py-2 items-center gap-3">
-          <WindowControlButton type="close" onClick={onClose} />
+          <WindowControlButton
+            icon={IoMdClose}
+            className="bg-[#FF6363]"
+            onClick={onClose}
+          />
 
           <h2 className="text-white">OPTION</h2>
         </div>
