@@ -41,7 +41,7 @@ export const GoalSetting = () => {
         className="no-spin"
         onChange={(e) => setGoal(e.target.value)}
       />
-      <MypageButton className="bg-[rgb(37,95,56)] text-white">
+      <MypageButton className="bg-dark text-[var(--text-selected)]">
         설정
       </MypageButton>
     </form>

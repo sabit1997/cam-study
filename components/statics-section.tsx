@@ -31,8 +31,8 @@ const StaticSection = () => {
 
       <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-4 p-4">
         <div className="p-4 border-2 border-dark rounded-xl bg-dark shadow-sm">
-          <p className="text-sm font-medium text-pramary">오늘의 목표 달성률</p>
-          <div className="text-3xl font-bold text-white">
+          <p className="text-sm font-medium text-primary">오늘의 목표 달성률</p>
+          <div className="text-3xl font-bold text-[var(--text-selected)]">
             {(data?.achievementRateToday ?? 0).toFixed(2)}%
           </div>
         </div>
@@ -49,8 +49,8 @@ const StaticSection = () => {
           <p
             className={`font-bold ${
               data?.monthComparison?.difference || 0 >= 0
-                ? "text-pramary"
-                : "text-[#FFA27F]"
+                ? "text-[#72BF78]"
+                : "text-[#F75A5A]"
             }`}
           >
             {data?.monthComparison?.difference || 0 >= 0 ? "+" : ""}
@@ -75,7 +75,7 @@ const StaticSection = () => {
           </ul>
         </div>
 
-        <div className="p-4 border-2 border-dark rounded-xl bg-[#FFF085] shadow-sm col-span-1 md:col-span-2 lg:col-span-1">
+        <div className="p-4 border-2 border-dark rounded-xl bg-[#FFF085] shadow-sm col-span-1 md:col-span-1 lg:col-span-1">
           <p className="text-xl font-bold text-dark">최고 집중일</p>
           <p className="font-bold text-lg">
             {data?.bestFocusDay?.date || "데이터가 없습니다"}

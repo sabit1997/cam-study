@@ -103,7 +103,7 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
       dragHandleClassName="drag-handle"
     >
       <div
-        className={`w-full h-full border-2 border-dark rounded-2xl bg-pramary relative pt-[26px] overflow-hidden`}
+        className={`w-full h-full border-2 border-dark rounded-2xl bg-primary relative pt-[26px] overflow-hidden`}
       >
         <div className="drag-handle flex gap-2 w-full bg-dark px-3 py-2 cursor-move fixed rounded-t-2xl left-0 z-10 top-0">
           <WindowControlButton

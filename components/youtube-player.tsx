@@ -52,7 +52,7 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
         />
         <button
           onClick={handleSubmit}
-          className="px-4 py-2 rounded bg-dark text-white border-none cursor-pointer"
+          className="px-4 py-2 rounded bg-dark text-[var(--text-selected)] border-none cursor-pointer"
         >
           DONE
         </button>
@@ -69,7 +69,7 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
           className="w-6 h-6 bg-red-500 rounded-full flex justify-center items-center"
           onClick={handleReset}
         >
-          <RiResetLeftLine className="text-white" />
+          <RiResetLeftLine className="text-[var(--text-selected)]" />
         </button>
       </div>
     );
@@ -94,7 +94,7 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
         className="w-6 h-6 bg-red-500 rounded-full absolute top-0.5 left-0.5 flex justify-center items-center"
         onClick={handleReset}
       >
-        <RiResetLeftLine className="text-white" />
+        <RiResetLeftLine className="text-[var(--text-selected)]" />
       </button>
     </div>
   );

@@ -94,14 +94,14 @@ const Timer: React.FC = () => {
         <button
           disabled={Boolean(timerRef.current)}
           onClick={startTimer}
-          className="p-5 rounded-full text-white bg-dark disabled:bg-gray-400 disabled:cursor-not-allowed"
+          className="p-5 rounded-full text-[var(--text-selected)] bg-dark disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           <IoPlay />
         </button>
         <button
           disabled={!timerRef.current}
           onClick={stopTimer}
-          className="p-5 rounded-full text-white bg-dark disabled:bg-gray-400 disabled:cursor-not-allowed"
+          className="p-5 rounded-full text-[var(--text-selected)] bg-dark disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           <IoPauseSharp />
         </button>

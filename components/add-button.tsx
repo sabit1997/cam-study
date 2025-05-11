@@ -38,7 +38,7 @@ const AddButton = () => {
       disabled={isPending}
     >
       <FaCirclePlus className="text-5xl mb-3 text-dark group-active:bg-[#727D73]/50 group-active:border group-active:border-dark/50" />
-      <p className="p-0.5 border-2 rounded-md border-dark bg-pramary text-black group-active:bg-dark group-active:text-white">
+      <p className="p-0.5 border-2 rounded-md border-dark bg-primary text-[var(--text-primary)] group-active:bg-dark group-active:text-[var(--text-selected)]">
         ADD
       </p>
     </button>

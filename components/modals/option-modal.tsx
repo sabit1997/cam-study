@@ -44,7 +44,7 @@ const OptionModal = ({ window, onClose }: OptionModalProps) => {
     >
       <div
         ref={modalRef}
-        className="min-w-80 border-2 border-dark rounded-2xl min-h-50 overflow-hidden bg-pramary pb-4"
+        className="min-w-80 border-2 border-dark rounded-2xl min-h-50 overflow-hidden bg-primary pb-4"
       >
         <div className="flex w-full bg-dark px-3 py-2 items-center gap-3">
           <WindowControlButton
@@ -53,7 +53,7 @@ const OptionModal = ({ window, onClose }: OptionModalProps) => {
             onClick={onClose}
           />
 
-          <h2 className="text-white">OPTION</h2>
+          <h2 className="text-[var(--text-selected)]">OPTION</h2>
         </div>
         <ul className="p-2">
           {typeList.map((type) => (
@@ -62,7 +62,11 @@ const OptionModal = ({ window, onClose }: OptionModalProps) => {
               onClick={() => setSelectedType(type)}
               className={`
   flex items-center px-3 py-2 mb-[6px] border rounded-md cursor-pointer
-  ${selectedType === type ? "bg-dark text-white" : "text-black border-[#ccc]"}
+  ${
+    selectedType === type
+      ? "bg-dark text-[var(--text-selected)]"
+      : "text-[var(--text-primary)] border-[#ccc]"
+  }
 `}
             >
               <span className="mr-2">

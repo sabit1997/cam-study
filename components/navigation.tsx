@@ -13,7 +13,9 @@ const Navigation = () => {
       path === "/"
         ? pathname === path
         : pathname === path || pathname.startsWith(`${path}/`);
-    return isActive ? "bg-dark text-white" : "bg-pramary text-dark";
+    return isActive
+      ? "bg-dark text-[var(--text-selected)]"
+      : "bg-primary text-dark";
   };
 
   const isActiveImage = (path: string) => {

@@ -5,6 +5,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
 import { MypageButton } from "./mypage-button";
 import { IoLogOutOutline, IoLibrary, IoTime } from "react-icons/io5";
+import { IoMdSettings } from "react-icons/io";
+
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
@@ -31,7 +33,9 @@ export const MyPageSidebar = () => {
   };
 
   const isActive = (path: string) =>
-    pathname === path ? "bg-dark text-white" : "bg-pramary text-dark";
+    pathname === path
+      ? "bg-dark text-[var(--text-selected)]"
+      : "bg-primary text-dark";
 
   return (
     <div className="flex justify-center gap-2 pt-8 w-full">
@@ -51,9 +55,16 @@ export const MyPageSidebar = () => {
             <IoLibrary />
             시간 통계
           </Link>
+          <Link
+            href="/my-page/theme-setting"
+            className={`${isActive("/my-page/theme-setting")} mypage-button`}
+          >
+            <IoMdSettings />
+            테마 색상 설정
+          </Link>
           <MypageButton
             onClick={handleSignOut}
-            className="active:bg-dark active:text-white bg-pramary"
+            className="active:bg-dark active:text-[var(--text-selected)] bg-primary"
           >
             <IoLogOutOutline />
             Sign Out

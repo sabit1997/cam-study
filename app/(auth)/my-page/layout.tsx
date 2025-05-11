@@ -17,7 +17,7 @@ export default function RootLayout({
       <div className="w-full flex justify-center">
         <div className="w-full max-w-[1200px]">
           <MyPageSidebar />
-          <div className="w-full mt-12 bg-pramary border-2 border-[255f38] rounded-md py-10">
+          <div className="w-full mt-12 bg-primary border-2 border-dark rounded-md py-10">
             {children}
           </div>
         </div>

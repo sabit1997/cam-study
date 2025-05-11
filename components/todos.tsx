@@ -20,7 +20,7 @@ const Todos = ({ window }: TodosProps) => {
   return (
     <div className="pb-4 pt-1 px-4 flex flex-col gap-2 h-full">
       <AddTodo window={window} />
-      <ul className="overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-pramary [&::-webkit-scrollbar-thumb]:bg-dark [&::-webkit-scrollbar-thumb]:rounded-lg [scrollbar-width:thin] [scrollbar-color:#255f38_#a0c878]">
+      <ul className="overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-primary [&::-webkit-scrollbar-thumb]:bg-dark [&::-webkit-scrollbar-thumb]:rounded-lg [scrollbar-width:thin] [scrollbar-color:#255f38_#a0c878]">
         {todos.length > 0 &&
           todos.map((todo) => (
             <li
@@ -34,11 +34,15 @@ const Todos = ({ window }: TodosProps) => {
               }
               className={`
   flex items-center pl-3 pr-9 py-2 mb-[6px] border rounded-md cursor-pointer relative
-  ${todo.done ? "bg-dark text-white" : "text-black border-[#ccc]"}
+  ${
+    todo.done
+      ? "bg-dark text-[var(--text-selected)]"
+      : "text-[var(--text-primary)] border-[#ccc]"
+  }
 `}
             >
               <span className="mr-2">{todo.done ? "✅" : "⬜️"}</span>
-              <p className="overflow-ellipsis overflow-hidden">{todo.text}ß</p>
+              <p className="overflow-ellipsis overflow-hidden">{todo.text}</p>
               <button
                 type="button"
                 className="rounded-full bg-red-500 p-1 absolute right-2"

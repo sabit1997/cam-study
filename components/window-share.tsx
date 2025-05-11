@@ -60,7 +60,7 @@ const WindowShare = ({ isBlur }: WindowShareProps) => {
           />
           <button
             onClick={stopSharing}
-            className="absolute bottom-4 px-4 py-2 bg-red-500 text-white rounded-md"
+            className="absolute bottom-4 px-4 py-2 bg-red-500 text-[var(--text-selected)] rounded-md"
           >
             STOP
           </button>
@@ -68,7 +68,7 @@ const WindowShare = ({ isBlur }: WindowShareProps) => {
       ) : (
         <button
           onClick={handleStartSharing}
-          className="absolute px-4 py-2 bg-dark text-white rounded-md top-1/2 transform -translate-y-1/2"
+          className="absolute px-4 py-2 bg-dark text-[var(--text-selected)] rounded-md top-1/2 transform -translate-y-1/2"
         >
           START
         </button>

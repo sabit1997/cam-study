@@ -3,13 +3,20 @@
 :root {
   --color-primary: #a0c878;
   --color-dark: #255f38;
+  --text-primary: #000000;
+  --text-selected: #ffffff;
 }
 
 html {
-  background-color: #a0c878;
-  background-image: linear-gradient(to right, #255f38 1px, transparent 1px),
-    linear-gradient(to bottom, #255f38 1px, transparent 1px);
+  background-color: var(--color-primary);
+  background-image: linear-gradient(
+      to right,
+      var(--color-dark) 1px,
+      transparent 1px
+    ),
+    linear-gradient(to bottom, var(--color-dark) 1px, transparent 1px);
   background-size: 80px 80px;
+  color: var(--text-primary);
 }
 
 input:-webkit-autofill,
@@ -27,16 +34,16 @@ input:-webkit-autofill:active {
 }
 
 ::-webkit-scrollbar-track {
-  background: #a0c878;
+  background: var(--color-primary);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #255f38;
+  background: var(--color-dark);
   border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #255f38;
+  background: var(--color-dark);
 }
 
 /* Chrome, Safari, Edge, Opera */
@@ -52,8 +59,8 @@ input.no-spin[type="number"] {
 }
 
 @theme {
-  --color-pramary: #a0c878;
-  --color-dark: #255f38;
+  --color-primary: var(--color-primary);
+  --color-dark: var(--color-dark);
 }
 
 @layer {
