@@ -38,7 +38,9 @@ const AddTodo = ({ window }: AddTodoProps) => {
         value={todo}
         onChange={(e) => setTodo(e.target.value)}
       />
-      <RectangleButton width="w-[30%] min-w-[60px]">ADD</RectangleButton>
+      <RectangleButton type="submit" width="w-[30%] min-w-[60px]">
+        ADD
+      </RectangleButton>
     </form>
   );
 };
