@@ -1,5 +1,9 @@
 "use client";
 
+import { IoMdClose } from "react-icons/io";
+import { IoIosSettings } from "react-icons/io";
+import { TbBlur } from "react-icons/tb";
+
 import CameraView from "./camera-view";
 import YouTubePlayer from "./youtube-player";
 import WindowShare from "./window-share";
@@ -14,6 +18,7 @@ import { useDebouncedCallback } from "use-debounce";
 import { useWindowStore } from "@/stores/window-state";
 import Todos from "./todos";
 import Timer from "./timer";
+import { useState } from "react";
 
 interface AddWindowProps {
   window: Window;
@@ -21,6 +26,7 @@ interface AddWindowProps {
 }
 
 const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
+  const [isBlur, setIsBlur] = useState(false);
   const { mutate: updateWindow } = usePatchWindow();
   const { mutate: deleteWindow } = useDeleteWindow();
 
@@ -100,16 +106,33 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
         className={`w-full h-full border-2 border-dark rounded-2xl bg-pramary relative pt-[26px] overflow-hidden`}
       >
         <div className="drag-handle flex gap-2 w-full bg-dark px-3 py-2 cursor-move fixed rounded-t-2xl left-0 z-10 top-0">
-          <WindowControlButton type="close" onClick={handleClose} />
-          <WindowControlButton type="option" onClick={onOpenOption} />
+          <WindowControlButton
+            className="bg-[#FF6363]"
+            icon={IoMdClose}
+            onClick={handleClose}
+          />
+          <WindowControlButton
+            className="bg-[#FFD63A]"
+            icon={IoIosSettings}
+            onClick={onOpenOption}
+          />
+          {(type === "camera" || type === "window") && (
+            <WindowControlButton
+              className="bg-[#F3D7CA]"
+              icon={TbBlur}
+              onClick={() => {
+                setIsBlur((prev) => !prev);
+              }}
+            />
+          )}
         </div>
         <div
           className={"w-full h-full overflow-hidden"}
           onClick={handleClickOrFocus}
         >
-          {type === "camera" && <CameraView />}
+          {type === "camera" && <CameraView isBlur={isBlur} />}
           {type === "youtube" && <YouTubePlayer window={window} />}
-          {type === "window" && <WindowShare />}
+          {type === "window" && <WindowShare isBlur={isBlur} />}
           {type === "todo" && <Todos window={window} />}
           {type === "timer" && <Timer />}
         </div>

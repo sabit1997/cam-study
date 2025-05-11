@@ -2,7 +2,11 @@
 
 import { useEffect, useRef } from "react";
 
-const CameraView = () => {
+interface CameraViewProps {
+  isBlur: boolean;
+}
+
+const CameraView = ({ isBlur }: CameraViewProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -70,7 +74,12 @@ const CameraView = () => {
   }, []);
 
   return (
-    <video ref={videoRef} autoPlay muted className="w-full h-auto bg-black" />
+    <video
+      ref={videoRef}
+      autoPlay
+      muted
+      className={`w-full h-auto bg-black ${isBlur ? "blur-xs" : ""}`}
+    />
   );
 };
 

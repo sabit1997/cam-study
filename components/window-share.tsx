@@ -2,7 +2,11 @@
 
 import { useRef, useState, useEffect } from "react";
 
-const WindowShare = () => {
+interface WindowShareProps {
+  isBlur: boolean;
+}
+
+const WindowShare = ({ isBlur }: WindowShareProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [started, setStarted] = useState(false);
@@ -44,14 +48,14 @@ const WindowShare = () => {
   }, [started]);
 
   return (
-    <div className="flex justify-center items-center w-full h-auto">
+    <div className={`flex justify-center items-center w-full h-auto`}>
       {started ? (
         <>
           <video
             ref={videoRef}
             muted
             playsInline
-            className="bg-black w-full h-auto"
+            className={`bg-black w-full h-auto ${isBlur ? "blur-[2px]" : ""}`}
             controls
           />
           <button
