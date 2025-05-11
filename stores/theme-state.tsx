@@ -1,5 +1,12 @@
 import { create } from "zustand";
 
+export const DEFAULT_THEME = {
+  primaryHex: "#a0c878",
+  darkHex: "#255f38",
+  textHex: "#000000",
+  selectedTextHex: "#ffffff",
+};
+
 interface ThemeState {
   primaryHex: string;
   darkHex: string;
@@ -9,6 +16,7 @@ interface ThemeState {
   setDarkHex: (hex: string) => void;
   setTextHex: (hex: string) => void;
   setSelectedTextHex: (hex: string) => void;
+  resetTheme: () => void;
 }
 
 export const useThemeStore = create<ThemeState>((set) => ({
@@ -32,6 +40,16 @@ export const useThemeStore = create<ThemeState>((set) => ({
   setSelectedTextHex: (hex) => {
     localStorage.setItem("text-selected", hex);
     set({ selectedTextHex: hex });
+  },
+  resetTheme: () => {
+    const { primaryHex, darkHex, textHex, selectedTextHex } = DEFAULT_THEME;
+
+    localStorage.setItem("primary-color", primaryHex);
+    localStorage.setItem("dark-color", darkHex);
+    localStorage.setItem("text-primary", textHex);
+    localStorage.setItem("text-selected", selectedTextHex);
+
+    set({ primaryHex, darkHex, textHex, selectedTextHex });
   },
 }));
 

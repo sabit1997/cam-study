@@ -15,6 +15,7 @@ const ThemeSetting = () => {
     setDarkHex,
     setTextHex,
     setSelectedTextHex,
+    resetTheme,
   } = useThemeStore();
 
   useEffect(() => {
@@ -29,8 +30,24 @@ const ThemeSetting = () => {
   const makeHandler = (setFn: (hex: string) => void) => (color: ColorResult) =>
     setFn(color.hex);
 
+  const handleReset = () => {
+    const confirmReset = confirm(
+      "기본 설정 값으로 되돌아갑니다. 초기화 하시겠습니까?"
+    );
+    if (!confirmReset) return;
+    resetTheme();
+  };
+
   return (
-    <div className="flex gap-12 flex-wrap justify-center">
+    <div className="flex gap-12 flex-wrap justify-center relative">
+      <button
+        type="button"
+        className="w-10 h-10 rounded-full bg-dark text-xs absolute right-5 
+      -top-5"
+        onClick={handleReset}
+      >
+        초기화
+      </button>
       <div className="w-[218px] flex flex-col justify-between">
         <div>
           <p className="text-text font-bold mb-1">기본 배경 색상</p>
