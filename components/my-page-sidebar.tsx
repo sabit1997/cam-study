@@ -2,7 +2,7 @@
 
 import { useWindowStore } from "@/stores/window-state";
 import { useQueryClient } from "@tanstack/react-query";
-import { usePathname, useRouter } from "next/navigation";
+import { redirect, usePathname } from "next/navigation";
 import { MypageButton } from "./mypage-button";
 import { IoLogOutOutline, IoLibrary, IoTime } from "react-icons/io5";
 import { IoMdSettings } from "react-icons/io";
@@ -13,7 +13,6 @@ import Link from "next/link";
 export const MyPageSidebar = () => {
   const setWindows = useWindowStore((state) => state.setWindows);
   const queryClient = useQueryClient();
-  const router = useRouter();
   const pathname = usePathname();
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -29,7 +28,7 @@ export const MyPageSidebar = () => {
     queryClient.clear();
     setWindows([]);
     setIsLoggedIn(false);
-    router.push("/sign-in");
+    redirect("/sign-in");
   };
 
   const isActive = (path: string) =>
