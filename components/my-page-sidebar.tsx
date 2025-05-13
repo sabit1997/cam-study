@@ -24,7 +24,6 @@ export const MyPageSidebar = () => {
 
   const handleSignOut = () => {
     document.cookie = "AccessToken=; path=/; max-age=0";
-    localStorage.clear();
     queryClient.clear();
     setWindows([]);
     setIsLoggedIn(false);

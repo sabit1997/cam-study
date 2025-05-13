@@ -3,6 +3,7 @@ import Navigation from "@/components/navigation";
 import localFont from "next/font/local";
 import type { Metadata } from "next";
 import { Providers } from "./providers";
+import GlobalInitializer from "@/components/global-Initializer";
 
 export const metadata: Metadata = {
   title: { template: "%s | CAM STUDY", default: "CAM STUDY" },
@@ -24,6 +25,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${dunggeunmo.variable}`}>
       <body className={dunggeunmo.className}>
+        <GlobalInitializer />
         <Providers>
           <Navigation />
           {children}
