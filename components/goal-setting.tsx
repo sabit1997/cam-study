@@ -11,7 +11,7 @@ import { Error } from "./error";
 export const GoalSetting = () => {
   const [goal, setGoal] = useState("");
   const { data, isPending, isError } = useGetTimerGoal();
-  const { mutate: postGoal } = usePostTimeGoal();
+  const { mutate: postGoal, isPending: isGoalPending } = usePostTimeGoal();
 
   useEffect(() => {
     if (data) {
@@ -41,8 +41,11 @@ export const GoalSetting = () => {
         className="no-spin"
         onChange={(e) => setGoal(e.target.value)}
       />
-      <MypageButton className="bg-dark text-[var(--text-selected)]">
-        설정
+      <MypageButton
+        className="bg-dark text-[var(--text-selected)] break-keep"
+        disabled={isGoalPending || !goal}
+      >
+        {isGoalPending ? "설정 중..." : "설정하기"}
       </MypageButton>
     </form>
   );

@@ -11,7 +11,7 @@ interface YouTubePlayerProps {
 }
 
 const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
-  const { mutate: updateWindow } = usePatchWindow();
+  const { mutate: updateWindow, isPending } = usePatchWindow();
 
   const [inputUrl, setInputUrl] = useState(window.url ?? "");
   const [isSubmitted, setIsSubmitted] = useState(!!window.url);
@@ -22,6 +22,7 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
   }, [window.url]);
 
   const handleSubmit = () => {
+    if (isPending) return;
     if (inputUrl.includes("youtube.com/watch")) {
       updateWindow({ id: window.id, data: { url: inputUrl.trim() } });
       setIsSubmitted(true);
@@ -52,9 +53,10 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
         />
         <button
           onClick={handleSubmit}
+          disabled={isPending}
           className="px-4 py-2 rounded bg-dark text-[var(--text-selected)] border-none cursor-pointer"
         >
-          DONE
+          {isPending ? "Applying..." : "Apply"}
         </button>
       </div>
     );

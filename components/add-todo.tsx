@@ -11,7 +11,7 @@ interface AddTodoProps {
 }
 
 const AddTodo = ({ window }: AddTodoProps) => {
-  const { mutate: addTodo } = useAddTodo();
+  const { mutate: addTodo, isPending } = useAddTodo();
   const [todo, setTodo] = useState("");
 
   const handleAdd = ({ id, text }: AddTodoVars) => {
@@ -20,6 +20,7 @@ const AddTodo = ({ window }: AddTodoProps) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isPending) return;
     if (!!todo) {
       handleAdd({ id: window.id, text: todo });
       setTodo("");
@@ -38,8 +39,12 @@ const AddTodo = ({ window }: AddTodoProps) => {
         value={todo}
         onChange={(e) => setTodo(e.target.value)}
       />
-      <RectangleButton type="submit" width="w-[30%] min-w-[60px]">
-        ADD
+      <RectangleButton
+        type="submit"
+        width="w-[30%] min-w-[60px]"
+        disabled={isPending || !todo.trim()}
+      >
+        {isPending ? "..." : "ADD"}
       </RectangleButton>
     </form>
   );

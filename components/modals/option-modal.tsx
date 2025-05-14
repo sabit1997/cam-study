@@ -20,7 +20,7 @@ const OptionModal = ({ window, onClose }: OptionModalProps) => {
   const typeList: TypeList[] = ["youtube", "camera", "window", "todo", "timer"];
   const [selectedType, setSelectedType] = useState<TypeList>("none");
 
-  const { mutate: updateWindow } = usePatchWindow();
+  const { mutate: updateWindow, isPending } = usePatchWindow();
   const windows = useWindowStore((state) => state.windows);
   const maxZIndex =
     windows.length > 0 ? Math.max(...windows.map((w) => w.zindex)) : 0;
@@ -33,6 +33,7 @@ const OptionModal = ({ window, onClose }: OptionModalProps) => {
   useEscapeKey(onClose);
 
   const handleConfirm = () => {
+    if (isPending) return;
     updateWindow({ id: window.id, data: { type: selectedType } });
     onClose();
   };
@@ -77,8 +78,12 @@ const OptionModal = ({ window, onClose }: OptionModalProps) => {
           ))}
         </ul>
 
-        <RectangleButton width="w-[60%]" onClick={handleConfirm}>
-          APPLY
+        <RectangleButton
+          width="w-[60%]"
+          onClick={handleConfirm}
+          disabled={isPending}
+        >
+          {isPending ? "Applying..." : "Apply"}
         </RectangleButton>
       </div>
     </div>

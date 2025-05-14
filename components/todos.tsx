@@ -8,6 +8,7 @@ import {
   useDoneTodo,
 } from "@/apis/services/todo-services/mutation";
 import { FaRegTrashAlt } from "react-icons/fa";
+import { DeleteTodoVars, DoneTodoVars } from "@/types/todos";
 
 interface TodosProps {
   window: Window;
@@ -15,8 +16,23 @@ interface TodosProps {
 
 const Todos = ({ window }: TodosProps) => {
   const { data: todos = [] } = useGetTodos(window.id);
-  const { mutate: deleteTodo } = useDeleteTodo();
-  const { mutate: doneTodo } = useDoneTodo();
+  const { mutate: deleteTodo, isPending: isDeletePending } = useDeleteTodo();
+  const { mutate: doneTodo, isPending: isDonePending } = useDoneTodo();
+
+  const handleDone = ({ winId, todoId, done }: DoneTodoVars) => {
+    if (isDonePending) return;
+    doneTodo({
+      winId,
+      todoId,
+      done,
+    });
+  };
+
+  const handleDelte = ({ winId, todoId }: DeleteTodoVars) => {
+    if (isDeletePending) return;
+    deleteTodo({ winId, todoId });
+  };
+
   return (
     <div className="pb-4 pt-1 px-4 flex flex-col gap-2 h-full">
       <AddTodo window={window} />
@@ -26,7 +42,7 @@ const Todos = ({ window }: TodosProps) => {
             <li
               key={todo.id}
               onClick={() =>
-                doneTodo({
+                handleDone({
                   winId: window.id,
                   todoId: todo.id,
                   done: !!todo.done,
@@ -44,10 +60,11 @@ const Todos = ({ window }: TodosProps) => {
               <span className="mr-2">{todo.done ? "✅" : "⬜️"}</span>
               <p className="overflow-ellipsis overflow-hidden">{todo.text}</p>
               <button
+                disabled={isDeletePending}
                 type="button"
                 className="rounded-full bg-red-500 p-1 absolute right-2"
                 onClick={() =>
-                  deleteTodo({ winId: window.id, todoId: todo.id })
+                  handleDelte({ winId: window.id, todoId: todo.id })
                 }
               >
                 <FaRegTrashAlt className="text-white" />

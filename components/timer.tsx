@@ -8,7 +8,7 @@ import { usePostTime } from "@/apis/services/timer-services/mutation";
 
 const Timer: React.FC = () => {
   const { data: todayTimeRes } = useGetTodayTime();
-  const { mutate: postTime } = usePostTime();
+  const { mutate: postTime, isPending } = usePostTime();
 
   const [elapsed, setElapsed] = useState(0);
   const [goalInSeconds, setGoalInSeconds] = useState(0);
@@ -40,7 +40,7 @@ const Timer: React.FC = () => {
   }, [todayTimeRes]);
 
   const startTimer = useCallback(() => {
-    if (timerRef.current) return;
+    if (timerRef.current || isPending) return;
 
     const now = new Date();
     startAtRef.current = now;
@@ -50,7 +50,7 @@ const Timer: React.FC = () => {
     }, 1000);
 
     saveRef.current = setInterval(() => {
-      if (!startAtRef.current) return;
+      if (isPending || !startAtRef.current) return;
       const end = new Date();
       postTime({
         startAt: startAtRef.current.toISOString(),
@@ -69,7 +69,7 @@ const Timer: React.FC = () => {
       clearInterval(saveRef.current);
       saveRef.current = null;
     }
-    if (startAtRef.current) {
+    if (startAtRef.current && !isPending) {
       const end = new Date();
       postTime({
         startAt: startAtRef.current.toISOString(),
@@ -81,25 +81,19 @@ const Timer: React.FC = () => {
 
   const percent = (elapsed / goalInSeconds) * 100;
 
-  console.log(elapsed);
-
-  console.log(goalInSeconds);
-
-  console.log(percent);
-
   return (
     <div className="flex flex-col items-center justify-center gap-4 text-dark h-full">
       <span className="text-2xl font-mono">{formatSeconds(elapsed)}</span>
       <div className="flex gap-2">
         <button
-          disabled={Boolean(timerRef.current)}
+          disabled={Boolean(timerRef.current) || isPending}
           onClick={startTimer}
           className="p-5 rounded-full text-[var(--text-selected)] bg-dark disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           <IoPlay />
         </button>
         <button
-          disabled={!timerRef.current}
+          disabled={!timerRef.current || isPending}
           onClick={stopTimer}
           className="p-5 rounded-full text-[var(--text-selected)] bg-dark disabled:bg-gray-400 disabled:cursor-not-allowed"
         >

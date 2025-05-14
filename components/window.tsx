@@ -27,8 +27,9 @@ interface AddWindowProps {
 
 const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
   const [isBlur, setIsBlur] = useState(false);
-  const { mutate: updateWindow } = usePatchWindow();
-  const { mutate: deleteWindow } = useDeleteWindow();
+  const { mutate: updateWindow, isPending: isUpdatePending } = usePatchWindow();
+  const { mutate: deleteWindow, isPending: isDeletePending } =
+    useDeleteWindow();
 
   const { bringToFront, updateWindowBounds, windows } = useWindowStore();
 
@@ -36,6 +37,7 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
   const currentWindow = windows.find((w) => w.id === window.id);
 
   const handleClose = () => {
+    if (isDeletePending) return;
     deleteWindow(id);
   };
 
@@ -45,12 +47,14 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
   };
 
   const debouncedZIndexUpdate = useDebouncedCallback(() => {
+    if (isUpdatePending) return;
     const maxZ = currentWindow?.zindex || 0;
     updateWindow({ id, data: { zindex: maxZ + 1 } });
   }, 300);
 
   const debouncedServerUpdate = useDebouncedCallback(
     (x: number, y: number, width: number, height: number) => {
+      if (isUpdatePending) return;
       updateWindow({ id, data: { x, y, width, height } });
     },
     500
