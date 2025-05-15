@@ -1,3 +1,6 @@
+import { TodoQueryParams } from "@/types/todos";
+import qs from "qs";
+
 export const AuthEndPoints = {
   signup: () => "/auth/signup",
   login: () => "/auth/login",
@@ -11,12 +14,25 @@ export const WindowEndpoints = {
 };
 
 export const TodosEndPoints = {
-  getTodos: (id: number) => `/windows/${id}/todos`,
+  getTodos: (id: number, query?: TodoQueryParams) => {
+    const q = query ? `?${qs.stringify(query)}` : "";
+    return `/windows/${id}/todos${q}`;
+  },
   addTodo: (id: number) => `/windows/${id}/todos`,
   deleteTodo: (winId: number, todoId: number) =>
     `/windows/${winId}/todos/${todoId}`,
   doneTodo: (winId: number, todoId: number) =>
     `/windows/${winId}/todos/${todoId}`,
+  updateTodoText: (winId: number, todoId: number) =>
+    `/windows/${winId}/todos/${todoId}/text`,
+
+  getAllTodos: (query?: TodoQueryParams) => {
+    const q = query ? `?${qs.stringify(query)}` : "";
+    return `/todos${q}`;
+  },
+  updateTodoTextGlobal: (todoId: number) => `/todos/${todoId}`,
+  toggleDoneGlobal: (todoId: number) => `/todos/${todoId}/done`,
+  deleteTodoGlobal: (todoId: number) => `/todos/${todoId}`,
 };
 
 export const TimerEndPoints = {

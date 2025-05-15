@@ -16,8 +16,6 @@ const GlobalInitializer = () => {
     });
   }, [primaryHex, darkHex, textHex, selectedTextHex]);
 
-  console.log(primaryHex);
-
   return null;
 };
 

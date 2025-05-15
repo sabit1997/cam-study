@@ -18,3 +18,13 @@ export type DeleteTodoVars = {
 export type DoneTodoVars = DeleteTodoVars & {
   done: boolean;
 };
+
+export type UpdateTodoVars = DeleteTodoVars & {
+  text: string;
+};
+
+export interface TodoQueryParams {
+  date?: string;
+  done?: boolean;
+  order?: "asc" | "desc";
+}

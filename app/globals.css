@@ -76,4 +76,19 @@ input.no-spin[type="number"] {
     border: 2px solid var(--color-dark);
     max-width: 250px;
   }
+
+  .todo-filter-btn {
+    padding: 0.2rem 0.5rem;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    border: 2px solid var(--color-dark);
+    font-size: 0.75rem;
+    color: var(--text-primary);
+  }
+
+  .todo-filter-btn.selected {
+    background-color: var(--color-dark);
+    color: var(--text-selected);
+    border-color: var(--color-dark);
+  }
 }
