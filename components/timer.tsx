@@ -7,7 +7,8 @@ import { useGetTodayTime } from "@/apis/services/timer-services/query";
 import { usePostTime } from "@/apis/services/timer-services/mutation";
 
 const Timer: React.FC = () => {
-  const { data: todayTimeRes } = useGetTodayTime();
+  const { data: todayTimeRes, isPending: isTodayTimePending } =
+    useGetTodayTime();
   const { mutate: postTime, isPending } = usePostTime();
 
   const [elapsed, setElapsed] = useState(0);
@@ -33,11 +34,11 @@ const Timer: React.FC = () => {
   }, [postTime]);
 
   useEffect(() => {
-    if (todayTimeRes) {
+    if (!isTodayTimePending && todayTimeRes) {
       setElapsed(todayTimeRes?.totalSeconds);
       setGoalInSeconds(todayTimeRes?.goalInSeconds);
     }
-  }, [todayTimeRes]);
+  }, [todayTimeRes, isTodayTimePending]);
 
   const startTimer = useCallback(() => {
     if (timerRef.current || isPending) return;
@@ -86,14 +87,14 @@ const Timer: React.FC = () => {
       <span className="text-2xl font-mono">{formatSeconds(elapsed)}</span>
       <div className="flex gap-2">
         <button
-          disabled={Boolean(timerRef.current) || isPending}
+          disabled={Boolean(timerRef.current)}
           onClick={startTimer}
           className="p-5 rounded-full text-[var(--text-selected)] bg-dark disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           <IoPlay />
         </button>
         <button
-          disabled={!timerRef.current || isPending}
+          disabled={!timerRef.current}
           onClick={stopTimer}
           className="p-5 rounded-full text-[var(--text-selected)] bg-dark disabled:bg-gray-400 disabled:cursor-not-allowed"
         >

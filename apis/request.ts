@@ -39,8 +39,9 @@ client.interceptors.response.use(
       return Promise.reject(err);
     }
 
-    if (status === 403 && err.response?.data) {
-      return Promise.reject(err.response.data);
+    if (status === 403) {
+      alert("이 기능을 사용할 권한이 없습니다.");
+      return Promise.reject(err.response?.data || err);
     }
 
     return Promise.reject(err);
