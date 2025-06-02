@@ -13,18 +13,22 @@ const WindowZone = () => {
       ? document.cookie.includes("AccessToken=")
       : false;
 
-  const { data: serverWindows = [] } = useWindows(isLoggedIn);
+  const {
+    data: serverWindows = [],
+    isPending,
+    isSuccess,
+  } = useWindows(isLoggedIn);
 
   const localWindows = useWindowStore((state) => state.windows);
   const setWindows = useWindowStore((state) => state.setWindows);
 
-  const serialized = JSON.stringify(serverWindows);
-
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
+  console.log(serverWindows);
+
   useEffect(() => {
-    setWindows(serverWindows);
-  }, [serialized, setWindows]);
+    if (!isPending && isSuccess) setWindows(serverWindows);
+  }, [serverWindows, setWindows, isPending, isSuccess]);
 
   return (
     <div className="w-full h-full overflow-hidden">
