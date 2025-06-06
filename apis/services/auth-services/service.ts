@@ -7,10 +7,6 @@ export interface AuthRequest {
   password: string;
 }
 
-export interface AuthResponse {
-  accessToken: string;
-}
-
 export default class AuthService {
   public static readonly signup = (data: AuthRequest): Promise<string> => {
     return request({
@@ -20,7 +16,7 @@ export default class AuthService {
     });
   };
 
-  public static readonly login = (data: AuthRequest): Promise<AuthResponse> => {
+  public static readonly login = (data: AuthRequest): Promise<string> => {
     return request({
       url: AuthEndPoints.login(),
       method: AxiosMethod.POST,

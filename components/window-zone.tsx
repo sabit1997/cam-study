@@ -8,23 +8,12 @@ import { useWindows } from "@/apis/services/window-services/query";
 import type { Window as WindowType } from "@/types/windows";
 
 const WindowZone = () => {
-  const isLoggedIn =
-    typeof document !== "undefined"
-      ? document.cookie.includes("AccessToken=")
-      : false;
-
-  const {
-    data: serverWindows = [],
-    isPending,
-    isSuccess,
-  } = useWindows(isLoggedIn);
+  const { data: serverWindows = [], isPending, isSuccess } = useWindows();
 
   const localWindows = useWindowStore((state) => state.windows);
   const setWindows = useWindowStore((state) => state.setWindows);
 
   const [selectedId, setSelectedId] = useState<number | null>(null);
-
-  console.log(serverWindows);
 
   useEffect(() => {
     if (!isPending && isSuccess) setWindows(serverWindows);

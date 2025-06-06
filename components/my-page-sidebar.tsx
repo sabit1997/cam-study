@@ -7,7 +7,7 @@ import { MypageButton } from "./mypage-button";
 import { IoLogOutOutline, IoLibrary, IoTime } from "react-icons/io5";
 import { IoMdSettings } from "react-icons/io";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 
 export const MyPageSidebar = () => {
@@ -17,13 +17,7 @@ export const MyPageSidebar = () => {
 
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  useEffect(() => {
-    const hasToken = document.cookie.includes("AccessToken=");
-    setIsLoggedIn(hasToken);
-  }, []);
-
   const handleSignOut = () => {
-    document.cookie = "AccessToken=; path=/; max-age=0";
     queryClient.clear();
     setWindows([]);
     setIsLoggedIn(false);

@@ -5,11 +5,10 @@ import InputWithLabel from "@/components/input-with-label";
 import RectangleButton from "@/components/rectangle-button";
 import { useState } from "react";
 import { useLogin } from "@/apis/services/auth-services/mutation";
-import { NextResponse } from "next/server";
 
 const SignInForm = () => {
   const router = useRouter();
-  const { mutate: signIn, isPending, error } = useLogin();
+  const { mutate: signIn, isPending, isError, error } = useLogin();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -19,24 +18,7 @@ const SignInForm = () => {
     signIn(
       { email, password },
       {
-        onSuccess: (res) => {
-          const token = res.accessToken;
-          document.cookie = `AccessToken=${res.accessToken}; path=/; max-age=${
-            60 * 60 * 24 * 30
-          }; secure; samesite=strict`;
-
-          const response = NextResponse.json({ success: true });
-
-          response.cookies.set({
-            name: "AccessToken",
-            value: token,
-            httpOnly: true,
-            path: "/",
-            maxAge: 60 * 60 * 24 * 30,
-            sameSite: "strict",
-            secure: true,
-          });
-
+        onSuccess: () => {
           router.push("/");
         },
       }
@@ -60,7 +42,7 @@ const SignInForm = () => {
         value={password}
         onChange={(e) => setPassword(e.target.value)}
       />
-      <RectangleButton type="submit" disabled={isPending}>
+      <RectangleButton type="submit" disabled={isPending && !isError}>
         {isPending ? "Signing in..." : "SIGN IN"}
       </RectangleButton>
       {error instanceof Error && (

@@ -1,67 +1,96 @@
-import axios, { AxiosError, AxiosRequestConfig, AxiosResponse } from "axios";
+import axios, {
+  AxiosError,
+  AxiosRequestConfig,
+  AxiosResponse,
+  InternalAxiosRequestConfig,
+} from "axios";
+
+interface QueueItem {
+  resolve: (value: AxiosResponse) => void;
+  reject: (error: unknown) => void;
+}
 
 export const client = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
   headers: {
     Accept: "application/json, text/plain, */*",
   },
+  withCredentials: true,
 });
 
-client.interceptors.request.use(
-  (config) => {
-    const getAccessTokenFromCookie = () => {
-      const match = document.cookie.match(
-        new RegExp("(^| )AccessToken=([^;]+)")
-      );
-      return match ? match[2] : null;
-    };
+let isRefreshing = false;
+let failedQueue: QueueItem[] = [];
 
-    const token = getAccessTokenFromCookie();
-
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
+const processQueue = (error?: unknown, tokenResponse?: AxiosResponse) => {
+  failedQueue.forEach(({ resolve, reject }) => {
+    if (error) {
+      reject(error);
+    } else if (tokenResponse) {
+      resolve(tokenResponse);
     }
-
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+  });
+  failedQueue = [];
+};
 
 client.interceptors.response.use(
-  (res: AxiosResponse) => res,
-  async (err) => {
+  (response: AxiosResponse) => response,
+  async (err: AxiosError) => {
     const status = err.response?.status;
+    const originalRequest = err.config as InternalAxiosRequestConfig & {
+      _retry?: boolean;
+    };
 
-    if (status === 401) {
-      document.cookie = "AccessToken=; path=/; max-age=0";
-      alert("로그인이 만료되었습니다. 다시 로그인해주세요.");
-      window.location.href = "/sign-in";
-      return Promise.reject(err);
+    if (status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      if (isRefreshing) {
+        return new Promise<AxiosResponse>((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        }).then(() => client(originalRequest));
+      }
+
+      isRefreshing = true;
+
+      try {
+        const refreshResponse = await client.post("/auth/refresh");
+
+        processQueue(undefined, refreshResponse);
+        isRefreshing = false;
+
+        return client(originalRequest);
+      } catch (refreshError) {
+        processQueue(refreshError);
+        isRefreshing = false;
+        window.location.href = "/sign-in";
+        return Promise.reject(refreshError);
+      }
     }
 
     if (status === 403) {
-      alert("이 기능을 사용할 권한이 없습니다.");
-      return Promise.reject(err.response?.data || err);
+      alert("권한이 없습니다.");
+      return Promise.reject(err);
     }
 
     return Promise.reject(err);
   }
 );
 
-const request = async (options: AxiosRequestConfig) => {
-  const onSuccess = (response: AxiosResponse) => {
-    return response.data;
-  };
-
-  const onError = (error: AxiosError) => {
-    return Promise.reject({
-      message: error.message,
-      code: error.code,
-      response: error.response,
-    });
-  };
-
-  return client(options).then(onSuccess).catch(onError);
+const request = async <T = unknown>(
+  options: AxiosRequestConfig
+): Promise<T> => {
+  try {
+    const response = await client(options);
+    return response.data as T;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      return Promise.reject({
+        message: error.message,
+        code: error.code,
+        response: error.response,
+      });
+    }
+    return Promise.reject(error);
+  }
 };
 
 export default request;

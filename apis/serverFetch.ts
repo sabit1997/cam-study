@@ -1,19 +1,30 @@
 "use server";
 
-import axios from "axios";
-import { cookies } from "next/headers";
+import axios, { isAxiosError } from "axios";
+
+const ERROR_PREFIX = "HTTP_ERROR_CODE:";
 
 export const serverFetch = async (url: string) => {
-  const cookieStore = await cookies();
-  const accessToken = cookieStore.get("AccessToken")?.value;
+  try {
+    const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}${url}`, {
+      adapter: "fetch",
+      fetchOptions: { caches: "force-cache" },
+      withCredentials: true,
+    });
 
-  const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}${url}`, {
-    adapter: "fetch",
-    fetchOptions: { caches: "force-cache" },
-    headers: {
-      Authorization: accessToken ? `Bearer ${accessToken}` : "",
-    },
-  });
-
-  return res.data;
+    return res.data;
+  } catch (error) {
+    if (isAxiosError(error)) {
+      console.error("Axios Error:", error.response?.status, error.message);
+      if (error.response) {
+        throw new Error(
+          `${ERROR_PREFIX}${error.response.status}:${error.message}`
+        );
+      } else {
+        throw new Error(`${ERROR_PREFIX}500:Network Error or Request Failed`);
+      }
+    }
+    console.error("Unknown Error:", error);
+    throw new Error(`${ERROR_PREFIX}500:An unexpected error occurred`);
+  }
 };
