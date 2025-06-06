@@ -79,7 +79,7 @@ const Todos = ({ window }: { window: Window }) => {
         </button>
       </div>
 
-      <ul className="overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-primary [&::-webkit-scrollbar-thumb]:bg-dark [&::-webkit-scrollbar-thumb]:rounded-lg [scrollbar-width:thin] [scrollbar-color:#255f38_#a0c878]">
+      <ul className="overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-primary [&::-webkit-scrollbar-thumb]:bg-dark [&::-webkit-scrollbar-thumb]:rounded-lg [scrollbar-width:thin] [scrollbar-color:var(--color-dark)_var(--color-primary)]">
         {todos.length > 0 &&
           todos.map((todo) => (
             <li
