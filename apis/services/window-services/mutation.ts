@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import WindowService from "./service";
 import { WINDOW_QUERY_KEY } from "./query";
 import { WindowPatchDto } from "@/types/dto";
+import { useWindowStore } from "@/stores/window-state";
 
 export const useCreateWindow = () => {
   const queryClient = useQueryClient();
@@ -20,6 +21,7 @@ export const useCreateWindow = () => {
 
 export const usePatchWindow = () => {
   const queryClient = useQueryClient();
+  const updateWindowType = useWindowStore((state) => state.updateWindowType);
 
   return useMutation({
     mutationFn: ({ id, data }: { id: number; data: WindowPatchDto }) =>
@@ -36,6 +38,11 @@ export const usePatchWindow = () => {
 
       return { previousWindow, newWindow };
     },
+
+    onSuccess: (newWindow) => {
+      updateWindowType(newWindow.id, newWindow.type);
+    },
+
     onError: (err, newWindow, context) => {
       queryClient.setQueryData(
         [...WINDOW_QUERY_KEY, context?.newWindow.id],
