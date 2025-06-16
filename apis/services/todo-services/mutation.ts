@@ -120,7 +120,7 @@ export const useToggleDoneGlobal = () => {
 
 export const useDeleteTodoGlobal = () => {
   const queryClient = useQueryClient();
-  return useMutation<number, Error, number>({
+  return useMutation<void, Error, number>({
     mutationFn: (todoId) => TodoService.deleteTodoGlobal(todoId),
     onSuccess: () => {
       queryClient.invalidateQueries({
