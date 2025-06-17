@@ -11,7 +11,7 @@ interface QueueItem {
 }
 
 export const client = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL,
+  baseURL: "/api",
   headers: {
     Accept: "application/json, text/plain, */*",
   },
@@ -36,17 +36,22 @@ client.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (err: AxiosError) => {
     const status = err.response?.status;
-    const originalRequest = err.config as InternalAxiosRequestConfig & {
+    const orig = err.config as InternalAxiosRequestConfig & {
       _retry?: boolean;
     };
+    const url = orig.url || "";
 
-    if (status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
+    if (url.includes("/auth/login") || url.includes("/auth/refresh")) {
+      return Promise.reject(err);
+    }
+
+    if (status === 401 && !orig._retry) {
+      orig._retry = true;
 
       if (isRefreshing) {
         return new Promise<AxiosResponse>((resolve, reject) => {
           failedQueue.push({ resolve, reject });
-        }).then(() => client(originalRequest));
+        }).then(() => client(orig));
       }
 
       isRefreshing = true;
@@ -57,7 +62,7 @@ client.interceptors.response.use(
         processQueue(undefined, refreshResponse);
         isRefreshing = false;
 
-        return client(originalRequest);
+        return client(orig);
       } catch (refreshError) {
         processQueue(refreshError);
         isRefreshing = false;

@@ -5,8 +5,7 @@ const PUBLIC_PATHS = ["/sign-in", "/sign-up"];
 
 export function middleware(request: NextRequest) {
   const token = request.cookies.get("AccessToken")?.value;
-
-  const { pathname } = request.nextUrl;
+  const pathname = request.nextUrl.pathname.replace(/\/$/, "");
   const isPublic = PUBLIC_PATHS.includes(pathname);
 
   if (!token && !isPublic) {
@@ -19,5 +18,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!api|auth|_next/static|_next/image|favicon.ico).*)"],
 };
