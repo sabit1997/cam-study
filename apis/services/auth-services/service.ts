@@ -7,8 +7,14 @@ export interface AuthRequest {
   password: string;
 }
 
+interface AuthRequestWithName extends AuthRequest {
+  username: string;
+}
+
 export default class AuthService {
-  public static readonly signup = (data: AuthRequest): Promise<string> => {
+  public static readonly signup = (
+    data: AuthRequestWithName
+  ): Promise<string> => {
     return request({
       url: AuthEndPoints.signup(),
       method: AxiosMethod.POST,

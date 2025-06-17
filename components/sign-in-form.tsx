@@ -15,14 +15,18 @@ const SignInForm = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    signIn(
-      { email, password },
-      {
-        onSuccess: () => {
-          router.replace("/");
-        },
-      }
-    );
+    if (email && password) {
+      signIn(
+        { email, password },
+        {
+          onSuccess: () => {
+            router.replace("/");
+          },
+        }
+      );
+    } else {
+      alert("아이디, 비밀번호를 입력해주세요.");
+    }
   };
 
   return (
