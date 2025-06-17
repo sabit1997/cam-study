@@ -1,5 +1,3 @@
-// src/apis/services/todo/service.ts
-
 import request from "@/apis/request";
 import { AxiosMethod } from "@/types/axios";
 import { TodosEndPoints } from "../config";
@@ -14,7 +12,6 @@ import {
 import { serverFetch } from "@/apis/serverFetch";
 
 export default class TodoService {
-  /** 새 투두 추가 */
   public static readonly addTodo = ({
     id,
     text,
@@ -26,7 +23,6 @@ export default class TodoService {
     });
   };
 
-  /** 개별 윈도우 내 투두 완료/미완료 토글 */
   public static readonly doneTodo = ({
     winId,
     todoId,
@@ -39,7 +35,6 @@ export default class TodoService {
     });
   };
 
-  /** 개별 윈도우 내 투두 삭제 */
   public static readonly deleteTodo = ({
     winId,
     todoId,
@@ -50,7 +45,6 @@ export default class TodoService {
     });
   };
 
-  /** 개별 윈도우 내 투두 텍스트 수정 */
   public static readonly updateTodo = ({
     winId,
     todoId,
@@ -63,7 +57,6 @@ export default class TodoService {
     });
   };
 
-  /** 전체 투두(Global) 텍스트 수정 */
   public static readonly updateTodoGlobal = (
     todoId: number,
     text: string
@@ -75,7 +68,6 @@ export default class TodoService {
     });
   };
 
-  /** 전체 투두(Global) 완료/미완료 토글 */
   public static readonly toggleDoneGlobal = (
     todoId: number,
     done: boolean
@@ -87,7 +79,6 @@ export default class TodoService {
     });
   };
 
-  /** 전체 투두(Global) 삭제 */
   public static readonly deleteTodoGlobal = (todoId: number): Promise<void> => {
     return request<void>({
       url: TodosEndPoints.deleteTodoGlobal(todoId),
@@ -96,17 +87,22 @@ export default class TodoService {
   };
 }
 
-/** 개별 윈도우 투두 조회 */
 export const fetchTodos = async (
   winId: number,
   query?: TodoQueryParams
 ): Promise<Todos[]> => {
-  return await serverFetch(TodosEndPoints.getTodos(winId, query));
+  const data = await serverFetch<Todos[]>(
+    TodosEndPoints.getTodos(winId, query),
+    { suppressStatus: [401] }
+  );
+  return data ?? [];
 };
 
-/** 전체 투두(Global) 조회 */
 export const fetchAllTodos = async (
   query?: TodoQueryParams
 ): Promise<Todos[]> => {
-  return await serverFetch(TodosEndPoints.getAllTodos(query));
+  const data = await serverFetch<Todos[]>(TodosEndPoints.getAllTodos(query), {
+    suppressStatus: [401],
+  });
+  return data ?? [];
 };

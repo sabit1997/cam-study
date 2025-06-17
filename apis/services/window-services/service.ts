@@ -36,11 +36,8 @@ export default class WindowService {
 }
 
 export const fetchWindows = async (): Promise<Window[]> => {
-  try {
-    const data = await serverFetch(WindowEndpoints.getWindows());
-    return data;
-  } catch (error) {
-    console.error("Failed to fetch windows:", error);
-    throw error;
-  }
+  const data = await serverFetch<Window[]>(WindowEndpoints.getWindows(), {
+    suppressStatus: [401],
+  });
+  return data ?? [];
 };
