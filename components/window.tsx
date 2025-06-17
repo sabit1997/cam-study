@@ -33,7 +33,7 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
 
   const { bringToFront, updateWindowBounds, windows } = useWindowStore();
 
-  const { id, type, zindex, x, y, width, height } = window;
+  const { id, type, zIndex, x, y, width, height } = window;
   const currentWindow = windows.find((w) => w.id === window.id);
 
   const handleClose = () => {
@@ -48,8 +48,8 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
 
   const debouncedZIndexUpdate = useDebouncedCallback(() => {
     if (isUpdatePending) return;
-    const maxZ = currentWindow?.zindex || 0;
-    updateWindow({ id, data: { zindex: maxZ + 1 } });
+    const maxZ = currentWindow?.zIndex || 0;
+    updateWindow({ id, data: { zIndex: maxZ + 1 } });
   }, 300);
 
   const debouncedServerUpdate = useDebouncedCallback(
@@ -80,7 +80,7 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
       maxWidth={645}
       bounds="window"
       style={{
-        zIndex: zindex,
+        zIndex: zIndex,
         position: "fixed",
       }}
       enableResizing={{

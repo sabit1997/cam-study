@@ -23,7 +23,7 @@ const OptionModal = ({ window, onClose }: OptionModalProps) => {
   const { mutate: updateWindow, isPending } = usePatchWindow();
   const windows = useWindowStore((state) => state.windows);
   const maxZIndex =
-    windows.length > 0 ? Math.max(...windows.map((w) => w.zindex)) : 0;
+    windows.length > 0 ? Math.max(...windows.map((w) => w.zIndex)) : 0;
 
   useEffect(() => {
     if (window) setSelectedType(window.type);

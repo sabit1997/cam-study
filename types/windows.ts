@@ -23,7 +23,7 @@ export interface Window {
   y: number;
   width: number;
   height: number;
-  zindex: number;
+  zIndex: number;
   userId: string;
   createdAt: string;
 }

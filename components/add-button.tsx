@@ -10,13 +10,13 @@ const AddButton = () => {
 
   const handleClick = () => {
     const maxZIndex =
-      windows.length > 0 ? Math.max(...windows.map((w) => w.zindex)) : 0;
+      windows.length > 0 ? Math.max(...windows.map((w) => w.zIndex)) : 0;
     const offset = Math.floor(Math.random() * 60);
 
     createWindow(
       {
         type: "none",
-        zindex: maxZIndex + 1,
+        zIndex: maxZIndex + 1,
         x: 100 + offset,
         y: 100 + offset,
         width: 320,

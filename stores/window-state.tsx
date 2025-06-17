@@ -30,10 +30,10 @@ export const useWindowStore = create<WindowState>()(
 
       bringToFront: (id) =>
         set((state) => {
-          const maxZ = Math.max(...state.windows.map((w) => w.zindex || 0));
+          const maxZ = Math.max(...state.windows.map((w) => w.zIndex || 0));
           return {
             windows: state.windows.map((w) =>
-              w.id === id ? { ...w, zindex: maxZ + 1 } : w
+              w.id === id ? { ...w, zIndex: maxZ + 1 } : w
             ),
           };
         }),
