@@ -18,7 +18,7 @@ const SignUpForm = () => {
       { email, password },
       {
         onSuccess: () => {
-          router.push("/sign-in");
+          router.replace("/sign-in");
         },
         onError: () => {
           alert("회원가입 실패");

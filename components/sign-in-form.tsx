@@ -19,7 +19,7 @@ const SignInForm = () => {
       { email, password },
       {
         onSuccess: () => {
-          router.push("/");
+          router.replace("/");
         },
       }
     );
