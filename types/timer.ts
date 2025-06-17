@@ -7,7 +7,7 @@ export type PostTimeReq = {
 
 export type GetMonthTimeRes = {
   entries: RecordData[];
-  monthlyTotal: 9000;
+  monthlyTotal: number;
 };
 
 export type GetTodayTimeRes = {
