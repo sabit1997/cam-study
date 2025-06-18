@@ -37,14 +37,15 @@ const CameraView = ({ isBlur }: CameraViewProps) => {
   };
 
   useEffect(() => {
+    const currentVideoElement = videoRef.current;
+
     const initializeCamera = async () => {
       try {
-        const videoElement = videoRef.current;
-        if (!videoElement) return;
+        if (!currentVideoElement) return;
 
         const stream = await getCameraStream();
         streamRef.current = stream;
-        setupVideoStream(videoElement, stream);
+        setupVideoStream(currentVideoElement, stream);
       } catch (err) {
         if (err instanceof DOMException) {
           switch (err.name) {
@@ -66,9 +67,8 @@ const CameraView = ({ isBlur }: CameraViewProps) => {
     initializeCamera();
 
     return () => {
-      const videoElement = videoRef.current;
-      if (videoElement) {
-        cleanupVideoStream(videoElement);
+      if (currentVideoElement) {
+        cleanupVideoStream(currentVideoElement);
       }
     };
   }, []);

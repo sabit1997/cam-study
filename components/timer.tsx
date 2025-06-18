@@ -59,7 +59,7 @@ const Timer: React.FC = () => {
       });
       startAtRef.current = end;
     }, 60000);
-  }, [postTime]);
+  }, [postTime, isPending]);
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) {
@@ -78,7 +78,7 @@ const Timer: React.FC = () => {
       });
     }
     startAtRef.current = null;
-  }, [postTime]);
+  }, [postTime, isPending]);
 
   const percent = (elapsed / goalInSeconds) * 100;
 
