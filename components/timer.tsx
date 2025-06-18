@@ -19,7 +19,7 @@ const Timer: React.FC = () => {
 
   useEffect(() => {
     const handleBeforeUnload = () => {
-      if (startAtRef.current) {
+      if (startAtRef.current && !isPending) {
         const end = new Date();
         postTime({
           startAt: startAtRef.current.toISOString(),
@@ -30,13 +30,15 @@ const Timer: React.FC = () => {
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (saveRef.current) clearInterval(saveRef.current);
     };
-  }, [postTime]);
+  }, [postTime, isPending]);
 
   useEffect(() => {
     if (!isTodayTimePending && todayTimeRes) {
-      setElapsed(todayTimeRes?.totalSeconds);
-      setGoalInSeconds(todayTimeRes?.goalInSeconds);
+      setElapsed(todayTimeRes?.totalSeconds || 0);
+      setGoalInSeconds((todayTimeRes?.dailyHourGoal || 0) * 3600);
     }
   }, [todayTimeRes, isTodayTimePending]);
 
@@ -80,21 +82,28 @@ const Timer: React.FC = () => {
     startAtRef.current = null;
   }, [postTime, isPending]);
 
-  const percent = (elapsed / goalInSeconds) * 100;
+  const percent =
+    typeof elapsed === "number" &&
+    typeof goalInSeconds === "number" &&
+    goalInSeconds > 0
+      ? (elapsed / goalInSeconds) * 100
+      : 0;
+
+  const displayPercent = Math.min(percent, 100);
 
   return (
     <div className="flex flex-col items-center justify-center gap-4 text-dark h-full">
-      <span className="text-2xl font-mono">{formatSeconds(elapsed)}</span>
+      <span className="text-2xl font-mono">{formatSeconds(elapsed || 0)}</span>
       <div className="flex gap-2">
         <button
-          disabled={Boolean(timerRef.current)}
+          disabled={Boolean(timerRef.current) || isPending}
           onClick={startTimer}
           className="p-5 rounded-full text-[var(--text-selected)] bg-dark disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           <IoPlay />
         </button>
         <button
-          disabled={!timerRef.current}
+          disabled={!Boolean(timerRef.current) || isPending}
           onClick={stopTimer}
           className="p-5 rounded-full text-[var(--text-selected)] bg-dark disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
@@ -106,7 +115,7 @@ const Timer: React.FC = () => {
         <div className="w-full bg-gray-300 h-2 rounded-full overflow-hidden">
           <div
             className="h-2 bg-dark transition-all duration-300 ease-linear "
-            style={{ width: `${percent}%` }}
+            style={{ width: `${displayPercent}%` }}
           />
         </div>
       </div>
