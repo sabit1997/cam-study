@@ -8,12 +8,14 @@ import { IoLogOutOutline, IoLibrary, IoTime } from "react-icons/io5";
 import { IoMdSettings } from "react-icons/io";
 import Link from "next/link";
 import { useLogout } from "@/apis/services/auth-services/mutation";
+import { useUserStore } from "@/stores/user-state";
 
 export const MyPageSidebar = () => {
   const setWindows = useWindowStore((state) => state.setWindows);
   const queryClient = useQueryClient();
   const pathname = usePathname();
   const router = useRouter();
+  const logoutUser = useUserStore((state) => state.logout);
 
   const { mutate: logout } = useLogout();
 
@@ -23,6 +25,7 @@ export const MyPageSidebar = () => {
         queryClient.clear();
         setWindows([]);
         router.push("/sign-in");
+        logoutUser();
       },
       onError: (error) => {
         console.error("로그아웃 실패:", error);

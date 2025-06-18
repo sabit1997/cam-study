@@ -4,9 +4,11 @@ import { usePathname } from "next/navigation";
 import { IoHomeSharp } from "react-icons/io5";
 import { GoPersonFill } from "react-icons/go";
 import Link from "next/link";
+import { useUserStore } from "@/stores/user-state";
 
 const Navigation = () => {
   const pathname = usePathname();
+  const username = useUserStore((state) => state.username);
 
   const isActiveP = (path: string) => {
     const isActive =
@@ -53,7 +55,7 @@ const Navigation = () => {
                 "/my-page"
               )}`}
             >
-              MY PAGE
+              {username ? username : "MY PAGE"}
             </p>
           </Link>
         </li>

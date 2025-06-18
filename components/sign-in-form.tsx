@@ -5,12 +5,14 @@ import InputWithLabel from "@/components/input-with-label";
 import RectangleButton from "@/components/rectangle-button";
 import { useState } from "react";
 import { useLogin } from "@/apis/services/auth-services/mutation";
+import { useUserStore } from "@/stores/user-state";
 
 const SignInForm = () => {
   const router = useRouter();
   const { mutate: signIn, isPending, isError, error } = useLogin();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const loginUser = useUserStore((state) => state.login);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -19,7 +21,8 @@ const SignInForm = () => {
       signIn(
         { email, password },
         {
-          onSuccess: () => {
+          onSuccess: (data) => {
+            loginUser(data);
             router.replace("/");
           },
         }
