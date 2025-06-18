@@ -3,7 +3,6 @@ import { WindowEndpoints } from "../config";
 import { WindowPatchDto } from "@/types/dto";
 import { AxiosMethod } from "@/types/axios";
 import { Window } from "@/types/windows";
-import { serverFetch } from "@/apis/serverFetch";
 
 export default class WindowService {
   public static readonly createWindow = (
@@ -33,11 +32,11 @@ export default class WindowService {
       method: AxiosMethod.DELETE,
     });
   };
-}
 
-export const fetchWindows = async (): Promise<Window[]> => {
-  const data = await serverFetch<Window[]>(WindowEndpoints.getWindows(), {
-    suppressStatus: [401],
-  });
-  return data ?? [];
-};
+  public static readonly fetchWindows = (): Promise<Window[]> => {
+    return request({
+      url: WindowEndpoints.getWindows(),
+      method: AxiosMethod.GET,
+    });
+  };
+}

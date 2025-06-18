@@ -9,7 +9,6 @@ import {
   UpdateTodoVars,
   TodoQueryParams,
 } from "@/types/todos";
-import { serverFetch } from "@/apis/serverFetch";
 
 export default class TodoService {
   public static readonly addTodo = ({
@@ -85,24 +84,23 @@ export default class TodoService {
       method: AxiosMethod.DELETE,
     });
   };
+
+  public static readonly fetchTodos = (
+    winId: number,
+    query?: TodoQueryParams
+  ): Promise<Todos[]> => {
+    return request({
+      url: TodosEndPoints.getTodos(winId, query),
+      method: AxiosMethod.GET,
+    });
+  };
+
+  public static readonly fetchAllTodos = (
+    query?: TodoQueryParams
+  ): Promise<Todos[]> => {
+    return request({
+      url: TodosEndPoints.getAllTodos(query),
+      method: AxiosMethod.GET,
+    });
+  };
 }
-
-export const fetchTodos = async (
-  winId: number,
-  query?: TodoQueryParams
-): Promise<Todos[]> => {
-  const data = await serverFetch<Todos[]>(
-    TodosEndPoints.getTodos(winId, query),
-    { suppressStatus: [401] }
-  );
-  return data ?? [];
-};
-
-export const fetchAllTodos = async (
-  query?: TodoQueryParams
-): Promise<Todos[]> => {
-  const data = await serverFetch<Todos[]>(TodosEndPoints.getAllTodos(query), {
-    suppressStatus: [401],
-  });
-  return data ?? [];
-};
