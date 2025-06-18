@@ -9,17 +9,27 @@ import { usePostTime } from "@/apis/services/timer-services/mutation";
 const Timer: React.FC = () => {
   const { data: todayTimeRes, isPending: isTodayTimePending } =
     useGetTodayTime();
-  const { mutate: postTime, isPending } = usePostTime();
+  const { mutate: postTime, isPending: isPostTimePending } = usePostTime();
 
   const [elapsed, setElapsed] = useState(0);
   const [goalInSeconds, setGoalInSeconds] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const saveRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startAtRef = useRef<Date | null>(null);
+  const baseTotalSecondsRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (!isTodayTimePending && todayTimeRes) {
+      const total = todayTimeRes.totalSeconds || 0;
+      baseTotalSecondsRef.current = total;
+      setElapsed(total);
+      setGoalInSeconds((todayTimeRes.dailyHourGoal || 0) * 3600);
+    }
+  }, [todayTimeRes, isTodayTimePending]);
 
   useEffect(() => {
     const handleBeforeUnload = () => {
-      if (startAtRef.current && !isPending) {
+      if (startAtRef.current) {
         const end = new Date();
         postTime({
           startAt: startAtRef.current.toISOString(),
@@ -33,35 +43,30 @@ const Timer: React.FC = () => {
       if (timerRef.current) clearInterval(timerRef.current);
       if (saveRef.current) clearInterval(saveRef.current);
     };
-  }, [postTime, isPending]);
-
-  useEffect(() => {
-    if (!isTodayTimePending && todayTimeRes) {
-      setElapsed(todayTimeRes?.totalSeconds || 0);
-      setGoalInSeconds((todayTimeRes?.dailyHourGoal || 0) * 3600);
-    }
-  }, [todayTimeRes, isTodayTimePending]);
+  }, [postTime]);
 
   const startTimer = useCallback(() => {
-    if (timerRef.current || isPending) return;
+    if (timerRef.current || isPostTimePending) return;
+    startAtRef.current = new Date();
 
-    const now = new Date();
-    startAtRef.current = now;
-
-    timerRef.current = setInterval(() => {
-      setElapsed((prev) => prev + 1);
-    }, 1000);
+    timerRef.current = setInterval(() => setElapsed((prev) => prev + 1), 1000);
 
     saveRef.current = setInterval(() => {
-      if (isPending || !startAtRef.current) return;
-      const end = new Date();
+      if (!startAtRef.current) return;
+      const now = new Date();
+      const deltaSec = Math.floor(
+        (now.getTime() - startAtRef.current.getTime()) / 1000
+      );
+      const corrected = baseTotalSecondsRef.current + deltaSec;
+      setElapsed(corrected);
       postTime({
         startAt: startAtRef.current.toISOString(),
-        endAt: end.toISOString(),
+        endAt: now.toISOString(),
       });
-      startAtRef.current = end;
+      baseTotalSecondsRef.current = corrected;
+      startAtRef.current = now;
     }, 60000);
-  }, [postTime, isPending]);
+  }, [postTime, isPostTimePending]);
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) {
@@ -72,39 +77,39 @@ const Timer: React.FC = () => {
       clearInterval(saveRef.current);
       saveRef.current = null;
     }
-    if (startAtRef.current && !isPending) {
+    if (startAtRef.current) {
       const end = new Date();
+      const deltaSec = Math.floor(
+        (end.getTime() - startAtRef.current.getTime()) / 1000
+      );
+      const corrected = baseTotalSecondsRef.current + deltaSec;
+      setElapsed(corrected);
       postTime({
         startAt: startAtRef.current.toISOString(),
         endAt: end.toISOString(),
       });
+      baseTotalSecondsRef.current = corrected;
     }
     startAtRef.current = null;
-  }, [postTime, isPending]);
+  }, [postTime]);
 
-  const percent =
-    typeof elapsed === "number" &&
-    typeof goalInSeconds === "number" &&
-    goalInSeconds > 0
-      ? (elapsed / goalInSeconds) * 100
-      : 0;
-
+  const percent = goalInSeconds > 0 ? (elapsed / goalInSeconds) * 100 : 0;
   const displayPercent = Math.min(percent, 100);
 
   return (
     <div className="flex flex-col items-center justify-center gap-4 text-dark h-full">
-      <span className="text-2xl font-mono">{formatSeconds(elapsed || 0)}</span>
+      <span className="text-2xl font-mono">{formatSeconds(elapsed)}</span>
       <div className="flex gap-2">
         <button
-          disabled={Boolean(timerRef.current) || isPending}
           onClick={startTimer}
+          disabled={Boolean(timerRef.current)}
           className="p-5 rounded-full text-[var(--text-selected)] bg-dark disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           <IoPlay />
         </button>
         <button
-          disabled={!Boolean(timerRef.current) || isPending}
           onClick={stopTimer}
+          disabled={!Boolean(timerRef.current)}
           className="p-5 rounded-full text-[var(--text-selected)] bg-dark disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           <IoPauseSharp />
@@ -114,7 +119,7 @@ const Timer: React.FC = () => {
         <span>Goal</span>
         <div className="w-full bg-gray-300 h-2 rounded-full overflow-hidden">
           <div
-            className="h-2 bg-dark transition-all duration-300 ease-linear "
+            className="h-2 bg-dark transition-all duration-300 ease-linear"
             style={{ width: `${displayPercent}%` }}
           />
         </div>
