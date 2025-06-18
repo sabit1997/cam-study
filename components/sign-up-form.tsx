@@ -28,6 +28,11 @@ const SignUpForm = () => {
       return;
     }
 
+    if (username.length > 4) {
+      setError("사용자 이름은 4자 이하여야 합니다.");
+      return;
+    }
+
     if (!validatePassword(password)) {
       setError(
         "비밀번호는 8자 이상이며 문자, 숫자, 특수문자를 모두 포함해야 합니다."
@@ -41,8 +46,16 @@ const SignUpForm = () => {
         onSuccess: () => {
           router.replace("/sign-in");
         },
-        onError: () => {
-          alert("회원가입 실패");
+        onError: (err) => {
+          if (err instanceof Error) {
+            if (err.message.includes("이미 존재하는 이메일입니다.")) {
+              setError("이미 존재하는 이메일입니다.");
+            } else {
+              setError("회원가입 중 오류가 발생했습니다. 다시 시도해주세요.");
+            }
+          } else {
+            setError("알 수 없는 회원가입 오류가 발생했습니다.");
+          }
         },
       }
     );
@@ -61,6 +74,7 @@ const SignUpForm = () => {
       <InputWithLabel
         id="username"
         placeholder="Enter your name"
+        maxLength={4}
         label="NAME"
         value={username}
         onChange={(e) => setUsername(e.target.value)}
@@ -74,13 +88,13 @@ const SignUpForm = () => {
         onChange={(e) => setPassword(e.target.value)}
       />
       <span className="text-gray-500 text-xs">
-        8자 이상, 숫자, 특수문자 모두 포함.
+        비밀번호: 8자 이상, 숫자, 특수문자 모두 포함.
       </span>
       <RectangleButton type="submit" disabled={isPending}>
-        {isPending ? "Signing up..." : "SIGN UP"}
+        {isPending ? "회원가입 중..." : "회원가입"}
       </RectangleButton>
       <RectangleButton onClick={() => router.push("/sign-in")}>
-        Go to Sign in Page
+        로그인 페이지로 이동
       </RectangleButton>
     </form>
   );
