@@ -13,7 +13,7 @@ const InputWithLabel = ({ label, id, ...props }: InputWithLabelProps) => {
       <input
         id={id}
         {...props}
-        className={`p-2 border-2 border-[#B4B4B8] focus:outline-0 focus:border-dark rounded-md autofill:bg-transparent autofill:text-transparent ${
+        className={`p-2 border-2 border-[#B4B4B8] focus:outline-0 focus:border-dark rounded-md autofill:bg-transparent autofill:text-transparent bg-primary ${
           props.className ?? ""
         }`}
       />

@@ -50,13 +50,13 @@ const SignInForm = () => {
         onChange={(e) => setPassword(e.target.value)}
       />
       <RectangleButton type="submit" disabled={isPending && !isError}>
-        {isPending ? "Signing in..." : "SIGN IN"}
+        {isPending ? "로그인 중 ..." : "로그인"}
       </RectangleButton>
       {error instanceof Error && (
         <p className="text-red-500 text-sm">{error.message}</p>
       )}
       <RectangleButton onClick={() => router.push("/sign-up")}>
-        Go to Sign up Page
+        회원가입 페이지로 이동
       </RectangleButton>
     </form>
   );

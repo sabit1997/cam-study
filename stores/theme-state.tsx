@@ -16,9 +16,9 @@ interface ThemeState {
 export const useThemeStore = create(
   persist(
     (set) => ({
-      primaryHex: "#a0c878",
-      darkHex: "#255f38",
-      textHex: "#000000",
+      primaryHex: "#eee9da",
+      darkHex: "#6096b4",
+      textHex: "#6096b4",
       selectedTextHex: "#ffffff",
 
       setPrimaryHex: (hex: string) => set({ primaryHex: hex }),
