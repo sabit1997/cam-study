@@ -4,6 +4,7 @@ import qs from "qs";
 export const AuthEndPoints = {
   signup: () => `/auth/signup`,
   login: () => `/auth/login`,
+  logout: () => `/auth/logout`,
 };
 
 export const WindowEndpoints = {

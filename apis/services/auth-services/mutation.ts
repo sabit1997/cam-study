@@ -20,3 +20,13 @@ export const useSignup = () => {
     },
   });
 };
+
+export const useLogout = () => {
+  return useMutation({
+    mutationFn: AuthService.logout,
+    meta: {
+      SUCCESS_MESSAGE: "로그아웃 완료",
+      ERROR_SOURCE: "[로그아웃 실패]",
+    },
+  });
+};

@@ -29,4 +29,10 @@ export default class AuthService {
       data,
     });
   };
+  public static readonly logout = (): Promise<string> => {
+    return request({
+      url: AuthEndPoints.logout(),
+      method: AxiosMethod.POST,
+    });
+  };
 }

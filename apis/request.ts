@@ -4,6 +4,14 @@ import axios, {
   AxiosResponse,
   InternalAxiosRequestConfig,
 } from "axios";
+import { QueryClient } from "@tanstack/react-query";
+import AuthService from "./services/auth-services/service";
+
+let globalQueryClient: QueryClient | null = null;
+
+export const setGlobalQueryClient = (queryClient: QueryClient) => {
+  globalQueryClient = queryClient;
+};
 
 interface QueueItem {
   resolve: (value: AxiosResponse) => void;
@@ -66,7 +74,21 @@ client.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError);
         isRefreshing = false;
-        window.location.href = "/sign-in";
+
+        try {
+          await AuthService.logout();
+          if (globalQueryClient) {
+            globalQueryClient.clear();
+          }
+
+          window.location.href = "/sign-in";
+        } catch (logoutError) {
+          console.error("로그아웃 중 오류 발생:", logoutError);
+          if (globalQueryClient) {
+            globalQueryClient.clear();
+          }
+          window.location.href = "/sign-in";
+        }
         return Promise.reject(refreshError);
       }
     }
