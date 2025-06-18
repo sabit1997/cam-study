@@ -40,9 +40,6 @@ export const RecordSection = () => {
               <th className="px-4 py-2 border-b border-gray-300 font-bold">
                 Time
               </th>
-              <th className="px-4 py-2 border-b border-gray-300 font-bold">
-                Today&apos;s Goal
-              </th>
             </tr>
           </thead>
           <tbody>
@@ -53,9 +50,6 @@ export const RecordSection = () => {
                 </td>
                 <td className="px-4 py-2 border-b border-gray-200">
                   {formatSeconds(item.totalSeconds)}
-                </td>
-                <td className="px-4 py-2 border-b border-gray-200">
-                  {item.dailyHourGoal.toFixed(1)} hrs
                 </td>
               </tr>
             ))}
