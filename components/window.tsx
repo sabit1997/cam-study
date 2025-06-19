@@ -19,6 +19,7 @@ import { useWindowStore } from "@/stores/window-state";
 import Todos from "./todos";
 import Timer from "./timer";
 import { useState } from "react";
+import TooltipWrapper from "./TooltipWrapper";
 
 interface AddWindowProps {
   window: Window;
@@ -110,24 +111,31 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
         className={`w-full h-full border-2 border-dark rounded-2xl bg-primary relative pt-[26px] overflow-hidden`}
       >
         <div className="drag-handle flex gap-2 w-full bg-dark px-3 py-2 cursor-move fixed rounded-t-2xl left-0 z-10 top-0">
-          <WindowControlButton
-            className="bg-[#FF6363]"
-            icon={IoMdClose}
-            onClick={handleClose}
-          />
-          <WindowControlButton
-            className="bg-[#FFD63A]"
-            icon={IoIosSettings}
-            onClick={onOpenOption}
-          />
-          {(type === "camera" || type === "window") && (
+          <TooltipWrapper content="닫기">
             <WindowControlButton
-              className="bg-[#F3D7CA]"
-              icon={TbBlur}
-              onClick={() => {
-                setIsBlur((prev) => !prev);
-              }}
+              className="bg-[#FF6363]"
+              icon={IoMdClose}
+              onClick={handleClose}
             />
+          </TooltipWrapper>
+          <TooltipWrapper content="옵션">
+            <WindowControlButton
+              className="bg-[#FFD63A]"
+              icon={IoIosSettings}
+              onClick={onOpenOption}
+            />
+          </TooltipWrapper>
+
+          {(type === "camera" || type === "window") && (
+            <TooltipWrapper content="흐리게">
+              <WindowControlButton
+                className="bg-[#F3D7CA]"
+                icon={TbBlur}
+                onClick={() => {
+                  setIsBlur((prev) => !prev);
+                }}
+              />
+            </TooltipWrapper>
           )}
         </div>
         <div

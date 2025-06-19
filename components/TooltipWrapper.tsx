@@ -16,10 +16,10 @@ const TooltipWrapper = ({ content, children }: TooltipWrapperProps) => {
             side="top"
             align="center"
             sideOffset={8}
-            className="z-50 rounded bg-black px-3 py-1.5 text-sm text-white shadow-lg"
+            className="z-50 rounded bg-dark px-3 py-1.5 text-sm text-[var(--text-selected)] shadow-lg"
           >
             {content}
-            <Tooltip.Arrow className="fill-black" />
+            <Tooltip.Arrow className="fill-dark" />
           </Tooltip.Content>
         </Tooltip.Portal>
       </Tooltip.Root>
