@@ -71,14 +71,14 @@ const Navigation = () => {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <IoPaperPlane className="text-4xl" />
+              <IoPaperPlane className="text-4xl text-dark" />
             </a>
           </TooltipWrapper>
         </li>
         <li>
           <TooltipWrapper content="가이드북 보기">
             <button>
-              <IoBook className="text-4xl" />
+              <IoBook className="text-4xl text-dark" />
             </button>
           </TooltipWrapper>
         </li>
