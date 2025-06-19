@@ -24,6 +24,7 @@ const SignInForm = () => {
           onSuccess: (data) => {
             loginUser(data);
             router.replace("/");
+            router.refresh();
           },
         }
       );
