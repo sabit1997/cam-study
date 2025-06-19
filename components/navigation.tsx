@@ -2,9 +2,12 @@
 
 import { usePathname } from "next/navigation";
 import { IoHomeSharp } from "react-icons/io5";
+import { IoPaperPlane } from "react-icons/io5";
+import { IoBook } from "react-icons/io5";
 import { GoPersonFill } from "react-icons/go";
 import Link from "next/link";
 import { useUserStore } from "@/stores/user-state";
+import TooltipWrapper from "./TooltipWrapper";
 
 const Navigation = () => {
   const pathname = usePathname();
@@ -58,6 +61,26 @@ const Navigation = () => {
               {username ? username : "MY PAGE"}
             </p>
           </Link>
+        </li>
+      </ul>
+      <ul className="flex gap-5 px-4 mb-auto pt-3">
+        <li>
+          <TooltipWrapper content="버그 리포트 보내기">
+            <a
+              href="https://forms.gle/tNZ9ApZpkQptFjMp6"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <IoPaperPlane className="text-4xl" />
+            </a>
+          </TooltipWrapper>
+        </li>
+        <li>
+          <TooltipWrapper content="가이드북 보기">
+            <button>
+              <IoBook className="text-4xl" />
+            </button>
+          </TooltipWrapper>
         </li>
       </ul>
     </div>
