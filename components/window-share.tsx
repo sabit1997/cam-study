@@ -1,51 +1,59 @@
 "use client";
 
 import { useRef, useState, useEffect } from "react";
+import {
+  getStreamById,
+  setStreamById,
+  clearStreamById,
+} from "@/utils/shareService";
 
 interface WindowShareProps {
   isBlur: boolean;
+  windowId: number;
 }
 
-const WindowShare = ({ isBlur }: WindowShareProps) => {
+export default function WindowShare({ isBlur, windowId }: WindowShareProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const [started, setStarted] = useState(false);
+  const [stream, setStream] = useState<MediaStream | null>(null);
+  const [started, setStarted] = useState<boolean>(false);
 
-  const handleStartSharing = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        audio: false,
-      });
-
-      streamRef.current = stream;
+  useEffect(() => {
+    const existing = getStreamById(windowId);
+    if (existing) {
+      setStream(existing);
       setStarted(true);
+    }
+  }, [windowId]);
 
-      const [track] = stream.getVideoTracks();
-      track.onended = () => stopSharing();
-    } catch (err) {
-      console.error("화면 공유 실패:", err);
+  useEffect(() => {
+    if (started && stream && videoRef.current) {
+      videoRef.current.srcObject = stream;
+      videoRef.current.play().catch(console.error);
+    }
+  }, [started, stream]);
+
+  const startSharing = async () => {
+    if (stream) {
+      setStarted(true);
+      return;
+    }
+    try {
+      const s = await navigator.mediaDevices.getDisplayMedia({ audio: false });
+      s.getVideoTracks()[0].onended = () => stopSharing();
+      setStreamById(windowId, s);
+      setStream(s);
+      setStarted(true);
+    } catch (e) {
+      console.error("화면 공유 실패:", e);
       alert("화면 공유를 취소했거나 사용할 수 없습니다.");
     }
   };
 
   const stopSharing = () => {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
+    clearStreamById(windowId);
+    setStream(null);
     setStarted(false);
   };
-
-  useEffect(() => {
-    if (started && streamRef.current && videoRef.current) {
-      videoRef.current.srcObject = streamRef.current;
-      videoRef.current
-        .play()
-        .catch((err) => console.error("video 재생 실패:", err));
-    }
-  }, [started]);
 
   return (
     <div className={`flex justify-center items-center w-full h-auto`}>
@@ -67,7 +75,7 @@ const WindowShare = ({ isBlur }: WindowShareProps) => {
         </>
       ) : (
         <button
-          onClick={handleStartSharing}
+          onClick={startSharing}
           className="absolute px-4 py-2 bg-dark text-[var(--text-selected)] rounded-md top-1/2 transform -translate-y-1/2"
         >
           START
@@ -75,6 +83,4 @@ const WindowShare = ({ isBlur }: WindowShareProps) => {
       )}
     </div>
   );
-};
-
-export default WindowShare;
+}

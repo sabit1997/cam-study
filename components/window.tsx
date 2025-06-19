@@ -144,7 +144,9 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
         >
           {type === "camera" && <CameraView isBlur={isBlur} />}
           {type === "youtube" && <YouTubePlayer window={window} />}
-          {type === "window" && <WindowShare isBlur={isBlur} />}
+          {type === "window" && (
+            <WindowShare isBlur={isBlur} windowId={window.id} />
+          )}
           {type === "todo" && <Todos window={window} />}
           {type === "timer" && <Timer />}
         </div>
