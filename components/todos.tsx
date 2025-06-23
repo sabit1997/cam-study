@@ -106,9 +106,10 @@ const Todos = ({ window }: { window: Window }) => {
                 disabled={isDeletePending}
                 type="button"
                 className="rounded-full bg-red-500 p-1 absolute right-2"
-                onClick={() =>
-                  handleDelete({ winId: window.id, todoId: todo.id })
-                }
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDelete({ winId: window.id, todoId: todo.id });
+                }}
               >
                 <FaRegTrashAlt className="text-white" />
               </button>
