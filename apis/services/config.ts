@@ -38,6 +38,7 @@ export const TodosEndPoints = {
 
 export const TimerEndPoints = {
   postTime: () => `/timer`,
+  resetTime: (date: string) => `/timer/day/${date}`,
   getMonthTime: (year: number, month: number) =>
     `/timer?year=${year}&month=${month}`,
   getTodayTime: () => `/timer/today`,

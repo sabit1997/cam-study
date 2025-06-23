@@ -4,12 +4,19 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import { IoPlay, IoPauseSharp } from "react-icons/io5";
 import { formatSeconds } from "@/utils/formatSeconds";
 import { useGetTodayTime } from "@/apis/services/timer-services/query";
-import { usePostTime } from "@/apis/services/timer-services/mutation";
+import {
+  usePostTime,
+  useResetTime,
+} from "@/apis/services/timer-services/mutation";
+import { LuTimerReset } from "react-icons/lu";
 
 const Timer: React.FC = () => {
   const { data: todayTimeRes, isPending: isTodayTimePending } =
     useGetTodayTime();
+  const todayDate = new Date().toISOString().split("T")[0];
   const { mutate: postTime, isPending: isPostTimePending } = usePostTime();
+  const { mutate: resetTime, isPending: isResetTimePending } =
+    useResetTime(todayDate);
 
   const [elapsed, setElapsed] = useState(0);
   const [goalInSeconds, setGoalInSeconds] = useState(0);
@@ -96,6 +103,11 @@ const Timer: React.FC = () => {
   const percent = goalInSeconds > 0 ? (elapsed / goalInSeconds) * 100 : 0;
   const displayPercent = Math.min(percent, 100);
 
+  const resetTimer = () => {
+    if (isResetTimePending) return;
+    resetTime();
+  };
+
   return (
     <div className="flex flex-col items-center justify-center gap-4 text-dark h-full">
       <span className="text-2xl font-mono">{formatSeconds(elapsed)}</span>
@@ -113,6 +125,15 @@ const Timer: React.FC = () => {
           className="p-5 rounded-full text-[var(--text-selected)] bg-dark disabled:bg-gray-400 disabled:cursor-not-allowed"
         >
           <IoPauseSharp />
+        </button>
+        <button
+          onClick={resetTimer}
+          disabled={
+            elapsed === 0 || isResetTimePending || Boolean(timerRef.current)
+          }
+          className="p-5 rounded-full text-[var(--text-selected)] bg-dark disabled:bg-gray-400 disabled:cursor-not-allowed"
+        >
+          <LuTimerReset />
         </button>
       </div>
       <div className="flex items-center gap-3 w-full px-3">

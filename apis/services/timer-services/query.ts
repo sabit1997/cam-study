@@ -16,7 +16,7 @@ export const useGetMonthTime = (year: number, month: number) => {
 
 export const useGetTodayTime = () => {
   return useQuery({
-    queryKey: TIMER_QUERY_KEY,
+    queryKey: [...TIMER_QUERY_KEY, "today"],
     queryFn: TimerService.fetchTodayTime,
     meta: {
       ERROR_SOURCE: "[오늘 타이머 기록 불러오기 실패]",

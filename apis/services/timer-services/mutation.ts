@@ -31,3 +31,20 @@ export const usePostTimeGoal = () => {
     },
   });
 };
+
+export const useResetTime = (date: string) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => TimerService.resetTime(date),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [...TIMER_QUERY_KEY, "today"],
+      });
+    },
+    meta: {
+      SUCCESS_MESSAGE: "타이머가 리셋 되었습니다.",
+      ERROR_SOURCE: "[타이머 리셋 실패]",
+    },
+  });
+};

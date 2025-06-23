@@ -62,4 +62,11 @@ export default class TimerService {
       method: AxiosMethod.GET,
     });
   };
+
+  public static readonly resetTime = (date: string): Promise<void> => {
+    return request({
+      url: TimerEndPoints.resetTime(date),
+      method: AxiosMethod.DELETE,
+    });
+  };
 }
