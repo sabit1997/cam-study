@@ -8,7 +8,7 @@ export type TypeList =
 
 export interface WindowPatchDto {
   type?: TypeList;
-  url?: string;
+  url?: string[];
   x?: number;
   y?: number;
   width?: number;
