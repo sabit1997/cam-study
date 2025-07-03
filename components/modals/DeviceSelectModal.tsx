@@ -1,41 +1,46 @@
 "use client";
 
 import { IoMdClose } from "react-icons/io";
-import { useState, useEffect } from "react";
 import useClickOutside from "@/hooks/useClickOutside";
 import useEscapeKey from "@/hooks/useEscapeKey";
 import WindowControlButton from "../circle-button";
 import RectangleButton from "../rectangle-button";
-import { Window } from "@/types/windows";
-import { usePatchWindow } from "@/apis/services/window-services/mutation";
-import { TypeList } from "@/types/dto";
+import { Dispatch, SetStateAction, useEffect, useState } from "react";
 
-interface OptionModalProps {
-  window: Window;
+interface DeviceSelectModalProps {
   onClose: () => void;
+  setSelectedDevice: Dispatch<SetStateAction<null | string>>;
 }
 
-const OptionModal = ({ window, onClose }: OptionModalProps) => {
-  const typeList: TypeList[] = ["youtube", "camera", "window", "todo", "timer"];
-  const [selectedType, setSelectedType] = useState<TypeList>("none");
-
-  const { mutate: updateWindow, isPending } = usePatchWindow();
-
-  useEffect(() => {
-    if (window) setSelectedType(window.type);
-  }, [window]);
+const DeviceSelectModal = ({ onClose }: DeviceSelectModalProps) => {
+  const [devices, setDevices] = useState<{ id: string; label: string }[]>([]);
+  const [currentId, setCurrentId] = useState<null | string>(null);
 
   const modalRef = useClickOutside<HTMLDivElement>(onClose);
   useEscapeKey(onClose);
 
+  useEffect(() => {
+    if (!navigator.mediaDevices?.enumerateDevices) {
+      return;
+    } else {
+      navigator.mediaDevices.enumerateDevices().then((devices) => {
+        const mappingDevices = devices
+          .filter((device) => device.kind === "videoinput")
+          .map((device) => ({
+            id: device.deviceId,
+            label: device.label,
+          }));
+        setDevices(mappingDevices);
+      });
+    }
+  }, []);
+
   const handleConfirm = () => {
-    if (isPending) return;
-    updateWindow({ id: window.id, data: { type: selectedType } });
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-999999">
+    <div className="fixed inset-0 bg-black/50 flex justify-center items-center z-9999999">
       <div
         ref={modalRef}
         className="min-w-80 border-2 border-dark rounded-2xl min-h-50 overflow-hidden bg-primary pb-4"
@@ -50,37 +55,33 @@ const OptionModal = ({ window, onClose }: OptionModalProps) => {
           <h2 className="text-[var(--text-selected)]">OPTION</h2>
         </div>
         <ul className="p-2">
-          {typeList.map((type) => (
+          {devices.map((device) => (
             <li
-              key={type}
-              onClick={() => setSelectedType(type)}
+              key={device.id}
+              onClick={() => setCurrentId(device.id)}
               className={`
   flex items-center px-3 py-2 mb-[6px] border rounded-md cursor-pointer
   ${
-    selectedType === type
+    currentId === device.id
       ? "bg-dark text-[var(--text-selected)]"
       : "text-[var(--text-primary)] border-[#ccc]"
   }
 `}
             >
               <span className="mr-2">
-                {selectedType === type ? "✅" : "⬜️"}
+                {currentId === device.id ? "✅" : "⬜️"}
               </span>
-              {type.toUpperCase()}
+              {device.label}
             </li>
           ))}
         </ul>
 
-        <RectangleButton
-          width="w-[60%]"
-          onClick={handleConfirm}
-          disabled={isPending}
-        >
-          {isPending ? "Applying..." : "Apply"}
+        <RectangleButton width="w-[60%]" onClick={handleConfirm}>
+          Apply
         </RectangleButton>
       </div>
     </div>
   );
 };
 
-export default OptionModal;
+export default DeviceSelectModal;
