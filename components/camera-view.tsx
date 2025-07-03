@@ -83,13 +83,13 @@ const CameraView = ({ isBlur }: CameraViewProps) => {
   };
 
   return (
-    <div>
+    <div className="w-full h-full">
       {!isStreaming && devices.length > 0 && (
-        <div>
-          <ul>
+        <div className="w-full h-full">
+          <ul className="px-3 py-4 w-full">
             {devices.map((device) => (
               <li key={device.id}>
-                <label htmlFor={device.id}>
+                <label htmlFor={device.id} className="flex items-center gap-2">
                   <input
                     type="radio"
                     id={device.id}
@@ -103,7 +103,11 @@ const CameraView = ({ isBlur }: CameraViewProps) => {
               </li>
             ))}
           </ul>
-          <button type="button" onClick={handleStreamStart}>
+          <button
+            className="block py-2 w-16 bg-dark text-[var(--text-selected)] rounded-md mx-auto"
+            type="button"
+            onClick={handleStreamStart}
+          >
             Start
           </button>
         </div>
