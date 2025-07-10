@@ -2,8 +2,9 @@
   "name": "cam-study",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "next dev --turbo -p 3001",
+    "dev": "node server.js",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
