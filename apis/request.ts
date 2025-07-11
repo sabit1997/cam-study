@@ -1,6 +1,7 @@
 import axios, {
   AxiosError,
   AxiosRequestConfig,
+  AxiosRequestHeaders,
   AxiosResponse,
   InternalAxiosRequestConfig,
 } from "axios";
@@ -25,6 +26,20 @@ export const client = axios.create({
   },
   withCredentials: true,
 });
+
+client.interceptors.request.use(
+  (config: InternalAxiosRequestConfig): InternalAxiosRequestConfig => {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+    const headers: AxiosRequestHeaders = config.headers ?? {};
+
+    headers["X-User-Timezone"] = tz;
+
+    config.headers = headers;
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
 
 let isRefreshing = false;
 let failedQueue: QueueItem[] = [];

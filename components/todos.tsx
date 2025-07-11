@@ -23,7 +23,8 @@ const Todos = ({ window }: { window: Window }) => {
   };
 
   const toggleDateFilter = () => {
-    const today = new Date().toISOString().split("T")[0];
+    const today = new Date().toLocaleDateString("en-CA");
+    console.log(today);
     setDate((prev) => (prev ? "" : today));
   };
 
@@ -36,6 +37,8 @@ const Todos = ({ window }: { window: Window }) => {
     ...(done !== undefined && { done }),
     order,
   });
+
+  console.log(todos);
 
   const { mutate: deleteTodo, isPending: isDeletePending } = useDeleteTodo();
   const { mutate: doneTodo, isPending: isDonePending } = useDoneTodo();

@@ -13,7 +13,7 @@ import { LuTimerReset } from "react-icons/lu";
 const Timer: React.FC = () => {
   const { data: todayTimeRes, isPending: isTodayTimePending } =
     useGetTodayTime();
-  const todayDate = new Date().toISOString().split("T")[0];
+  const todayDate = new Date().toLocaleDateString("en-CA");
   const { mutate: postTime, isPending: isPostTimePending } = usePostTime();
   const { mutate: resetTime, isPending: isResetTimePending } =
     useResetTime(todayDate);
