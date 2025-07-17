@@ -17,12 +17,10 @@ const CameraView = ({ isBlur }: CameraViewProps) => {
     if (videoRef.current) {
       videoRef.current.srcObject = null;
     }
-
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
-
     setIsStreaming(false);
   };
 
@@ -33,6 +31,7 @@ const CameraView = ({ isBlur }: CameraViewProps) => {
         video: true,
       });
       tempStream.getTracks().forEach((t) => t.stop());
+
       const allDevices = await navigator.mediaDevices.enumerateDevices();
       const videoDevices = allDevices
         .filter((device) => device.kind === "videoinput")
@@ -53,6 +52,16 @@ const CameraView = ({ isBlur }: CameraViewProps) => {
     };
   }, []);
 
+  useEffect(() => {
+    if (isStreaming && videoRef.current && streamRef.current) {
+      const videoEl = videoRef.current;
+      videoEl.srcObject = streamRef.current;
+      videoEl.onloadedmetadata = () => {
+        videoEl.play().catch(console.error);
+      };
+    }
+  }, [isStreaming]);
+
   const handleStreamStart = async () => {
     if (!deviceId) {
       alert("디바이스를 선택해주세요.");
@@ -62,17 +71,11 @@ const CameraView = ({ isBlur }: CameraViewProps) => {
     try {
       const constraints = {
         video: {
-          deviceId: {
-            exact: deviceId,
-          },
-          width: 1280,
-          height: 720,
+          deviceId: { exact: deviceId },
         },
       };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
-      if (videoRef.current) videoRef.current.srcObject = streamRef.current;
-      videoRef.current?.play();
       setIsStreaming(true);
     } catch (err) {
       alert("카메라 접근에 실패했습니다.");
@@ -81,7 +84,7 @@ const CameraView = ({ isBlur }: CameraViewProps) => {
   };
 
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full flex justify-center items-center">
       {!isStreaming && devices.length > 0 && (
         <div className="w-full h-full">
           <ul className="px-3 py-4 w-full">
@@ -116,13 +119,15 @@ const CameraView = ({ isBlur }: CameraViewProps) => {
       )}
 
       {isStreaming && (
-        <video
-          ref={videoRef}
-          autoPlay
-          muted
-          playsInline
-          className={`w-full h-auto bg-black ${isBlur ? "blur-sm" : ""}`}
-        />
+        <div className="bg-black w-full h-full flex justify-center items-center">
+          <video
+            ref={videoRef}
+            autoPlay
+            muted
+            playsInline
+            className={`w-full h-auto bg-black ${isBlur ? "blur-sm" : ""}`}
+          />
+        </div>
       )}
     </div>
   );
