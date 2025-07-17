@@ -13,21 +13,6 @@ const CameraView = ({ isBlur }: CameraViewProps) => {
   const [isStreaming, setIsStreaming] = useState(false);
   const [devices, setDevices] = useState<{ id: string; label: string }[]>([]);
 
-  const getCameraStream = async (id: string): Promise<MediaStream> => {
-    return await navigator.mediaDevices.getUserMedia({
-      video: { deviceId: { exact: id } },
-    });
-  };
-
-  const setupVideoStream = (stream: MediaStream) => {
-    if (!videoRef.current) return;
-
-    videoRef.current.srcObject = stream;
-    videoRef.current.onloadedmetadata = () => {
-      videoRef.current?.play();
-    };
-  };
-
   const cleanupVideoStream = () => {
     if (videoRef.current) {
       videoRef.current.srcObject = null;
@@ -44,7 +29,10 @@ const CameraView = ({ isBlur }: CameraViewProps) => {
   useEffect(() => {
     const loadDevices = async () => {
       if (!navigator.mediaDevices?.enumerateDevices) return;
-
+      const tempStream = await navigator.mediaDevices.getUserMedia({
+        video: true,
+      });
+      tempStream.getTracks().forEach((t) => t.stop());
       const allDevices = await navigator.mediaDevices.enumerateDevices();
       const videoDevices = allDevices
         .filter((device) => device.kind === "videoinput")
@@ -72,9 +60,19 @@ const CameraView = ({ isBlur }: CameraViewProps) => {
     }
 
     try {
-      const stream = await getCameraStream(deviceId);
+      const constraints = {
+        video: {
+          deviceId: {
+            exact: deviceId,
+          },
+          width: 1280,
+          height: 720,
+        },
+      };
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
-      setupVideoStream(stream);
+      if (videoRef.current) videoRef.current.srcObject = streamRef.current;
+      videoRef.current?.play();
       setIsStreaming(true);
     } catch (err) {
       alert("카메라 접근에 실패했습니다.");
