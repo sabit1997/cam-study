@@ -15,7 +15,7 @@ async function createWindow() {
     },
   });
 
-  const url = isDev ? "http://localhost:3000" : "http://localhost:3001";
+  const url = isDev ? "http://localhost:3000" : "https://cam-study.vercel.app/";
 
   await win.loadURL(url);
 }
