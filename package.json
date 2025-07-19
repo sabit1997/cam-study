@@ -2,7 +2,6 @@
   "name": "cam-study",
   "version": "0.1.0",
   "private": true,
-  "type": "module",
   "description": "외요의 캠스터디 데스크탑 앱",
   "author": "JUNG YEJI <yejiii1997@gmail.com>",
   "main": "dist-electron/main.js",
