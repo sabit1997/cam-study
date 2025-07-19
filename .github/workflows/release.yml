@@ -1,0 +1,170 @@
+name: 🚀 Desktop App Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+      NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ vars.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
+      VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v3
+
+      - name: Node.js 설정
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: 의존성 설치
+        run: npm ci
+
+      - name: TypeScript 컴파일
+        run: npm run build:ts
+
+      - name: Next.js 빌드
+        run: npm run build:web
+
+      - name: Electron 빌드 (Linux)
+        run: npx electron-builder --linux --publish never
+
+      - name: dist 디렉터리 확인 (Linux)
+        run: ls -la dist/
+
+      - name: Linux 아티팩트 업로드
+        uses: actions/upload-artifact@v4
+        with:
+          name: installers-linux
+          path: |
+            dist/*.AppImage
+            dist/*.deb
+
+  build-mac:
+    runs-on: macos-latest
+    env:
+      NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+      NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ vars.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
+      VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v3
+
+      - name: Node.js 설정
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: 의존성 설치
+        run: npm ci
+
+      - name: TypeScript 컴파일
+        run: npm run build:ts
+
+      - name: Next.js 빌드
+        run: npm run build:web
+
+      - name: Electron 빌드 (macOS)
+        run: npx electron-builder --mac --publish never
+
+      - name: dist 디렉터리 확인 (macOS)
+        run: ls -la dist/
+
+      - name: macOS 아티팩트 업로드
+        uses: actions/upload-artifact@v4
+        with:
+          name: installers-mac
+          path: |
+            dist/*.dmg
+            dist/*.zip
+
+  build-windows:
+    runs-on: windows-latest
+    env:
+      NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+      NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ vars.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
+      VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v3
+
+      - name: Node.js 설정
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: 의존성 설치
+        run: npm ci
+
+      - name: TypeScript 컴파일
+        run: npm run build:ts
+
+      - name: Next.js 빌드
+        run: npm run build:web
+
+      - name: Electron 빌드 (Windows)
+        run: npx electron-builder --win --publish never
+
+      - name: dist 디렉터리 확인 (Windows)
+        run: dir dist\
+
+      - name: Windows 아티팩트 업로드
+        uses: actions/upload-artifact@v4
+        with:
+          name: installers-windows
+          path: |
+            dist/*.exe
+            dist/*.zip
+
+  release:
+    needs: [build-linux, build-mac, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v3
+
+      - name: Linux 설치 프로그램 다운로드
+        uses: actions/download-artifact@v4
+        with:
+          name: installers-linux
+          path: dist
+
+      - name: macOS 설치 프로그램 다운로드
+        uses: actions/download-artifact@v4
+        with:
+          name: installers-mac
+          path: dist
+
+      - name: Windows 설치 프로그램 다운로드
+        uses: actions/download-artifact@v4
+        with:
+          name: installers-windows
+          path: dist
+
+      - name: dist 디렉터리 확인 (최종)
+        run: |
+          echo "dist/ 파일 목록:"
+          ls -la dist/
+
+      - name: GitHub 릴리즈 생성 및 아티팩트 첨부
+        uses: softprops/action-gh-release@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          files: |
+            dist/*.AppImage
+            dist/*.deb
+            dist/*.dmg
+            dist/*.zip
+            dist/*.exe

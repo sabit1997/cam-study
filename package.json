@@ -3,11 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "description": "외요의 캠스터디 데스크탑 앱",
+  "author": "JUNG YEJI <yejiii1997@gmail.com>",
+  "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "node server.js",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "dev:https": "node server.js",
+    "dev:web": "next dev",
+    "build:ts": "tsc -p tsconfig.electron.json",
+    "dev:electron": "wait-on http://localhost:3000 && electron .",
+    "dev": "concurrently -k \"npm run dev:web\" \"npm run dev:electron\"",
+    "build:web": "next build",
+    "start:next": "next start -p 3001",
+    "build:app": "npm run build:ts && npm run build:web && electron-builder"
   },
   "dependencies": {
     "@radix-ui/react-tooltip": "^1.2.7",
@@ -28,18 +35,64 @@
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4.1.4",
     "@tanstack/react-query-devtools": "^5.74.4",
-    "@types/axios": "^0.14.4",
-    "@types/crypto-js": "^4.2.2",
-    "@types/node": "^20",
-    "@types/qs": "^6.9.18",
+    "@types/node": "^20.19.8",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/qs": "^6.9.18",
     "@types/youtube": "^0.1.2",
     "autoprefixer": "^10.4.21",
+    "concurrently": "^9.2.0",
+    "electron": "^37.2.3",
+    "electron-builder": "^26.0.12",
     "eslint": "^9",
     "eslint-config-next": "15.3.0",
     "postcss": "^8.5.3",
     "tailwindcss": "^4.1.4",
-    "typescript": "^5"
+    "typescript": "^5.8.3",
+    "wait-on": "^8.0.3"
+  },
+  "build": {
+    "appId": "com.oeyocam.desktop",
+    "productName": "외요의 캠스터디",
+    "asar": true,
+    "files": [
+      "package.json",
+      "dist-electron/**/*",
+      ".next/**/*",
+      "public/**/*",
+      "node_modules/**/*"
+    ],
+    "directories": {
+      "buildResources": "buildResources"
+    },
+    "mac": {
+      "icon": "buildResources/icon.icns",
+      "target": [
+        "dmg",
+        "zip"
+      ]
+    },
+    "win": {
+      "icon": "buildResources/icon.ico",
+      "target": [
+        "nsis",
+        "zip"
+      ]
+    },
+    "linux": {
+      "icon": "buildResources/icon.png",
+      "target": [
+        "AppImage",
+        "deb"
+      ]
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "sabit1997",
+        "repo": "cam-study",
+        "releaseType": "release"
+      }
+    ]
   }
 }
