@@ -22,7 +22,6 @@ async function createWindow() {
 
 app.whenReady().then(() => {
   if (!isDev) {
-    // 프로덕션 모드: Next.js 프로덕션 서버 띄우기
     const next = spawn("npm", ["run", "start:next"], {
       shell: true,
       detached: true,
