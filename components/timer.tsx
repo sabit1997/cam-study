@@ -24,6 +24,7 @@ const Timer: React.FC = () => {
   const saveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const startAtRef = useRef<Date | null>(null);
   const baseTotalSecondsRef = useRef<number>(0);
+  const isRunningRef = useRef(false);
 
   useEffect(() => {
     if (!isTodayTimePending && todayTimeRes) {
@@ -53,7 +54,16 @@ const Timer: React.FC = () => {
   }, [postTime]);
 
   const startTimer = useCallback(() => {
-    if (timerRef.current || saveRef.current || isPostTimePending) return;
+    if (
+      timerRef.current ||
+      saveRef.current ||
+      isPostTimePending ||
+      isRunningRef.current
+    )
+      return;
+
+    isRunningRef.current = true; // ⬅️ 중복 방지
+
     startAtRef.current = new Date();
 
     const tick = () => {
@@ -78,6 +88,7 @@ const Timer: React.FC = () => {
           startAt: startAtRef.current.toISOString(),
           endAt: now.toISOString(),
         });
+
         baseTotalSecondsRef.current = corrected;
         startAtRef.current = now;
 
@@ -109,7 +120,9 @@ const Timer: React.FC = () => {
       });
       baseTotalSecondsRef.current = corrected;
     }
+
     startAtRef.current = null;
+    isRunningRef.current = false; // ⬅️ 반드시 멈춰줘야 함
   }, [postTime]);
 
   const percent = goalInSeconds > 0 ? (elapsed / goalInSeconds) * 100 : 0;
