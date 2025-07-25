@@ -20,6 +20,7 @@ import Todos from "./todos";
 import Timer from "./timer";
 import { useState } from "react";
 import TooltipWrapper from "./TooltipWrapper";
+import useScreenSizeRef from "@/hooks/useScreenSizeRef";
 
 interface AddWindowProps {
   window: Window;
@@ -28,11 +29,13 @@ interface AddWindowProps {
 
 const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
   const [isBlur, setIsBlur] = useState(false);
+
   const { mutate: updateWindow, isPending: isUpdatePending } = usePatchWindow();
   const { mutate: deleteWindow, isPending: isDeletePending } =
     useDeleteWindow();
 
   const { bringToFront, updateWindowBounds, windows } = useWindowStore();
+  const { screenHeightRef, screenWidthRef } = useScreenSizeRef();
 
   const { id, type, zIndex, x, y, width, height } = window;
   const currentWindow = windows.find((w) => w.id === window.id);
@@ -77,8 +80,8 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
       size={{ width, height }}
       minWidth={240}
       minHeight={135}
-      maxHeight={390}
-      maxWidth={645}
+      maxHeight={screenHeightRef.current || undefined}
+      maxWidth={screenWidthRef.current || undefined}
       bounds="window"
       style={{
         zIndex: zIndex,

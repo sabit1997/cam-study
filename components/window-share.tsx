@@ -12,15 +12,24 @@ interface WindowShareProps {
   windowId: number;
 }
 
+type DesktopCaptureSource = {
+  id: string;
+  name: string;
+  thumbnail: { toDataURL(): string };
+};
+
 export default function WindowShare({ isBlur, windowId }: WindowShareProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
-  const [started, setStarted] = useState<boolean>(false);
+  const [started, setStarted] = useState(false);
+
+  const [sources, setSources] = useState<DesktopCaptureSource[]>([]);
+  const [selecting, setSelecting] = useState(false);
 
   useEffect(() => {
-    const existing = getStreamById(windowId);
-    if (existing) {
-      setStream(existing);
+    const ex = getStreamById(windowId);
+    if (ex) {
+      setStream(ex);
       setStarted(true);
     }
   }, [windowId]);
@@ -37,15 +46,53 @@ export default function WindowShare({ isBlur, windowId }: WindowShareProps) {
       setStarted(true);
       return;
     }
+
+    console.log(typeof window.electronAPI);
+
+    if (typeof window.electronAPI !== "undefined") {
+      try {
+        const list = await window.electronAPI.getSources({
+          types: ["window", "screen"],
+        });
+        setSources(list);
+        setSelecting(true);
+      } catch {
+        alert("소스 목록을 불러오지 못했습니다.");
+      }
+      return;
+    }
+
     try {
       const s = await navigator.mediaDevices.getDisplayMedia({ audio: false });
-      s.getVideoTracks()[0].onended = () => stopSharing();
+      s.getVideoTracks()[0].onended = stopSharing;
       setStreamById(windowId, s);
       setStream(s);
       setStarted(true);
-    } catch (e) {
-      console.error("화면 공유 실패:", e);
+    } catch {
       alert("화면 공유를 취소했거나 사용할 수 없습니다.");
+    }
+  };
+
+  const selectSource = async (sourceId: string) => {
+    setSelecting(false);
+    try {
+      const s = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          mandatory: {
+            chromeMediaSource: "desktop",
+            chromeMediaSourceId: sourceId,
+            maxWidth: window.screen.width,
+            maxHeight: window.screen.height,
+          },
+        },
+      });
+      s.getVideoTracks()[0].onended = stopSharing;
+      setStreamById(windowId, s);
+      setStream(s);
+      setStarted(true);
+    } catch {
+      alert("공유 시작에 실패했습니다.");
     }
   };
 
@@ -56,7 +103,7 @@ export default function WindowShare({ isBlur, windowId }: WindowShareProps) {
   };
 
   return (
-    <div className={`flex justify-center items-center w-full h-auto`}>
+    <div className="relative flex justify-center items-center w-full h-auto">
       {started ? (
         <>
           <video
@@ -80,6 +127,36 @@ export default function WindowShare({ isBlur, windowId }: WindowShareProps) {
         >
           START
         </button>
+      )}
+
+      {selecting && (
+        <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+          <div className="bg-white p-6 rounded-lg w-80 max-h-[70vh] overflow-auto">
+            <h2 className="mb-4 text-lg font-semibold">화면/창 선택</h2>
+            <ul>
+              {sources.map((src) => (
+                <li
+                  key={src.id}
+                  onClick={() => selectSource(src.id)}
+                  className="flex items-center mb-2 cursor-pointer hover:bg-gray-100 p-2 rounded"
+                >
+                  <img
+                    src={src.thumbnail.toDataURL()}
+                    alt={src.name}
+                    className="w-12 h-8 mr-3 object-cover"
+                  />
+                  <span>{src.name}</span>
+                </li>
+              ))}
+            </ul>
+            <button
+              onClick={() => setSelecting(false)}
+              className="mt-4 px-3 py-1 bg-gray-300 rounded"
+            >
+              취소
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

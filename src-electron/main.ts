@@ -1,4 +1,5 @@
-import { app, BrowserWindow } from "electron";
+// main.ts
+import { app, BrowserWindow, desktopCapturer, session } from "electron";
 import path from "path";
 import { spawn } from "child_process";
 
@@ -15,14 +16,30 @@ async function createWindow() {
     },
   });
 
-  const url = isDev ? "http://localhost:3000" : "https://cam-study.vercel.app/";
+  const url = isDev
+    ? "https://localhost:3000"
+    : "https://cam-study.vercel.app/";
 
   await win.loadURL(url);
 }
 
 app.whenReady().then(() => {
+  session.defaultSession.setDisplayMediaRequestHandler(
+    (request, callback) => {
+      desktopCapturer
+        .getSources({ types: ["screen", "window"] })
+        .then((sources) => {
+          callback({ video: sources[0] });
+        })
+        .catch((err) => {
+          console.error("desktopCapturer.getSources 에러:", err);
+          callback({});
+        });
+    },
+    { useSystemPicker: true }
+  );
+
   if (!isDev) {
-    // 프로덕션 모드: Next.js 프로덕션 서버 띄우기
     const next = spawn("npm", ["run", "start:next"], {
       shell: true,
       detached: true,
@@ -30,6 +47,7 @@ app.whenReady().then(() => {
     });
     next.unref();
   }
+
   createWindow();
 });
 

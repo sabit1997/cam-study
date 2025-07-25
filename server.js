@@ -1,7 +1,9 @@
-import https from "https";
-import fs from "fs";
-import path from "path";
-import next from "next";
+/* eslint-disable @typescript-eslint/no-require-imports */
+
+const https = require("https");
+const fs = require("fs");
+const path = require("path");
+const next = require("next");
 
 const dev = process.env.NODE_ENV !== "production";
 const app = next({ dev });
