@@ -103,7 +103,7 @@ export default function WindowShare({ isBlur, windowId }: WindowShareProps) {
   };
 
   return (
-    <div className="relative flex justify-center items-center w-full h-auto">
+    <div className="relative flex justify-center items-center w-full h-full">
       {started ? (
         <>
           <video
