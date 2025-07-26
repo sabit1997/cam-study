@@ -24,8 +24,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${dunggeunmo.variable}`}>
-      <body className={dunggeunmo.className}>
+    <html lang="en" className={`${dunggeunmo.variable} h-screen`}>
+      <body className={`${dunggeunmo.className} h-full`}>
         <GlobalInitializer />
         <Providers>
           <NoticeModal />

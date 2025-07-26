@@ -27,6 +27,7 @@ interface AddWindowProps {
   onOpenOption: () => void;
 }
 
+const RATIO = 0.9;
 const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
   const [isBlur, setIsBlur] = useState(false);
 
@@ -80,8 +81,13 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
       size={{ width, height }}
       minWidth={240}
       minHeight={135}
-      maxHeight={screenHeightRef.current || undefined}
-      maxWidth={screenWidthRef.current || undefined}
+      maxHeight={
+        (screenHeightRef.current && screenHeightRef.current * RATIO) ||
+        undefined
+      }
+      maxWidth={
+        (screenWidthRef.current && screenWidthRef.current * RATIO) || undefined
+      }
       bounds="window"
       style={{
         zIndex: zIndex,
