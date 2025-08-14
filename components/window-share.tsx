@@ -6,6 +6,7 @@ import {
   setStreamById,
   clearStreamById,
 } from "@/utils/shareService";
+import Image from "next/image";
 
 interface WindowShareProps {
   isBlur: boolean;
@@ -103,7 +104,7 @@ export default function WindowShare({ isBlur, windowId }: WindowShareProps) {
   };
 
   return (
-    <div className="relative flex justify-center items-center w-full h-full">
+    <div className="relative flex justify-center items-center w-full h-full group">
       {started ? (
         <>
           <video
@@ -115,7 +116,7 @@ export default function WindowShare({ isBlur, windowId }: WindowShareProps) {
           />
           <button
             onClick={stopSharing}
-            className="absolute bottom-4 px-4 py-2 bg-red-500 text-[var(--text-selected)] rounded-md"
+            className="absolute bottom-4 px-4 py-2 bg-red-500 text-[var(--text-selected)] rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto"
           >
             STOP
           </button>
@@ -140,7 +141,7 @@ export default function WindowShare({ isBlur, windowId }: WindowShareProps) {
                   onClick={() => selectSource(src.id)}
                   className="flex items-center mb-2 cursor-pointer hover:bg-gray-100 p-2 rounded"
                 >
-                  <img
+                  <Image
                     src={src.thumbnail.toDataURL()}
                     alt={src.name}
                     className="w-12 h-8 mr-3 object-cover"
