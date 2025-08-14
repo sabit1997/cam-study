@@ -111,7 +111,9 @@ export default function WindowShare({ isBlur, windowId }: WindowShareProps) {
             ref={videoRef}
             muted
             playsInline
-            className={`bg-black w-full h-auto ${isBlur ? "blur-[2px]" : ""}`}
+            className={`group bg-black w-full h-auto ${
+              isBlur ? "blur-[2px]" : ""
+            }`}
             controls
           />
           <button

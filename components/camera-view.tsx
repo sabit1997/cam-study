@@ -83,6 +83,10 @@ const CameraView = ({ isBlur }: CameraViewProps) => {
     }
   };
 
+  const stopStream = () => {
+    cleanupVideoStream();
+  };
+
   return (
     <div className="w-full h-full flex justify-center items-center">
       {!isStreaming && devices.length > 0 && (
@@ -119,7 +123,7 @@ const CameraView = ({ isBlur }: CameraViewProps) => {
       )}
 
       {isStreaming && (
-        <div className="bg-black w-full h-full flex justify-center items-center">
+        <div className="relative bg-black w-full h-full flex justify-center items-center group">
           <video
             ref={videoRef}
             autoPlay
@@ -127,6 +131,12 @@ const CameraView = ({ isBlur }: CameraViewProps) => {
             playsInline
             className={`w-full h-auto bg-black ${isBlur ? "blur-sm" : ""}`}
           />
+          <button
+            onClick={stopStream}
+            className="absolute bottom-4 px-4 py-2 bg-red-500 text-[var(--text-selected)] rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto"
+          >
+            STOP
+          </button>
         </div>
       )}
     </div>
