@@ -7,6 +7,7 @@ import axios, {
 } from "axios";
 import { QueryClient } from "@tanstack/react-query";
 import AuthService from "./services/auth-services/service";
+import { useUserStore } from "@/stores/user-state";
 
 let globalQueryClient: QueryClient | null = null;
 
@@ -95,7 +96,8 @@ client.interceptors.response.use(
           if (globalQueryClient) {
             globalQueryClient.clear();
           }
-
+          const { logout } = useUserStore();
+          logout();
           window.location.href = "/sign-in";
         } catch (logoutError) {
           console.error("로그아웃 중 오류 발생:", logoutError);
