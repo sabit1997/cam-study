@@ -18,7 +18,7 @@ import { useDebouncedCallback } from "use-debounce";
 import { useWindowStore } from "@/stores/window-state";
 import Todos from "./todos";
 import Timer from "./timer";
-import { useState } from "react";
+import React, { useState } from "react";
 import TooltipWrapper from "./TooltipWrapper";
 import useScreenSizeRef from "@/hooks/useScreenSizeRef";
 
@@ -164,4 +164,4 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
   );
 };
 
-export default AddWindow;
+export default React.memo(AddWindow);

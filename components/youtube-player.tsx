@@ -5,7 +5,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { Window } from "@/types/windows";
 import { usePatchWindow } from "@/apis/services/window-services/mutation";
 import { RiResetLeftLine } from "react-icons/ri";
-import { MdDeleteForever } from "react-icons/md";
+import { MdDeleteForever, MdErrorOutline } from "react-icons/md";
 import { extractYouTubeId } from "@/utils/extractYouTubeId";
 import { IoMdAddCircleOutline } from "react-icons/io";
 
@@ -13,24 +13,38 @@ interface YouTubePlayerProps {
   window: Window;
 }
 
+interface InputState {
+  value: string;
+  isEmbeddable: boolean | null;
+  isLoading: boolean;
+}
+
 const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
   const { mutate: updateWindow, isPending } = usePatchWindow();
-  const [inputs, setInputs] = useState<string[]>([""]);
+  const [inputs, setInputs] = useState<InputState[]>([
+    { value: "", isEmbeddable: null, isLoading: false },
+  ]);
   const [playlist, setPlaylist] = useState<string[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const playerRef = useRef<YT.Player | null>(null);
 
   useEffect(() => {
-    if (Array.isArray(window.url) && window.url.length) {
+    if (Array.isArray(window.url) && window.url.length > 0) {
       const ids = window.url
         .map((fullUrl) => extractYouTubeId(fullUrl))
         .filter((id): id is string => !!id);
-      if (ids.length) {
+      if (ids.length > 0) {
         const fullUrls = ids.map(
           (id) => `https://www.youtube.com/watch?v=${id}`
         );
-        setInputs(fullUrls);
+        setInputs(
+          fullUrls.map((url) => ({
+            value: url,
+            isEmbeddable: true,
+            isLoading: false,
+          }))
+        );
         setPlaylist(ids);
         setCurrentIndex(0);
         setIsSubmitted(true);
@@ -39,11 +53,71 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
   }, [window.url]);
 
   const handleInputChange = useCallback((index: number, value: string) => {
-    setInputs((prev) => prev.map((v, i) => (i === index ? value : v)));
+    setInputs((prev) =>
+      prev.map((input, i) =>
+        i === index ? { ...input, value, isEmbeddable: null } : input
+      )
+    );
   }, []);
 
+  const checkEmbeddable = useCallback(
+    async (index: number) => {
+      const url = inputs[index].value.trim();
+      if (inputs[index].isEmbeddable !== null || !url) return;
+
+      const videoId = extractYouTubeId(url);
+
+      if (!videoId) {
+        if (url) {
+          setInputs((prev) =>
+            prev.map((input, i) =>
+              i === index ? { ...input, isEmbeddable: false } : input
+            )
+          );
+        }
+        return;
+      }
+
+      setInputs((prev) =>
+        prev.map((input, i) =>
+          i === index ? { ...input, isLoading: true } : input
+        )
+      );
+
+      try {
+        const response = await fetch("/api/check-youtube", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ videoId }),
+        });
+        if (!response.ok) throw new Error("API call failed");
+        const data = await response.json();
+        setInputs((prev) =>
+          prev.map((input, i) =>
+            i === index
+              ? { ...input, isEmbeddable: data.isEmbeddable, isLoading: false }
+              : input
+          )
+        );
+      } catch (error) {
+        console.error("Failed to check embed status:", error);
+        setInputs((prev) =>
+          prev.map((input, i) =>
+            i === index
+              ? { ...input, isEmbeddable: false, isLoading: false }
+              : input
+          )
+        );
+      }
+    },
+    [inputs]
+  );
+
   const handleAddInput = useCallback(() => {
-    setInputs((prev) => [...prev, ""]);
+    setInputs((prev) => [
+      ...prev,
+      { value: "", isEmbeddable: null, isLoading: false },
+    ]);
   }, []);
 
   const handleRemoveInput = useCallback((index: number) => {
@@ -54,25 +128,59 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
 
   const handleSubmit = useCallback(() => {
     if (isPending) return;
-    const ids = inputs
-      .map((url) => extractYouTubeId(url.trim()))
-      .filter((id): id is string => !!id);
-    if (!ids.length) {
-      alert("유효한 링크를 하나 이상 입력해주세요.");
-      return;
-    }
-    const fullUrls = ids.map((id) => `https://www.youtube.com/watch?v=${id}`);
-    updateWindow({ id: window.id, data: { url: fullUrls } });
-    setInputs(fullUrls);
-    setPlaylist(ids);
-    setCurrentIndex(0);
-    setIsSubmitted(true);
-  }, [inputs, isPending, updateWindow, window.id]);
 
-  const handleReset = useCallback(() => {
+    const checks = inputs.map((input, index) => {
+      if (input.isEmbeddable === null && input.value.trim()) {
+        return checkEmbeddable(index);
+      }
+      return Promise.resolve();
+    });
+
+    Promise.all(checks).then(() => {
+      setInputs((currentInputs) => {
+        const validLinks = currentInputs.filter(
+          (input) => input.isEmbeddable === true
+        );
+
+        if (validLinks.length === 0) {
+          alert("재생 가능한 유효한 링크를 하나 이상 입력해주세요.");
+          return currentInputs;
+        }
+
+        const ids = validLinks
+          .map((input) => extractYouTubeId(input.value.trim()))
+          .filter((id): id is string => !!id);
+
+        const fullUrls = ids.map(
+          (id) => `https://www.youtube.com/watch?v=${id}`
+        );
+
+        updateWindow({ id: window.id, data: { url: fullUrls } });
+        setPlaylist(ids);
+        setCurrentIndex(0);
+        setIsSubmitted(true);
+
+        return validLinks;
+      });
+    });
+  }, [isPending, inputs, checkEmbeddable, updateWindow, window.id]);
+
+  const handleReset = () => {
     setIsSubmitted(false);
     setCurrentIndex(0);
-  }, []);
+
+    if (Array.isArray(window.url) && window.url.length > 0) {
+      setInputs(
+        window.url.map((url) => ({
+          value: url,
+          isEmbeddable: true,
+          isLoading: false,
+        }))
+      );
+    } else {
+      setInputs([{ value: "", isEmbeddable: null, isLoading: false }]);
+    }
+  };
 
   const onPlayerReady: YouTubeProps["onReady"] = (event) => {
     playerRef.current = event.target;
@@ -93,28 +201,38 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
       <div className="flex flex-col items-center gap-3 p-3 h-full">
         <p>유튜브 링크를 입력해주세요:</p>
         <div className="w-full overflow-y-auto">
-          {inputs.map((value, idx) => (
+          {inputs.map((input, idx) => (
             <div
               key={idx}
               className="w-full flex items-center gap-2 mb-2 p-2 border rounded"
             >
               <input
                 type="text"
-                value={value}
+                value={input.value}
                 onChange={(e) => handleInputChange(idx, e.target.value)}
+                onBlur={() => checkEmbeddable(idx)}
                 placeholder="https://youtu.be/... 또는 https://www.youtube.com/watch?v=..."
-                className="flex-1 border-none outline-none"
+                className="flex-1 border-none outline-none bg-transparent"
               />
+              {input.isLoading && (
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-gray-900"></div>
+              )}
+              {input.isEmbeddable === false && (
+                <div title="유효하지 않거나 임베드가 금지된 영상입니다.">
+                  <MdErrorOutline size={20} className="text-red-500" />
+                </div>
+              )}
               <button
                 onClick={() => handleRemoveInput(idx)}
                 aria-label="delete"
+                className="flex-shrink-0"
               >
                 <MdDeleteForever size={20} />
               </button>
             </div>
           ))}
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 mt-auto">
           <button
             onClick={handleAddInput}
             className="px-3 py-1 border rounded"
@@ -137,8 +255,8 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
   if (!videoId) {
     return (
       <div className="flex flex-col items-center justify-center h-full gap-2">
-        <p>유튜브 링크 오류</p>
-        <button onClick={handleReset}>
+        <p>재생할 영상이 없습니다.</p>
+        <button onClick={handleReset} aria-label="Reset playlist">
           <RiResetLeftLine size={20} />
         </button>
       </div>
@@ -149,7 +267,11 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
     <div className="relative w-full h-full">
       <YouTube
         videoId={videoId}
-        opts={{ width: "100%", height: "100%", playerVars: { autoplay: 1 } }}
+        opts={{
+          width: "100%",
+          height: "100%",
+          playerVars: { autoplay: 1 },
+        }}
         onReady={onPlayerReady}
         onEnd={onPlayerEnd}
         className="w-full h-full"
@@ -157,9 +279,10 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
       />
       <button
         onClick={handleReset}
-        className="absolute top-1 left-1 p-1 bg-red-500 rounded-full"
+        className="absolute top-1 left-1 p-1 bg-red-500 bg-opacity-50 text-white rounded-full hover:bg-opacity-75 transition-opacity"
+        aria-label="Reset playlist"
       >
-        <RiResetLeftLine className="text-white" size={16} />
+        <RiResetLeftLine size={16} />
       </button>
     </div>
   );

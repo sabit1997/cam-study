@@ -50,9 +50,9 @@ export const usePatchWindow = () => {
       );
     },
 
-    onSettled: (newWindow) => {
+    onSettled: () => {
       queryClient.invalidateQueries({
-        queryKey: [...WINDOW_QUERY_KEY, newWindow?.id],
+        queryKey: [...WINDOW_QUERY_KEY],
       });
     },
     meta: {
