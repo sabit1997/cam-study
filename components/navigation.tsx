@@ -75,13 +75,14 @@ const Navigation = () => {
             </a>
           </TooltipWrapper>
         </li>
-        <li>
+        {/* TODO: 가이드 모달 생성 후 주석 제거 */}
+        {/* <li>
           <TooltipWrapper content="가이드북 보기">
             <button>
               <IoBook className="text-4xl text-dark" />
             </button>
           </TooltipWrapper>
-        </li>
+        </li> */}
       </ul>
     </div>
   );
