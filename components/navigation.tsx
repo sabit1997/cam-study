@@ -3,7 +3,7 @@
 import { usePathname } from "next/navigation";
 import { IoHomeSharp } from "react-icons/io5";
 import { IoPaperPlane } from "react-icons/io5";
-import { IoBook } from "react-icons/io5";
+// import { IoBook } from "react-icons/io5";
 import { GoPersonFill } from "react-icons/go";
 import Link from "next/link";
 import { useUserStore } from "@/stores/user-state";
