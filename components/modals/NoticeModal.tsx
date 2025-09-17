@@ -33,7 +33,7 @@ export default function NoticeModal() {
       <div className="bg-white p-6 rounded-xl max-w-md w-full shadow-xl">
         <h2 className="text-xl font-bold mb-4">📢 공지사항</h2>
         <p>
-          2025년 7월 23일(수) 이전에 가입하신 회원께서는
+          2025년 9월 17일(수) 이전에 가입하신 회원께서는
           <br />
           원활한 서비스 이용을 위해
           <br />
