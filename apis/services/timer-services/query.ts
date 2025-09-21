@@ -44,5 +44,7 @@ export const useGetTimerAnalytics = (year: number, month: number) => {
       ERROR_SOURCE: "[타이머 통계 불러오기 실패]",
       SUCCESS_MESSAGE: "타이머 통계를 불러왔습니다.",
     },
+    enabled: !!year && !!month,
+    refetchOnMount: "always",
   });
 };
