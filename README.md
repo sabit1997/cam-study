@@ -14,16 +14,6 @@
 
 > 💡 배속한 영상입니다. 배속시 음원의 피치가 올라가서 유튜브 미디어 소리는 편집하여 삽입하였습니다.
 
-<iframe
-  width="800"
-  height="450"
-  src="https://www.youtube.com/embed/4rAnYHh7lVw"
-  title="YouTube video player"
-  frameborder="0"
-  allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-  allowfullscreen
-></iframe>
-
 [![YouTube 시연영상](https://img.shields.io/badge/YouTube-Demo-red)](https://youtu.be/4rAnYHh7lVw)
 
 ## ✨ 주요 기능
