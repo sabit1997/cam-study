@@ -16,6 +16,10 @@
 
 [![YouTube 시연영상](https://img.shields.io/badge/YouTube-Demo-red)](https://youtu.be/4rAnYHh7lVw)
 
+## 실사용 예시
+
+![실사용 예시 이미지](https://github.com/user-attachments/assets/357b7322-8304-4a10-9415-ef3f251a00b4)
+
 ## ✨ 주요 기능
 
 ### 🧩 멀티 윈도우 워크스페이스
