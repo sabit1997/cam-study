@@ -10,70 +10,85 @@
 | test1@test.com | Ab1234@@ |
 | test2@test.com | Ab1234@@ |
 
-## 미리보기 👀
+## 📽️ 시연 영상
 
-### 회원가입 로그인
+> 💡 배속한 영상입니다. 배속시 음원의 피치가 올라가서 유튜브 미디어 소리는 편집하여 삽입하였습니다.
 
-![Image](https://github.com/user-attachments/assets/418ce061-06af-4d52-a6c8-3f300b6d7dd2)
+<iframe
+  width="800"
+  height="450"
+  src="https://www.youtube.com/embed/4rAnYHh7lVw"
+  title="YouTube video player"
+  frameborder="0"
+  allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+  allowfullscreen
+></iframe>
 
-### 화면 공유
-
-![Image](https://github.com/user-attachments/assets/93b9b941-7ee6-4751-85b1-a19341564004)
-
-### 투두 기능
-
-![Image](https://github.com/user-attachments/assets/9dc3860a-4c0d-49a3-856e-d1ab5d3c1706)
-
-### 유튜브 링크 공유 (임베드)
-
-![Image](https://github.com/user-attachments/assets/bdc5227c-aad0-4dac-8400-c984156d3a69)
-
-### 캠 기능
-
-![Image](https://github.com/user-attachments/assets/3b16d428-1e2b-424b-ab81-717a30766653)
-
-### 다시 로그인해도 기존 정보 위치 창 사이즈 기억
-
-![Image](https://github.com/user-attachments/assets/098c3275-f1ad-4e44-ac0e-3cbf246a52da)
-
-### 시간 기록 조회
-
-![Image](https://github.com/user-attachments/assets/8c82e005-ac94-4349-b127-fcd5beffdd69)
-
-### 시간 통계 조회
-
-![Image](https://github.com/user-attachments/assets/b43336f2-cf08-4d4e-bc95-f26057370c46)
-
-### 타이머 기능
-
-![Image](https://github.com/user-attachments/assets/4a4c190f-5880-4293-af1f-f92ed507391e)
+[![YouTube 시연영상](https://img.shields.io/badge/YouTube-Demo-red)](https://youtu.be/4rAnYHh7lVw)
 
 ## ✨ 주요 기능
 
-- **다양한 창 타입 지원**: 웹캠, 윈도우 공유, 투두리스트, 유튜브 임베드 등을 하나의 화면에서 동시 활용 가능
-- **개인 맞춤 설정 저장**: 회원가입 및 로그인 기능으로 사용자가 설정한 창의 위치, 크기 및 창 유형을 기억하여 자동으로 로드
-- **유튜브 임베드 링크 저장**: 자주 시청하는 유튜브 URL을 기억하여 편리하게 반복 시청 가능
-- **서버 기반 Todo 관리**: 서버에 저장되어, 창을 삭제하지 않는 한 언제든지 접근 가능한 안정적인 투두리스트 관리
-- ** 서버 기반 타이머 관리**: 공부 시간을 기록하여 매일의 기록을 서버에 저장합니다.
-- ** 목표 시간 설정 및 시간 조회**: 목표 시간을 설정해 타이머 및 마이페이지의 시간 통계에서 달성률을 확인 할 수 있고, 매일의 기록 및 지난 달과 비교한 통계와 가장 집중한 날 요일별 집중 시간을 조회할 수 있습니다.
+### 🧩 멀티 윈도우 워크스페이스
+
+- **동시 활용:** 웹캠, 윈도우 공유, Todo 리스트, YouTube 임베드를 **한 화면에 동시에** 배치/리사이즈
+- **드래그 & 리사이즈:** 자유로운 레이아웃 구성
+
+### 👤 개인 맞춤 설정 저장
+
+- **저장 항목:** 각 창의 **위치, 크기, 유형**을 사용자 계정에 연동하여 **자동 복원**
+- **로그인 기반 동기화:** 회원가입/로그인 시 어디서든 동일한 작업 환경 재현 (테마 색상 제외)
+
+### ▶️ YouTube 임베드 재생목록
+
+- **URL 검증:** 임베드 **가능한 링크만** 선별하여 재생목록 구성
+- **서버 저장 & 반복 재생:** 등록한 YouTube URL 리스트를 서버에 저장하고 순환 재생
+
+### ✅ 서버 기반 Todo 관리
+
+- **영속성:** 삭제하지 않는 한 **항상 접근 가능**한 서버 저장 Todo
+
+### ⏱️ 서버 기반 타이머 & 기록
+
+- **공부 시간 기록:** 타이머로 측정한 **일별 집중 시간**을 서버에 저장
+- **목표 시간 설정:** 하루 목표 시간을 정하고 달성률을 타이머/마이페이지에서 확인
+
+### 📊 마이페이지 통계
+
+- **일별 기록 열람:** 날짜별 집중 시간 흐름 확인
+- **달성률 & 비교:** 목표 대비 달성률, **지난 달과의 비교** 제공
+- **패턴 인사이트:** **가장 집중한 날**, **요일별 집중 시간**으로 루틴 최적화
+
+### 🎨 테마 & 색상 팔레트 (로컬 저장)
+
+- **팔레트 기반 편집:** 기본 배경 / 강조 / 텍스트 / 텍스트 선택 색상을 컬러 피커로 즉시 변경
+- **실시간 미리보기:** 변경 사항이 화면에 바로 반영되어 결과를 즉시 확인
+- **로컬 보존:** 브라우저 **로컬 저장소**에 자동 저장되어 다음 접속 시 그대로 복원 (로그인 불필요)
+- **초기화 지원:** 한 번에 기본 테마로 **원클릭 초기화**
 
 ## ⚙️ 기술 스택
 
 ### 주요 라이브러리 및 프레임워크
 
-- Next.js 15.3.0
-- TypeScript 5
-- Zustand
-- React Query (@tanstack/react-query)
-- Tailwind CSS
+- **Electron** `^37.2.3` (데스크톱 앱 런타임)
+- **Next.js** `15.3.0`
+- **React** `^19.0.0`
+- **TypeScript** `^5.8.3`
+- **Zustand** `^5.0.3`
+- **TanStack React Query** `^5.74.3`
+- **Tailwind CSS** `^4.1.4`
+
+---
 
 ### 사용된 패키지
 
-| 분류                 | 사용 패키지                                         |
-| -------------------- | --------------------------------------------------- |
-| UI 및 인터랙션       | react-rnd, react-youtube, react-icons, use-debounce |
-| 데이터 관리          | axios                                               |
-| 인증 및 데이터베이스 | Java17, Spring Boot, Docker, JWT                    |
+| 분류             | 패키지                                                                                                                   |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| 프레임워크/언어  | `next`, `react`, `react-dom`, `typescript`                                                                               |
+| 상태/데이터 페칭 | `zustand`, `@tanstack/react-query`                                                                                       |
+| HTTP 통신        | `axios`, `qs`                                                                                                            |
+| 스타일링         | `tailwindcss`, `@tailwindcss/postcss`, `postcss`, `autoprefixer`                                                         |
+| UI & 인터랙션    | `react-rnd`(창 드래그/리사이즈), `@radix-ui/react-tooltip`, `@uiw/react-color`(컬러 피커), `react-icons`, `use-debounce` |
+| 미디어/임베드    | `react-youtube`, `@types/youtube`                                                                                        |
 
 ## 📥 설치 및 실행 방법
 
@@ -86,22 +101,7 @@ npm install
 ### 개발 서버 실행
 
 ```bash
-npm run dev
-```
-
-### 빌드 및 프로덕션 서버 실행
-
-```bash
-npm run build
-npm run start
-```
-
-## 🧑‍💻 개발 관련 명령어
-
-- **Lint 검사**
-
-```bash
-npm run lint
+npm run dev:https
 ```
 
 ## 📝 프로젝트 구조
@@ -136,11 +136,3 @@ npm run lint
 
 ©generated by [Project Tree Generator](https://woochanleee.github.io/project-tree-generator)
 ```
-
-## 📚 개발 환경 설정
-
-- ESLint, Vercel 배포
-
-## 📖 문서화
-
-[노션 정리](https://clean-bucket-590.notion.site/NextJS-1d6dcb3f050680769294e16f735c66e1?pvs=4)
