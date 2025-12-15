@@ -24,7 +24,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${dunggeunmo.variable} h-screen`}>
+    <html
+      lang="en"
+      className={`${dunggeunmo.variable} h-screen`}
+      suppressHydrationWarning
+    >
       <body className={`${dunggeunmo.className} h-full`}>
         <GlobalInitializer />
         <Providers>
