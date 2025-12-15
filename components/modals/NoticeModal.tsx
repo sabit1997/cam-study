@@ -11,8 +11,10 @@ import { useNoticeStore } from "@/stores/useNoticeStore";
 export default function NoticeModal() {
   const { isOpen, open, close } = useNoticeStore();
   const [hideChecked, setHideChecked] = useState(false);
+  const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
+    setIsClient(true);
     const hiddenVersion = getHiddenNoticeVersion();
     if (hiddenVersion !== NOTICE_VERSION) {
       open();
@@ -25,6 +27,8 @@ export default function NoticeModal() {
     if (hideChecked) hideCurrentNotice(NOTICE_VERSION);
     close();
   };
+
+  if (!isClient) return null;
 
   if (!isOpen) return null;
 
