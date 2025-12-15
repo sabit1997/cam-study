@@ -10,7 +10,8 @@ import { useEffect, useState } from "react";
 
 const Navigation = () => {
   const pathname = usePathname();
-  const username = useUserStore((state) => state.username);
+
+  const user = useUserStore((state) => state.user);
 
   const [mounted, setMounted] = useState(false);
 
@@ -63,7 +64,7 @@ const Navigation = () => {
                   : "bg-primary text-dark"
               }`}
             >
-              {mounted && username ? username : "MY PAGE"}
+              {mounted && user && user.username ? user.username : "MY PAGE"}
             </p>
           </Link>
         </li>

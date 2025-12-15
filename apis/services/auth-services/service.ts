@@ -22,7 +22,9 @@ export default class AuthService {
     });
   };
 
-  public static readonly login = (data: AuthRequest): Promise<string> => {
+  public static readonly login = (
+    data: AuthRequest
+  ): Promise<{ userId: number; username: string }> => {
     return request({
       url: AuthEndPoints.login(),
       method: AxiosMethod.POST,
