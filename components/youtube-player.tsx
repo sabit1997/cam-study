@@ -100,8 +100,7 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
               : input
           )
         );
-      } catch (error) {
-        console.error("Failed to check embed status:", error);
+      } catch {
         setInputs((prev) =>
           prev.map((input, i) =>
             i === index

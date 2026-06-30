@@ -78,9 +78,8 @@ const CameraView = ({ isBlur }: CameraViewProps) => {
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
       setIsStreaming(true);
-    } catch (err) {
+    } catch {
       toast.error("카메라 접근에 실패했습니다.");
-      console.error(err);
     }
   };
 
