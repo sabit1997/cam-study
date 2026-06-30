@@ -20,8 +20,8 @@ const Timer: React.FC = () => {
 
   const [elapsed, setElapsed] = useState(0);
   const [goalInSeconds, setGoalInSeconds] = useState(0);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const saveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const saveRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const startAtRef = useRef<Date | null>(null);
   const baseTotalSecondsRef = useRef<number>(0);
   const isRunningRef = useRef(false);
@@ -48,8 +48,8 @@ const Timer: React.FC = () => {
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => {
       window.removeEventListener("beforeunload", handleBeforeUnload);
-      if (timerRef.current) clearTimeout(timerRef.current);
-      if (saveRef.current) clearTimeout(saveRef.current);
+      if (timerRef.current) clearInterval(timerRef.current);
+      if (saveRef.current) clearInterval(saveRef.current);
     };
   }, [postTime]);
 
@@ -66,45 +66,40 @@ const Timer: React.FC = () => {
 
     startAtRef.current = new Date();
 
-    const tick = () => {
-      timerRef.current = setTimeout(() => {
-        setElapsed((prev) => prev + 1);
-        tick();
-      }, 1000);
-    };
-    tick();
+    timerRef.current = setInterval(() => {
+      if (!startAtRef.current) return;
+      const deltaSec = Math.floor(
+        (Date.now() - startAtRef.current.getTime()) / 1000
+      );
+      setElapsed(baseTotalSecondsRef.current + deltaSec);
+    }, 1000);
 
-    const persist = () => {
-      saveRef.current = setTimeout(() => {
-        if (!startAtRef.current) return;
-        const now = new Date();
-        const deltaSec = Math.floor(
-          (now.getTime() - startAtRef.current.getTime()) / 1000
-        );
-        const corrected = baseTotalSecondsRef.current + deltaSec;
+    saveRef.current = setInterval(() => {
+      if (!startAtRef.current) return;
+      const now = new Date();
+      const deltaSec = Math.floor(
+        (now.getTime() - startAtRef.current.getTime()) / 1000
+      );
+      const corrected = baseTotalSecondsRef.current + deltaSec;
 
-        setElapsed(corrected);
-        postTime({
-          startAt: startAtRef.current.toISOString(),
-          endAt: now.toISOString(),
-        });
+      setElapsed(corrected);
+      postTime({
+        startAt: startAtRef.current.toISOString(),
+        endAt: now.toISOString(),
+      });
 
-        baseTotalSecondsRef.current = corrected;
-        startAtRef.current = now;
-
-        persist();
-      }, 60000);
-    };
-    persist();
+      baseTotalSecondsRef.current = corrected;
+      startAtRef.current = now;
+    }, 60000);
   }, [postTime, isPostTimePending]);
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) {
-      clearTimeout(timerRef.current);
+      clearInterval(timerRef.current);
       timerRef.current = null;
     }
     if (saveRef.current) {
-      clearTimeout(saveRef.current);
+      clearInterval(saveRef.current);
       saveRef.current = null;
     }
     if (startAtRef.current) {
