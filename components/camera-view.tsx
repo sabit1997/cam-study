@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 
 interface CameraViewProps {
   isBlur: boolean;
@@ -64,7 +65,7 @@ const CameraView = ({ isBlur }: CameraViewProps) => {
 
   const handleStreamStart = async () => {
     if (!deviceId) {
-      alert("디바이스를 선택해주세요.");
+      toast.warning("디바이스를 선택해주세요.");
       return;
     }
 
@@ -78,7 +79,7 @@ const CameraView = ({ isBlur }: CameraViewProps) => {
       streamRef.current = stream;
       setIsStreaming(true);
     } catch (err) {
-      alert("카메라 접근에 실패했습니다.");
+      toast.error("카메라 접근에 실패했습니다.");
       console.error(err);
     }
   };

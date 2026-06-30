@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { Providers } from "./providers";
 import GlobalInitializer from "@/components/global-Initializer";
 import NoticeModal from "@/components/modals/NoticeModal";
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: { template: "%s | CAM STUDY", default: "CAM STUDY" },
@@ -35,6 +36,7 @@ export default function RootLayout({
           <NoticeModal />
           <Navigation />
           {children}
+          <Toaster position="bottom-right" richColors />
         </Providers>
       </body>
     </html>

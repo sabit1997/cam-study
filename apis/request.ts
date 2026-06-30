@@ -8,6 +8,7 @@ import axios, {
 import { QueryClient } from "@tanstack/react-query";
 import AuthService from "./services/auth-services/service";
 import { useUserStore } from "@/stores/user-state";
+import { toast } from "sonner";
 
 let globalQueryClient: QueryClient | null = null;
 
@@ -110,7 +111,7 @@ client.interceptors.response.use(
     }
 
     if (status === 403) {
-      alert("권한이 없습니다.");
+      toast.error("권한이 없습니다.");
       return Promise.reject(err);
     }
 

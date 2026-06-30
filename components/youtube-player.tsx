@@ -2,6 +2,7 @@
 
 import YouTube, { YouTubeProps } from "react-youtube";
 import { useState, useEffect, useRef, useCallback } from "react";
+import { toast } from "sonner";
 import { Window } from "@/types/windows";
 import { usePatchWindow } from "@/apis/services/window-services/mutation";
 import { RiResetLeftLine } from "react-icons/ri";
@@ -143,7 +144,7 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
         );
 
         if (validLinks.length === 0) {
-          alert("재생 가능한 유효한 링크를 하나 이상 입력해주세요.");
+          toast.error("재생 가능한 유효한 링크를 하나 이상 입력해주세요.");
           return currentInputs;
         }
 
