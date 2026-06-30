@@ -96,8 +96,7 @@ client.interceptors.response.use(
           if (globalQueryClient) {
             globalQueryClient.clear();
           }
-          const { logout } = useUserStore();
-          logout();
+          useUserStore.getState().logout();
           window.location.href = "/sign-in";
         } catch (logoutError) {
           console.error("로그아웃 중 오류 발생:", logoutError);
