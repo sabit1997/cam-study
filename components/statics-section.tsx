@@ -7,6 +7,33 @@ import { Loading } from "./loading";
 import { Error } from "./error";
 import YearMonthSelector from "./year-month-selector";
 import { formatTime } from "@/utils/formatTime";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  ResponsiveContainer,
+  Tooltip,
+} from "recharts";
+
+const DAY_ORDER = [
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+  "SATURDAY",
+  "SUNDAY",
+];
+const DAY_LABELS: Record<string, string> = {
+  MONDAY: "월",
+  TUESDAY: "화",
+  WEDNESDAY: "수",
+  THURSDAY: "목",
+  FRIDAY: "금",
+  SATURDAY: "토",
+  SUNDAY: "일",
+};
 
 const StaticSection = () => {
   const { currentYear, currentMonth } = getCurrentMonthYear();
@@ -17,6 +44,28 @@ const StaticSection = () => {
 
   if (isPending) return <Loading />;
   if (isError || !data) return <Error />;
+
+  const weekdayData = DAY_ORDER.map((day) => ({
+    day: DAY_LABELS[day],
+    hours: Math.round(((data.weekdayStats?.[day] as number) || 0) / 360) / 10,
+  }));
+
+  const monthData = [
+    {
+      name: "지난달",
+      hours:
+        Math.round((data.monthComparison?.previousMonthTotal || 0) / 360) / 10,
+    },
+    {
+      name: "이번달",
+      hours:
+        Math.round((data.monthComparison?.currentMonthTotal || 0) / 360) / 10,
+    },
+  ];
+
+  const diff = data.monthComparison?.difference || 0;
+  const isPositive = diff >= 0;
+
   return (
     <div className="w-full flex flex-col items-center">
       <YearMonthSelector
@@ -38,44 +87,52 @@ const StaticSection = () => {
         </div>
 
         <div className="p-4 border-2 border-dark rounded-xl bg-white shadow-sm">
-          <p className="text-xl text-dark font-bold">월별 비교</p>
-          <p className="mt-1">
-            이번 달: {formatTime(data?.monthComparison?.currentMonthTotal || 0)}
-          </p>
-          <p>
-            지난 달:{" "}
-            {formatTime(data?.monthComparison?.previousMonthTotal || 0)}
-          </p>
+          <p className="text-xl text-dark font-bold mb-1">월별 비교</p>
           <p
-            className={`font-bold ${
-              data?.monthComparison?.difference || 0 >= 0
-                ? "text-[#72BF78]"
-                : "text-[#F75A5A]"
-            }`}
+            className={`text-sm font-bold mb-2 ${isPositive ? "text-positive" : "text-negative"}`}
           >
-            {data?.monthComparison?.difference || 0 >= 0 ? "+" : ""}
-            {formatTime(data?.monthComparison?.difference || 0)} (
-            {data?.monthComparison?.changeRate || 0}%)
+            {isPositive ? "+" : ""}
+            {formatTime(diff)} ({data.monthComparison?.changeRate || 0}%)
           </p>
+          <ResponsiveContainer width="100%" height={80}>
+            <BarChart data={monthData} barSize={32}>
+              <XAxis
+                dataKey="name"
+                tick={{ fontSize: 11 }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis hide />
+              <Tooltip
+                formatter={(v: number) => [`${v}h`, "집중 시간"]}
+                cursor={{ fill: "transparent" }}
+              />
+              <Bar dataKey="hours" fill="var(--color-dark)" radius={4} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
 
         <div className="p-4 border-2 border-dark rounded-xl bg-white shadow-sm md:col-span-1">
           <p className="text-xl font-bold mb-2 text-dark">요일별 집중 시간</p>
-          <ul>
-            {data?.weekdayStats &&
-            Object.entries(data?.weekdayStats || []).length > 0 ? (
-              Object.entries(data?.weekdayStats || []).map(([day, sec]) => (
-                <li key={day} className="text-sm">
-                  {day[0] + day.slice(1).toLowerCase()}: {formatTime(sec)}
-                </li>
-              ))
-            ) : (
-              <li>데이터가 없습니다.</li>
-            )}
-          </ul>
+          <ResponsiveContainer width="100%" height={100}>
+            <BarChart data={weekdayData} barSize={20}>
+              <XAxis
+                dataKey="day"
+                tick={{ fontSize: 11 }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis hide />
+              <Tooltip
+                formatter={(v: number) => [`${v}h`, "집중 시간"]}
+                cursor={{ fill: "transparent" }}
+              />
+              <Bar dataKey="hours" fill="var(--color-dark)" radius={4} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
 
-        <div className="p-4 border-2 border-dark rounded-xl bg-[#FFF085] shadow-sm col-span-1 md:col-span-1 lg:col-span-1">
+        <div className="p-4 border-2 border-dark rounded-xl bg-accent shadow-sm col-span-1 md:col-span-1 lg:col-span-1">
           <p className="text-xl font-bold text-dark">최고 집중일</p>
           <p className="font-bold text-lg">
             {data?.bestFocusDay?.date || "데이터가 없습니다"}

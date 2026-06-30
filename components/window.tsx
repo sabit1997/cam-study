@@ -122,14 +122,14 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
         <div className="drag-handle flex gap-2 w-full bg-dark px-3 py-2 cursor-move fixed rounded-t-2xl left-0 z-10 top-0">
           <TooltipWrapper content="닫기">
             <WindowControlButton
-              className="bg-[#FF6363]"
+              className="bg-[var(--color-btn-close)]"
               icon={IoMdClose}
               onClick={handleClose}
             />
           </TooltipWrapper>
           <TooltipWrapper content="옵션">
             <WindowControlButton
-              className="bg-[#FFD63A]"
+              className="bg-[var(--color-btn-option)]"
               icon={IoIosSettings}
               onClick={onOpenOption}
             />
@@ -138,7 +138,7 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
           {(type === "camera" || type === "window") && (
             <TooltipWrapper content="흐리게">
               <WindowControlButton
-                className="bg-[#F3D7CA]"
+                className="bg-[var(--color-btn-blur)]"
                 icon={TbBlur}
                 onClick={() => {
                   setIsBlur((prev) => !prev);

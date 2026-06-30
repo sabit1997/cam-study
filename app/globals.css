@@ -5,6 +5,12 @@
   --color-dark: #6096b4;
   --text-primary: #6096b4;
   --text-selected: #ffffff;
+  --color-positive: #72bf78;
+  --color-negative: #f75a5a;
+  --color-accent: #fff085;
+  --color-btn-close: #ff6363;
+  --color-btn-option: #ffd63a;
+  --color-btn-blur: #f3d7ca;
 }
 
 html {
@@ -61,6 +67,9 @@ input.no-spin[type="number"] {
 @theme {
   --color-primary: var(--color-primary);
   --color-dark: var(--color-dark);
+  --color-positive: var(--color-positive);
+  --color-negative: var(--color-negative);
+  --color-accent: var(--color-accent);
 }
 
 @layer {
