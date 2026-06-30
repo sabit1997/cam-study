@@ -9,6 +9,7 @@ import {
   useResetTime,
 } from "@/apis/services/timer-services/mutation";
 import { LuTimerReset } from "react-icons/lu";
+import { toast } from "sonner";
 
 const Timer: React.FC = () => {
   const { data: todayTimeRes, isPending: isTodayTimePending } =
@@ -25,6 +26,7 @@ const Timer: React.FC = () => {
   const startAtRef = useRef<Date | null>(null);
   const baseTotalSecondsRef = useRef<number>(0);
   const isRunningRef = useRef(false);
+  const goalReachedRef = useRef(false);
 
   useEffect(() => {
     if (!isTodayTimePending && todayTimeRes) {
@@ -122,6 +124,17 @@ const Timer: React.FC = () => {
 
   const percent = goalInSeconds > 0 ? (elapsed / goalInSeconds) * 100 : 0;
   const displayPercent = Math.min(percent, 100);
+
+  useEffect(() => {
+    if (goalInSeconds === 0) return;
+    if (percent >= 100 && !goalReachedRef.current) {
+      goalReachedRef.current = true;
+      toast.success("목표 달성! 오늘도 수고했어요 🎉");
+    }
+    if (percent < 100) {
+      goalReachedRef.current = false;
+    }
+  }, [percent, goalInSeconds]);
 
   const resetTimer = () => {
     if (isResetTimePending) return;

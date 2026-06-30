@@ -80,6 +80,12 @@ const Todos = ({ window }: { window: Window }) => {
       </div>
 
       <ul className="overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-primary [&::-webkit-scrollbar-thumb]:bg-dark [&::-webkit-scrollbar-thumb]:rounded-lg [scrollbar-width:thin] [scrollbar-color:var(--color-dark)_var(--color-primary)]">
+        {todos.length === 0 && (
+          <li className="flex flex-col items-center justify-center gap-2 py-10 text-[var(--text-primary)] opacity-50 select-none">
+            <span className="text-3xl">📋</span>
+            <span className="text-sm">할 일을 추가해보세요</span>
+          </li>
+        )}
         {todos.length > 0 &&
           todos.map((todo) => (
             <li
