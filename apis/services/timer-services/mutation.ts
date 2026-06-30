@@ -8,7 +8,8 @@ export const usePostTime = () => {
   return useMutation({
     mutationFn: TimerService.postTime,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: TIMER_QUERY_KEY });
+      // 시간 기록은 오늘 데이터에만 영향을 주므로 today 키만 무효화
+      queryClient.invalidateQueries({ queryKey: [...TIMER_QUERY_KEY, "today"] });
     },
     meta: {
       SUCCESS_MESSAGE: "시간 기록이 되었습니다.",
