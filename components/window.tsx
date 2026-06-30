@@ -19,7 +19,7 @@ import { useWindowStore } from "@/stores/window-state";
 import Todos from "./todos";
 import Timer from "./timer";
 import React, { useState } from "react";
-import TooltipWrapper from "./TooltipWrapper";
+import TooltipWrapper from "./tooltip-wrapper";
 import useScreenSizeRef from "@/hooks/useScreenSizeRef";
 
 interface AddWindowProps {
@@ -73,6 +73,14 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
   ) => {
     updateWindowBounds(id, x, y, width, height);
     debouncedServerUpdate(x, y, width, height);
+  };
+
+  const windowContent: Partial<Record<Window["type"], React.ReactNode>> = {
+    camera: <CameraView isBlur={isBlur} />,
+    youtube: <YouTubePlayer window={window} />,
+    window: <WindowShare isBlur={isBlur} windowId={window.id} />,
+    todo: <Todos window={window} />,
+    timer: <Timer />,
   };
 
   return (
@@ -151,13 +159,7 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
           className={"w-full h-full overflow-hidden"}
           onClick={handleClickOrFocus}
         >
-          {type === "camera" && <CameraView isBlur={isBlur} />}
-          {type === "youtube" && <YouTubePlayer window={window} />}
-          {type === "window" && (
-            <WindowShare isBlur={isBlur} windowId={window.id} />
-          )}
-          {type === "todo" && <Todos window={window} />}
-          {type === "timer" && <Timer />}
+          {windowContent[type] ?? null}
         </div>
       </div>
     </Rnd>

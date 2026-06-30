@@ -5,7 +5,7 @@ import { IoHomeSharp, IoPaperPlane } from "react-icons/io5";
 import { GoPersonFill } from "react-icons/go";
 import Link from "next/link";
 import { useUserStore } from "@/stores/user-state";
-import TooltipWrapper from "./TooltipWrapper";
+import TooltipWrapper from "./tooltip-wrapper";
 import { useEffect, useState } from "react";
 
 const Navigation = () => {

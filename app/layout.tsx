@@ -4,7 +4,7 @@ import localFont from "next/font/local";
 import type { Metadata } from "next";
 import { Providers } from "./providers";
 import GlobalInitializer from "@/components/global-Initializer";
-import NoticeModal from "@/components/modals/NoticeModal";
+import NoticeModal from "@/components/modals/notice-modal";
 import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
