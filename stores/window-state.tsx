@@ -30,11 +30,17 @@ export const useWindowStore = create<WindowState>()(
 
       bringToFront: (id) =>
         set((state) => {
-          const maxZ = Math.max(...state.windows.map((w) => w.zIndex || 0));
+          const sorted = [...state.windows].sort(
+            (a, b) => (a.zIndex || 0) - (b.zIndex || 0)
+          );
+          const target = sorted.find((w) => w.id === id);
+          if (!target) return state;
+          const reordered = [
+            ...sorted.filter((w) => w.id !== id),
+            target,
+          ];
           return {
-            windows: state.windows.map((w) =>
-              w.id === id ? { ...w, zIndex: maxZ + 1 } : w
-            ),
+            windows: reordered.map((w, i) => ({ ...w, zIndex: i })),
           };
         }),
 

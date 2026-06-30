@@ -53,8 +53,8 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
 
   const debouncedZIndexUpdate = useDebouncedCallback(() => {
     if (isUpdatePending) return;
-    const maxZ = currentWindow?.zIndex || 0;
-    updateWindow({ id, data: { zIndex: maxZ + 1 } });
+    const zIndex = currentWindow?.zIndex ?? 0;
+    updateWindow({ id, data: { zIndex } });
   }, 300);
 
   const debouncedServerUpdate = useDebouncedCallback(
