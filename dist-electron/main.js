@@ -22,6 +22,11 @@ async function createWindow() {
     await win.loadURL(url);
 }
 electron_1.app.whenReady().then(() => {
+    electron_1.session.defaultSession.webRequest.onBeforeSendHeaders({ urls: ["*://*.youtube.com/*", "*://*.youtube-nocookie.com/*"] }, (details, callback) => {
+        details.requestHeaders["User-Agent"] =
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+        callback({ cancel: false, requestHeaders: details.requestHeaders });
+    });
     electron_1.session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
         electron_1.desktopCapturer
             .getSources({ types: ["screen", "window"] })
