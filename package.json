@@ -13,7 +13,10 @@
     "dev": "concurrently -k \"npm run dev:web\" \"npm run dev:electron\"",
     "build:web": "next build",
     "start:next": "next start -p 3001",
-    "build:app": "npm run build:ts && npm run build:web && electron-builder"
+    "build:app": "npm run build:ts && npm run build:web && electron-builder",
+    "type-check": "tsc --noEmit",
+    "lint": "next lint",
+    "test": "vitest run"
   },
   "dependencies": {
     "@radix-ui/react-tooltip": "^1.2.7",
@@ -27,6 +30,8 @@
     "react-icons": "^5.5.0",
     "react-rnd": "^10.5.2",
     "react-youtube": "^10.1.0",
+    "recharts": "^3.9.1",
+    "sonner": "^2.0.7",
     "use-debounce": "^10.0.4",
     "zustand": "^5.0.3"
   },
@@ -35,9 +40,9 @@
     "@tailwindcss/postcss": "^4.1.4",
     "@tanstack/react-query-devtools": "^5.74.4",
     "@types/node": "^20.19.8",
+    "@types/qs": "^6.9.18",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@types/qs": "^6.9.18",
     "@types/youtube": "^0.1.2",
     "autoprefixer": "^10.4.21",
     "concurrently": "^9.2.0",
@@ -48,6 +53,7 @@
     "postcss": "^8.5.3",
     "tailwindcss": "^4.1.4",
     "typescript": "^5.8.3",
+    "vitest": "^4.1.9",
     "wait-on": "^8.0.3"
   },
   "build": {
