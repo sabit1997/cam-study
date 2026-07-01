@@ -50,11 +50,6 @@ export const usePatchWindow = () => {
       );
     },
 
-    onSettled: () => {
-      queryClient.invalidateQueries({
-        queryKey: [...WINDOW_QUERY_KEY],
-      });
-    },
     meta: {
       SUCCESS_MESSAGE: "창이 수정되었습니다.",
       ERROR_SOURCE: "[창 수정 실패]",

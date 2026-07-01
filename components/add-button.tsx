@@ -3,6 +3,15 @@
 import { useCreateWindow } from "@/apis/services/window-services/mutation";
 import { useWindowStore } from "@/stores/window-state";
 import { FaCirclePlus } from "react-icons/fa6";
+import { toast } from "sonner";
+
+const CASCADE_MAX = 12;
+const STEP_X = 58;
+const STEP_Y = 32;
+const INIT_X = 500;
+const INIT_Y = 400;
+const INIT_W = 538;
+const INIT_H = 238;
 
 const AddButton = () => {
   const { mutate: createWindow, isPending } = useCreateWindow();
@@ -11,20 +20,20 @@ const AddButton = () => {
   const handleClick = () => {
     const maxZIndex =
       windows.length > 0 ? Math.max(...windows.map((w) => w.zIndex)) : 0;
-    const offset = Math.floor(Math.random() * 60);
+    const step = windows.length % CASCADE_MAX;
 
     createWindow(
       {
         type: "none",
         zIndex: maxZIndex + 1,
-        x: 100 + offset,
-        y: 100 + offset,
-        width: 320,
-        height: 180,
+        x: INIT_X + step * STEP_X,
+        y: INIT_Y + step * STEP_Y,
+        width: INIT_W,
+        height: INIT_H,
       },
       {
         onError: () => {
-          alert("window 추가 실패!");
+          toast.error("창 추가에 실패했습니다.");
         },
       }
     );

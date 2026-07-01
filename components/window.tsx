@@ -27,7 +27,8 @@ interface AddWindowProps {
   onOpenOption: () => void;
 }
 
-const RATIO = 0.9;
+const REF_W = 1920;
+
 const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
   const [isBlur, setIsBlur] = useState(false);
 
@@ -36,10 +37,16 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
     useDeleteWindow();
 
   const { bringToFront, updateWindowBounds, windows } = useWindowStore();
-  const { screenHeightRef, screenWidthRef } = useScreenSizeRef();
+  const { vw, vh } = useScreenSizeRef();
 
   const { id, type, zIndex, x, y, width, height } = window;
   const currentWindow = windows.find((w) => w.id === window.id);
+
+  const scale = vw / REF_W;
+  const pxX = x * scale;
+  const pxY = y * scale;
+  const pxW = width * scale;
+  const pxH = height * scale;
 
   const handleClose = () => {
     if (isDeletePending) return;
@@ -58,21 +65,25 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
   }, 300);
 
   const debouncedServerUpdate = useDebouncedCallback(
-    (x: number, y: number, width: number, height: number) => {
+    (rx: number, ry: number, rw: number, rh: number) => {
       if (isUpdatePending) return;
-      updateWindow({ id, data: { x, y, width, height } });
+      updateWindow({ id, data: { x: rx, y: ry, width: rw, height: rh } });
     },
     500
   );
 
   const handleMoveOrResize = (
-    x: number,
-    y: number,
-    width: number,
-    height: number
+    px: number,
+    py: number,
+    pw: number,
+    ph: number
   ) => {
-    updateWindowBounds(id, x, y, width, height);
-    debouncedServerUpdate(x, y, width, height);
+    const rx = Math.round(px / scale);
+    const ry = Math.round(py / scale);
+    const rw = Math.round(pw / scale);
+    const rh = Math.round(ph / scale);
+    updateWindowBounds(id, rx, ry, rw, rh);
+    debouncedServerUpdate(rx, ry, rw, rh);
   };
 
   const windowContent: Partial<Record<Window["type"], React.ReactNode>> = {
@@ -85,21 +96,17 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
 
   return (
     <Rnd
-      position={{ x, y }}
-      size={{ width, height }}
+      position={{ x: pxX, y: pxY }}
+      size={{ width: pxW, height: pxH }}
       minWidth={240}
       minHeight={135}
-      maxHeight={
-        (screenHeightRef.current && screenHeightRef.current * RATIO) ||
-        undefined
-      }
-      maxWidth={
-        (screenWidthRef.current && screenWidthRef.current * RATIO) || undefined
-      }
+      maxWidth={vw * 0.95}
+      maxHeight={vh * 0.95}
       bounds="window"
       style={{
         zIndex: zIndex,
-        position: "fixed",
+        position: "absolute",
+        pointerEvents: "auto",
       }}
       enableResizing={{
         top: true,
@@ -113,7 +120,7 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
       }}
       onDragStart={handleClickOrFocus}
       onResizeStart={handleClickOrFocus}
-      onDragStop={(e, d) => handleMoveOrResize(d.x, d.y, width, height)}
+      onDragStop={(e, d) => handleMoveOrResize(d.x, d.y, pxW, pxH)}
       onResizeStop={(e, direction, ref, delta, position) => {
         handleMoveOrResize(
           position.x,
@@ -124,10 +131,8 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
       }}
       dragHandleClassName="drag-handle"
     >
-      <div
-        className={`w-full h-full border-2 border-dark rounded-2xl bg-primary relative pt-[26px] overflow-hidden`}
-      >
-        <div className="drag-handle flex gap-2 w-full bg-dark px-3 py-2 cursor-move fixed rounded-t-2xl left-0 z-10 top-0">
+      <div className="w-full h-full border-2 border-dark rounded-2xl bg-primary relative pt-[26px] overflow-hidden">
+        <div className="drag-handle flex gap-2 w-full bg-dark px-3 py-2 cursor-move absolute rounded-t-2xl left-0 z-10 top-0">
           <TooltipWrapper content="닫기">
             <WindowControlButton
               className="bg-[var(--color-btn-close)]"
@@ -156,7 +161,7 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
           )}
         </div>
         <div
-          className={"w-full h-full overflow-hidden"}
+          className="w-full h-full overflow-hidden"
           onClick={handleClickOrFocus}
         >
           {windowContent[type] ?? null}

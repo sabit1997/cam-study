@@ -1,24 +1,23 @@
-import { useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 
 const useScreenSizeRef = () => {
-  const screenWidthRef = useRef<null | number>(null);
-  const screenHeightRef = useRef<null | number>(null);
+  const [vw, setVw] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth : 1920
+  );
+  const [vh, setVh] = useState(() =>
+    typeof window !== "undefined" ? window.innerHeight : 1080
+  );
 
   useEffect(() => {
-    const updateSize = () => {
-      screenWidthRef.current = window.innerWidth;
-      screenHeightRef.current = window.innerHeight;
+    const update = () => {
+      setVw(window.innerWidth);
+      setVh(window.innerHeight);
     };
-
-    updateSize();
-    window.addEventListener("resize", updateSize);
-
-    return () => {
-      window.removeEventListener("resize", updateSize);
-    };
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
   }, []);
 
-  return { screenWidthRef, screenHeightRef };
+  return { vw, vh };
 };
 
 export default useScreenSizeRef;
