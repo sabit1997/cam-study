@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Node.js 설정
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: 의존성 설치
+        run: npm ci
+
+      - name: 타입 체크
+        run: npm run type-check
+
+      - name: 린트
+        run: npm run lint
+
+      - name: 유닛 테스트
+        run: npm test
+
+      - name: Next.js 빌드
+        run: npm run build:web
+        env:
+          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+          NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ vars.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
+          NEXT_PUBLIC_LIVEKIT_WS_URL: ${{ vars.NEXT_PUBLIC_LIVEKIT_WS_URL }}
+          NEXT_PUBLIC_BACKEND_WS: ${{ vars.NEXT_PUBLIC_BACKEND_WS }}
