@@ -91,7 +91,7 @@ const CameraView = ({ isBlur }: CameraViewProps) => {
     <div className="w-full h-full flex justify-center items-center">
       {!isStreaming && devices.length > 0 && (
         <div className="w-full h-full">
-          <ul className="px-3 py-4 w-full">
+          <ul role="radiogroup" aria-label="카메라 디바이스 선택" className="px-3 py-4 w-full">
             {devices.map((device) => (
               <li key={device.id}>
                 <label htmlFor={device.id} className="flex items-center gap-2">
@@ -111,6 +111,7 @@ const CameraView = ({ isBlur }: CameraViewProps) => {
           <button
             className="block py-2 w-16 bg-dark text-[var(--text-selected)] rounded-md mx-auto"
             type="button"
+            aria-label="카메라 시작"
             onClick={handleStreamStart}
           >
             Start
@@ -133,6 +134,7 @@ const CameraView = ({ isBlur }: CameraViewProps) => {
           />
           <button
             onClick={stopStream}
+            aria-label="카메라 정지"
             className="absolute bottom-4 px-4 py-2 bg-red-500 text-[var(--text-selected)] rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto"
           >
             STOP

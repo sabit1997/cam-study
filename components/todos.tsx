@@ -58,6 +58,8 @@ const Todos = ({ window }: { window: Window }) => {
         <span className="text-[var(--color-dark)] font-semibold">Filter:</span>
         <button
           type="button"
+          aria-label="오늘 할 일 필터"
+          aria-pressed={!!date}
           className={`todo-filter-btn ${date ? "selected" : ""}`}
           onClick={toggleDateFilter}
         >
@@ -65,6 +67,8 @@ const Todos = ({ window }: { window: Window }) => {
         </button>
         <button
           type="button"
+          aria-label={`완료 상태 필터: ${done === undefined ? "전체" : done ? "완료" : "미완료"}`}
+          aria-pressed={done !== undefined}
           className={`todo-filter-btn ${done !== undefined ? "selected" : ""}`}
           onClick={toggleDoneFilter}
         >
@@ -72,6 +76,8 @@ const Todos = ({ window }: { window: Window }) => {
         </button>
         <button
           type="button"
+          aria-label={`정렬 순서: ${order === "asc" ? "오름차순" : "내림차순"}`}
+          aria-pressed={order === "desc"}
           className="todo-filter-btn selected"
           onClick={toggleOrder}
         >
@@ -79,7 +85,7 @@ const Todos = ({ window }: { window: Window }) => {
         </button>
       </div>
 
-      <ul className="overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-primary [&::-webkit-scrollbar-thumb]:bg-dark [&::-webkit-scrollbar-thumb]:rounded-lg [scrollbar-width:thin] [scrollbar-color:var(--color-dark)_var(--color-primary)]">
+      <ul aria-label="할 일 목록" className="overflow-y-auto [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:bg-primary [&::-webkit-scrollbar-thumb]:bg-dark [&::-webkit-scrollbar-thumb]:rounded-lg [scrollbar-width:thin] [scrollbar-color:var(--color-dark)_var(--color-primary)]">
         {todos.length === 0 && (
           <li className="flex flex-col items-center justify-center gap-2 py-10 text-[var(--text-primary)] opacity-50 select-none">
             <span className="text-3xl">📋</span>
@@ -90,6 +96,16 @@ const Todos = ({ window }: { window: Window }) => {
           todos.map((todo) => (
             <li
               key={todo.id}
+              role="checkbox"
+              aria-checked={!!todo.done}
+              aria-label={todo.text}
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === " " || e.key === "Enter") {
+                  e.preventDefault();
+                  handleDone({ winId: window.id, todoId: todo.id, done: !!todo.done });
+                }
+              }}
               onClick={() =>
                 handleDone({
                   winId: window.id,
@@ -111,6 +127,7 @@ const Todos = ({ window }: { window: Window }) => {
               <button
                 disabled={isDeletePending}
                 type="button"
+                aria-label={`${todo.text} 삭제`}
                 className="rounded-full bg-red-500 p-1 absolute right-2"
                 onClick={(e) => {
                   e.stopPropagation();
