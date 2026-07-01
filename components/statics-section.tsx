@@ -104,7 +104,7 @@ const StaticSection = () => {
               />
               <YAxis hide />
               <Tooltip
-                formatter={(v: number) => [`${v}h`, "집중 시간"]}
+                formatter={(v) => [`${v}h`, "집중 시간"]}
                 cursor={{ fill: "transparent" }}
               />
               <Bar dataKey="hours" fill="var(--color-dark)" radius={4} />
@@ -124,7 +124,7 @@ const StaticSection = () => {
               />
               <YAxis hide />
               <Tooltip
-                formatter={(v: number) => [`${v}h`, "집중 시간"]}
+                formatter={(v) => [`${v}h`, "집중 시간"]}
                 cursor={{ fill: "transparent" }}
               />
               <Bar dataKey="hours" fill="var(--color-dark)" radius={4} />
