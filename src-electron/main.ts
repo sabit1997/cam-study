@@ -3,7 +3,7 @@ import { app, BrowserWindow, desktopCapturer, session } from "electron";
 import path from "path";
 import { spawn } from "child_process";
 
-const isDev = process.env.NODE_ENV === "development";
+const isDev = !app.isPackaged;
 
 async function createWindow() {
   const win = new BrowserWindow({
@@ -16,16 +16,14 @@ async function createWindow() {
     },
   });
 
-  const url = isDev
-    ? "https://localhost:3000"
-    : "https://cam-study.vercel.app/";
+  const url = isDev ? "http://localhost:3000" : "https://cam-study.vercel.app/";
 
   await win.loadURL(url);
 }
 
 app.whenReady().then(() => {
   session.defaultSession.setDisplayMediaRequestHandler(
-    (request, callback) => {
+    (_request, callback) => {
       desktopCapturer
         .getSources({ types: ["screen", "window"] })
         .then((sources) => {

@@ -10,7 +10,7 @@
     "dev:web": "next dev",
     "build:ts": "tsc -p tsconfig.electron.json",
     "dev:electron": "wait-on http://localhost:3000 && electron .",
-    "dev": "concurrently -k \"npm run dev:web\" \"npm run dev:electron\"",
+    "dev": "npm run build:ts && concurrently -k \"npm run dev:web\" \"npm run dev:electron\"",
     "build:web": "next build",
     "start:next": "next start -p 3001",
     "build:app": "npm run build:ts && npm run build:web && electron-builder",

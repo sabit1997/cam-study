@@ -7,7 +7,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const electron_1 = require("electron");
 const path_1 = __importDefault(require("path"));
 const child_process_1 = require("child_process");
-const isDev = process.env.NODE_ENV === "development";
+const isDev = !electron_1.app.isPackaged;
 async function createWindow() {
     const win = new electron_1.BrowserWindow({
         width: 1024,
@@ -18,13 +18,11 @@ async function createWindow() {
             nodeIntegration: false,
         },
     });
-    const url = isDev
-        ? "https://localhost:3000"
-        : "https://cam-study.vercel.app/";
+    const url = isDev ? "http://localhost:3000" : "https://cam-study.vercel.app/";
     await win.loadURL(url);
 }
 electron_1.app.whenReady().then(() => {
-    electron_1.session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
+    electron_1.session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
         electron_1.desktopCapturer
             .getSources({ types: ["screen", "window"] })
             .then((sources) => {
