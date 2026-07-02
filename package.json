@@ -61,8 +61,10 @@
     "appId": "com.oeyocam.desktop",
     "productName": "외요의 캠스터디",
     "asar": true,
+    "npmRebuild": false,
     "files": [
       "package.json",
+      ".env.production",
       "dist-electron/**/*",
       ".next/**/*",
       "public/**/*",
@@ -74,8 +76,8 @@
     "mac": {
       "icon": "buildResources/icon.icns",
       "target": [
-        "dmg",
-        "zip"
+        { "target": "dmg", "arch": ["arm64"] },
+        { "target": "zip", "arch": ["arm64"] }
       ]
     },
     "win": {

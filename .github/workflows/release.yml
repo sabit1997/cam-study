@@ -12,7 +12,7 @@ jobs:
   build-linux:
     runs-on: ubuntu-latest
     env:
-      NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+      NEXT_PUBLIC_API_URL: https://api.oeyo-cam.site
       NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ vars.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
       VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
     steps:
@@ -22,11 +22,18 @@ jobs:
       - name: Node.js 설정
         uses: actions/setup-node@v3
         with:
-          node-version: "18"
+          node-version: "20"
           cache: "npm"
 
       - name: 의존성 설치
         run: npm ci
+
+      - name: .env.production 생성
+        run: |
+          echo "NEXT_PUBLIC_API_URL=https://api.oeyo-cam.site" >> .env.production
+          echo "NEXT_PUBLIC_VAPID_PUBLIC_KEY=${{ vars.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}" >> .env.production
+          echo "VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}" >> .env.production
+          echo "YOUTUBE_API_KEY=${{ secrets.YOUTUBE_API_KEY }}" >> .env.production
 
       - name: TypeScript 컴파일
         run: npm run build:ts
@@ -51,7 +58,7 @@ jobs:
   build-mac:
     runs-on: macos-latest
     env:
-      NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+      NEXT_PUBLIC_API_URL: https://api.oeyo-cam.site
       NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ vars.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
       VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
     steps:
@@ -61,11 +68,21 @@ jobs:
       - name: Node.js 설정
         uses: actions/setup-node@v3
         with:
-          node-version: "18"
+          node-version: "20"
           cache: "npm"
 
       - name: 의존성 설치
         run: npm ci
+
+      - name: .env.production 생성
+        run: |
+          echo "NEXT_PUBLIC_API_URL=https://api.oeyo-cam.site" >> .env.production
+          echo "NEXT_PUBLIC_VAPID_PUBLIC_KEY=${{ vars.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}" >> .env.production
+          echo "VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}" >> .env.production
+          echo "YOUTUBE_API_KEY=${{ secrets.YOUTUBE_API_KEY }}" >> .env.production
+
+      - name: sharp 더미 디렉토리 생성
+        run: mkdir -p node_modules/@img/sharp-darwin-x64
 
       - name: TypeScript 컴파일
         run: npm run build:ts
@@ -73,8 +90,8 @@ jobs:
       - name: Next.js 빌드
         run: npm run build:web
 
-      - name: Electron 빌드 (macOS)
-        run: npx electron-builder --mac --publish never
+      - name: Electron 빌드 (macOS arm64)
+        run: npx electron-builder --mac --arm64 --publish never
 
       - name: dist 디렉터리 확인 (macOS)
         run: ls -la dist/
@@ -90,7 +107,7 @@ jobs:
   build-windows:
     runs-on: windows-latest
     env:
-      NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}
+      NEXT_PUBLIC_API_URL: https://api.oeyo-cam.site
       NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ vars.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
       VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
     steps:
@@ -100,11 +117,19 @@ jobs:
       - name: Node.js 설정
         uses: actions/setup-node@v3
         with:
-          node-version: "18"
+          node-version: "20"
           cache: "npm"
 
       - name: 의존성 설치
         run: npm ci
+
+      - name: .env.production 생성
+        shell: bash
+        run: |
+          echo "NEXT_PUBLIC_API_URL=https://api.oeyo-cam.site" >> .env.production
+          echo "NEXT_PUBLIC_VAPID_PUBLIC_KEY=${{ vars.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}" >> .env.production
+          echo "VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}" >> .env.production
+          echo "YOUTUBE_API_KEY=${{ secrets.YOUTUBE_API_KEY }}" >> .env.production
 
       - name: TypeScript 컴파일
         run: npm run build:ts
@@ -112,8 +137,8 @@ jobs:
       - name: Next.js 빌드
         run: npm run build:web
 
-      - name: Electron 빌드 (Windows)
-        run: npx electron-builder --win --publish never
+      - name: Electron 빌드 (Windows x64)
+        run: npx electron-builder --win --x64 --publish never
 
       - name: dist 디렉터리 확인 (Windows)
         run: dir dist\

@@ -2,8 +2,19 @@
 import { app, BrowserWindow, desktopCapturer, session } from "electron";
 import path from "path";
 import { spawn } from "child_process";
+import net from "net";
 
 const isDev = !app.isPackaged;
+
+const waitForPort = (port: number): Promise<void> =>
+  new Promise((resolve) => {
+    const check = () => {
+      const socket = net.createConnection(port, "localhost");
+      socket.on("connect", () => { socket.destroy(); resolve(); });
+      socket.on("error", () => { socket.destroy(); setTimeout(check, 500); });
+    };
+    check();
+  });
 
 async function createWindow() {
   const win = new BrowserWindow({
@@ -17,12 +28,12 @@ async function createWindow() {
     },
   });
 
-  const url = isDev ? "http://localhost:3000" : "https://cam-study.vercel.app/";
+  const url = isDev ? "http://localhost:3000" : "http://localhost:3001";
 
   await win.loadURL(url);
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   session.defaultSession.webRequest.onBeforeSendHeaders(
     { urls: ["*://*.youtube.com/*", "*://*.youtube-nocookie.com/*"] },
     (details, callback) => {
@@ -48,12 +59,13 @@ app.whenReady().then(() => {
   );
 
   if (!isDev) {
-    const next = spawn("npm", ["run", "start:next"], {
+    spawn("npm", ["run", "start:next"], {
       shell: true,
       detached: true,
       stdio: "ignore",
-    });
-    next.unref();
+      cwd: app.getAppPath(),
+    }).unref();
+    await waitForPort(3001);
   }
 
   createWindow();

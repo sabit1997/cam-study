@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/sign-in", "/sign-up"];
+// 비로그인 접근 허용 + 로그인 시 홈 리다이렉트
+const AUTH_ONLY_PUBLIC = ["/sign-in", "/sign-up"];
+// 로그인 여부 상관없이 항상 접근 허용
+const OPEN_PATHS = ["/download"];
 
 // Edge 런타임에서 서명 없이 exp 클레임만 확인.
 // 서명 위조 차단은 백엔드 API 게이트웨이가 담당.
@@ -19,8 +22,10 @@ function isTokenValid(token: string): boolean {
 export function middleware(request: NextRequest) {
   const token = request.cookies.get("AccessToken")?.value;
   const pathname = request.nextUrl.pathname.replace(/\/$/, "");
-  const isPublic = PUBLIC_PATHS.includes(pathname);
 
+  if (OPEN_PATHS.includes(pathname)) return NextResponse.next();
+
+  const isPublic = AUTH_ONLY_PUBLIC.includes(pathname);
   const isValid = !!token && isTokenValid(token);
 
   if (!isValid && !isPublic) {
