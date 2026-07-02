@@ -24,8 +24,9 @@ const Timer        = lazy(() => import("./timer"));
 
 interface AddWindowProps {
   window: Window;
-  onOpenOption: () => void;
 }
+
+const TITLEBAR_H = 38;
 
 const REF_W = 1920;
 const NAV_H = 36;  // navigation bar height px
@@ -80,9 +81,11 @@ function clampPos(
   };
 }
 
-const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
+const AddWindow = ({ window }: AddWindowProps) => {
   const [isLocked, setIsLocked] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
   const [editTitle, setEditTitle] = useState(false);
+  const prevHeightRef = useRef<number | null>(null);
   const [detectedRatio, setDetectedRatio] = useState<number | null>(null);
   const [titleVal, setTitleVal] = useState(() => {
     if (typeof localStorage === "undefined") return TYPE_LABELS[window.type] ?? "WINDOW";
@@ -137,6 +140,18 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
     deleteWindow(id);
   }, [isDeletePending, deleteWindow, id]);
 
+  const handleMinimize = useCallback(() => {
+    setIsMinimized((prev) => {
+      if (!prev) {
+        prevHeightRef.current = sz.h;
+        setSz((s) => ({ ...s, h: TITLEBAR_H }));
+      } else {
+        setSz((s) => ({ ...s, h: prevHeightRef.current ?? pxH }));
+      }
+      return !prev;
+    });
+  }, [sz.h, pxH]);
+
   const debouncedServerUpdate = useDebouncedCallback(
     (rx: number, ry: number, rw: number, rh: number) => {
       if (isUpdatePending) return;
@@ -188,12 +203,12 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
       position={{ x: pos.x, y: pos.y }}
       size={{ width: sz.w, height: sz.h }}
       minWidth={minW}
-      minHeight={minH}
+      minHeight={isMinimized ? TITLEBAR_H : minH}
       bounds="parent"
-      lockAspectRatio={lockAspectRatio}
+      lockAspectRatio={isMinimized ? false : lockAspectRatio}
       disableDragging={isLocked}
       enableResizing={
-        isLocked
+        isLocked || isMinimized
           ? false
           : {
               top: true, right: true, bottom: true, left: true,
@@ -276,15 +291,15 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
                 <span className="w-3 h-3 rounded-full bg-[#ff5f57] block" />
               </button>
             </TooltipWrapper>
-            <TooltipWrapper content="옵션">
+            <TooltipWrapper content={isMinimized ? "복원" : "최소화"}>
               <button
                 className="flex items-center justify-center w-5 h-5 rounded-full transition-opacity hover:opacity-80 active:opacity-60"
-                onClick={onOpenOption}
+                onClick={handleMinimize}
               >
                 <span className="w-3 h-3 rounded-full bg-[#ffbd2e] block" />
               </button>
             </TooltipWrapper>
-            <div className="w-3 h-3 rounded-full" style={{ background: "#e0e0e4" }} />
+            <div className="w-3 h-3 rounded-full" style={{ background: "#28c840" }} />
           </div>
 
           {/* Center title */}
@@ -349,8 +364,8 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
           </div>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 relative overflow-hidden bg-white">
+        {/* Content — 최소화 시 숨김 */}
+        <div className="flex-1 relative overflow-hidden bg-white" style={{ display: isMinimized ? "none" : undefined }}>
           <Suspense fallback={<div className="w-full h-full bg-white" />}>
             {windowContent[type] ?? null}
           </Suspense>
