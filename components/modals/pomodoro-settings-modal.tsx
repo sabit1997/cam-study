@@ -30,13 +30,17 @@ export default function PomodoroSettingsModal({
     <div
       className="fixed inset-0 flex items-center justify-center"
       style={{ zIndex: 9999, background: "rgba(0,0,0,0.25)" }}
-      onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onMouseDown={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
       <div
         className="bg-white rounded-2xl shadow-xl px-6 py-5 flex flex-col gap-4"
         style={{ width: 280, border: "1px solid rgba(255,255,255,0.9)" }}
       >
-        <h3 className="text-sm font-semibold text-gray-700 text-center">포모도로 시간 설정</h3>
+        <h3 className="text-sm font-semibold text-gray-700 text-center">
+          포모도로 시간 설정
+        </h3>
 
         <div className="flex items-center gap-3">
           <label className="text-xs text-gray-400 w-12 shrink-0">집중</label>
@@ -80,7 +84,7 @@ export default function PomodoroSettingsModal({
           <button
             onClick={handleApply}
             className="flex-1 py-2 text-xs rounded-xl text-white font-semibold transition-colors"
-            style={{ background: "var(--color-dark)" }}
+            style={{ background: "#8fb870" }}
           >
             적용
           </button>

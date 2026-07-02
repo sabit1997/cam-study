@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { FiAlertCircle, FiSkipBack, FiSkipForward, FiX } from "react-icons/fi";
 import { IoLogoYoutube } from "react-icons/io5";
 import { toast } from "sonner";
@@ -98,6 +98,21 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
   };
 
   const cur = videos[Math.min(current, videos.length - 1)];
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+
+  // 페이지가 숨겨질 때(다른 탭/앱으로 전환) YouTube 재생 일시정지
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.hidden && iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage(
+          '{"event":"command","func":"pauseVideo","args":""}',
+          "*"
+        );
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => document.removeEventListener("visibilitychange", handleVisibility);
+  }, []);
 
   return (
     <div className="flex flex-col h-full">
@@ -105,8 +120,9 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
       <div className="flex-1 bg-black relative overflow-hidden">
         {cur ? (
           <iframe
+            ref={iframeRef}
             key={cur.id}
-            src={`https://www.youtube.com/embed/${cur.id}?rel=0&modestbranding=1&autoplay=1`}
+            src={`https://www.youtube.com/embed/${cur.id}?rel=0&modestbranding=1&autoplay=1&enablejsapi=1`}
             className="w-full h-full border-0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
             allowFullScreen

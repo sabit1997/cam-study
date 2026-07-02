@@ -19,14 +19,18 @@ const DEFAULT_WORK_MINS = 25;
 const DEFAULT_BREAK_MINS = 5;
 
 function fmtMS(s: number) {
-  return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+  return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(
+    s % 60
+  ).padStart(2, "0")}`;
 }
 
 const Timer: React.FC = () => {
-  const { data: todayTimeRes, isPending: isTodayTimePending } = useGetTodayTime();
+  const { data: todayTimeRes, isPending: isTodayTimePending } =
+    useGetTodayTime();
   const todayDate = new Date().toLocaleDateString("en-CA");
   const { mutate: postTime, isPending: isPostTimePending } = usePostTime();
-  const { mutate: resetTime, isPending: isResetTimePending } = useResetTime(todayDate);
+  const { mutate: resetTime, isPending: isResetTimePending } =
+    useResetTime(todayDate);
 
   // ── Stopwatch ──
   const [mode, setMode] = useState<TimerMode>("stopwatch");
@@ -47,7 +51,11 @@ const Timer: React.FC = () => {
   const workSecs = workMins * 60;
   const breakSecs = breakMins * 60;
 
-  const pomoStateRef = useRef<{ phase: PomoPhase; remaining: number; cycle: number }>({
+  const pomoStateRef = useRef<{
+    phase: PomoPhase;
+    remaining: number;
+    cycle: number;
+  }>({
     phase: "work",
     remaining: workMins * 60,
     cycle: 0,
@@ -87,36 +95,61 @@ const Timer: React.FC = () => {
 
   // ── Stopwatch controls ──
   const startTimer = useCallback(() => {
-    if (timerRef.current || saveRef.current || isPostTimePending || isRunningRef.current) return;
+    if (
+      timerRef.current ||
+      saveRef.current ||
+      isPostTimePending ||
+      isRunningRef.current
+    )
+      return;
     isRunningRef.current = true;
     startAtRef.current = new Date();
 
     timerRef.current = setInterval(() => {
       if (!startAtRef.current) return;
-      setElapsed(baseTotalSecondsRef.current + Math.floor((Date.now() - startAtRef.current.getTime()) / 1000));
+      setElapsed(
+        baseTotalSecondsRef.current +
+          Math.floor((Date.now() - startAtRef.current.getTime()) / 1000)
+      );
     }, 1000);
 
     saveRef.current = setInterval(() => {
       if (!startAtRef.current) return;
       const now = new Date();
-      const deltaSec = Math.floor((now.getTime() - startAtRef.current.getTime()) / 1000);
+      const deltaSec = Math.floor(
+        (now.getTime() - startAtRef.current.getTime()) / 1000
+      );
       const corrected = baseTotalSecondsRef.current + deltaSec;
       setElapsed(corrected);
-      postTime({ startAt: startAtRef.current.toISOString(), endAt: now.toISOString() });
+      postTime({
+        startAt: startAtRef.current.toISOString(),
+        endAt: now.toISOString(),
+      });
       baseTotalSecondsRef.current = corrected;
       startAtRef.current = now;
     }, 60000);
   }, [postTime, isPostTimePending]);
 
   const stopTimer = useCallback(() => {
-    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-    if (saveRef.current) { clearInterval(saveRef.current); saveRef.current = null; }
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    if (saveRef.current) {
+      clearInterval(saveRef.current);
+      saveRef.current = null;
+    }
     if (startAtRef.current) {
       const end = new Date();
-      const deltaSec = Math.floor((end.getTime() - startAtRef.current.getTime()) / 1000);
+      const deltaSec = Math.floor(
+        (end.getTime() - startAtRef.current.getTime()) / 1000
+      );
       const corrected = baseTotalSecondsRef.current + deltaSec;
       setElapsed(corrected);
-      postTime({ startAt: startAtRef.current.toISOString(), endAt: end.toISOString() });
+      postTime({
+        startAt: startAtRef.current.toISOString(),
+        endAt: end.toISOString(),
+      });
       baseTotalSecondsRef.current = corrected;
     }
     startAtRef.current = null;
@@ -166,7 +199,10 @@ const Timer: React.FC = () => {
   }, [workSecs, breakSecs]);
 
   const pomoStop = useCallback(() => {
-    if (pomoIntervalRef.current) { clearInterval(pomoIntervalRef.current); pomoIntervalRef.current = null; }
+    if (pomoIntervalRef.current) {
+      clearInterval(pomoIntervalRef.current);
+      pomoIntervalRef.current = null;
+    }
     setPomoRunning(false);
   }, []);
 
@@ -194,7 +230,7 @@ const Timer: React.FC = () => {
     pomoPhase === "work"
       ? (workSecs - pomoRemaining) / workSecs
       : (breakSecs - pomoRemaining) / breakSecs;
-  const pomoColor = pomoPhase === "work" ? "var(--color-dark)" : "#e8a030";
+  const pomoColor = pomoPhase === "work" ? "#8fb870" : "#e8a030";
   const circR = 52;
   const circ = 2 * Math.PI * circR;
 
@@ -208,7 +244,7 @@ const Timer: React.FC = () => {
             onClick={() => setMode(m)}
             className={`flex-1 py-2 text-xs font-medium transition-colors ${
               mode === m
-                ? "text-dark border-b-2 border-dark"
+                ? "text-dark border-b-2 border-[#8fb870]"
                 : "text-gray-400 hover:text-gray-600"
             }`}
           >
@@ -228,7 +264,7 @@ const Timer: React.FC = () => {
               onClick={startTimer}
               disabled={Boolean(timerRef.current)}
               className="w-12 h-12 rounded-full flex items-center justify-center text-white shadow-md transition-transform hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
-              style={{ background: "var(--color-dark)" }}
+              style={{ background: "#8fb870" }}
             >
               <IoPlay size={18} />
             </button>
@@ -236,29 +272,38 @@ const Timer: React.FC = () => {
               onClick={stopTimer}
               disabled={!Boolean(timerRef.current)}
               className="w-12 h-12 rounded-full flex items-center justify-center text-white shadow-md transition-transform hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
-              style={{ background: "var(--color-dark)" }}
+              style={{ background: "#8fb870" }}
             >
               <IoPauseSharp size={18} />
             </button>
             <button
               onClick={resetTimer}
-              disabled={elapsed === 0 || isResetTimePending || Boolean(timerRef.current)}
+              disabled={
+                elapsed === 0 || isResetTimePending || Boolean(timerRef.current)
+              }
               className="w-12 h-12 rounded-full flex items-center justify-center text-white shadow-md transition-transform hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
-              style={{ background: "var(--color-dark)" }}
+              style={{ background: "#8fb870" }}
             >
               <LuTimerReset size={18} />
             </button>
           </div>
           {goalInSeconds > 0 && (
             <div className="flex items-center gap-3 w-full">
-              <span className="text-xs text-gray-400 whitespace-nowrap">목표</span>
+              <span className="text-xs text-gray-400 whitespace-nowrap">
+                목표
+              </span>
               <div className="flex-1 bg-gray-100 h-1.5 rounded-full overflow-hidden">
                 <div
                   className="h-1.5 rounded-full transition-all duration-300 ease-linear"
-                  style={{ width: `${displayPercent}%`, background: "var(--color-dark)" }}
+                  style={{
+                    width: `${displayPercent}%`,
+                    background: "#8fb870",
+                  }}
                 />
               </div>
-              <span className="text-xs text-gray-400 tabular-nums">{Math.round(displayPercent)}%</span>
+              <span className="text-xs text-gray-400 tabular-nums">
+                {Math.round(displayPercent)}%
+              </span>
             </div>
           )}
         </div>
@@ -270,16 +315,27 @@ const Timer: React.FC = () => {
           {/* Ring */}
           <div className="relative w-36 h-36">
             <svg className="w-full h-full -rotate-90" viewBox="0 0 136 136">
-              <circle cx="68" cy="68" r={circR} fill="none" stroke="#f0f0f0" strokeWidth="8" />
               <circle
-                cx="68" cy="68" r={circR}
+                cx="68"
+                cy="68"
+                r={circR}
+                fill="none"
+                stroke="#f0f0f0"
+                strokeWidth="8"
+              />
+              <circle
+                cx="68"
+                cy="68"
+                r={circR}
                 fill="none"
                 stroke={pomoColor}
                 strokeWidth="8"
                 strokeLinecap="round"
                 strokeDasharray={circ}
                 strokeDashoffset={circ * (1 - pomoProgress)}
-                style={{ transition: "stroke-dashoffset 1s linear, stroke 0.5s" }}
+                style={{
+                  transition: "stroke-dashoffset 1s linear, stroke 0.5s",
+                }}
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
@@ -319,7 +375,9 @@ const Timer: React.FC = () => {
               <span className="font-semibold text-gray-600">{pomoCycle}</span>
             </p>
             <button
-              onClick={() => { if (!pomoRunning) setShowPomoSettings(true); }}
+              onClick={() => {
+                if (!pomoRunning) setShowPomoSettings(true);
+              }}
               className="text-xs text-gray-300 hover:text-gray-400 transition-colors underline-offset-2 hover:underline"
             >
               {workMins}분 집중 · {breakMins}분 휴식

@@ -53,7 +53,9 @@ const CameraView = ({ onRatioChange }: CameraViewProps) => {
     const targetId = id ?? deviceId;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: targetId ? { deviceId: { exact: targetId } } : true,
+        video: targetId
+          ? { deviceId: { exact: targetId }, width: { ideal: 1280 }, height: { ideal: 720 } }
+          : { width: { ideal: 1280 }, height: { ideal: 720 } },
       });
       streamRef.current = stream;
       if (videoRef.current) {

@@ -2,9 +2,6 @@
 
 import { FiLock, FiUnlock, FiCheck, FiEdit2 } from "react-icons/fi";
 
-import CameraView from "./camera-view";
-import YouTubePlayer from "./youtube-player";
-import WindowShare from "./window-share";
 import { Rnd } from "react-rnd";
 import { Window } from "@/types/windows";
 import {
@@ -13,12 +10,17 @@ import {
 } from "@/apis/services/window-services/mutation";
 import { useDebouncedCallback } from "use-debounce";
 import { useWindowStore } from "@/stores/window-state";
-import Todos from "./todos";
-import Timer from "./timer";
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect, useRef, lazy, Suspense } from "react";
 import TooltipWrapper from "./tooltip-wrapper";
 import useViewportSize from "@/hooks/useViewportSize";
 import { TypeList } from "@/types/dto";
+
+// 창 타입별 컴포넌트를 lazy load — 초기 번들에 포함되지 않고 첫 사용 시 로드
+const CameraView   = lazy(() => import("./camera-view"));
+const YouTubePlayer = lazy(() => import("./youtube-player"));
+const WindowShare  = lazy(() => import("./window-share"));
+const Todos        = lazy(() => import("./todos"));
+const Timer        = lazy(() => import("./timer"));
 
 interface AddWindowProps {
   window: Window;
@@ -198,7 +200,7 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
               topRight: true, bottomRight: true, bottomLeft: true, topLeft: true,
             }
       }
-      style={{ zIndex: currentZIndex, position: "absolute", pointerEvents: "auto" }}
+      style={{ zIndex: currentZIndex, position: "absolute", pointerEvents: "auto", willChange: "transform" }}
       dragHandleClassName="drag-handle"
       // ── Drag ──────────────────────────────────────────────────────────────
       // DO NOT call handleFocus here — that triggers a Zustand update which
@@ -268,15 +270,19 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
           >
             <TooltipWrapper content="닫기">
               <button
-                className="w-3 h-3 rounded-full bg-[#ff5f57] transition-opacity hover:opacity-80 active:opacity-60"
+                className="flex items-center justify-center w-5 h-5 rounded-full transition-opacity hover:opacity-80 active:opacity-60"
                 onClick={handleClose}
-              />
+              >
+                <span className="w-3 h-3 rounded-full bg-[#ff5f57] block" />
+              </button>
             </TooltipWrapper>
             <TooltipWrapper content="옵션">
               <button
-                className="w-3 h-3 rounded-full bg-[#ffbd2e] transition-opacity hover:opacity-80 active:opacity-60"
+                className="flex items-center justify-center w-5 h-5 rounded-full transition-opacity hover:opacity-80 active:opacity-60"
                 onClick={onOpenOption}
-              />
+              >
+                <span className="w-3 h-3 rounded-full bg-[#ffbd2e] block" />
+              </button>
             </TooltipWrapper>
             <div className="w-3 h-3 rounded-full" style={{ background: "#e0e0e4" }} />
           </div>
@@ -323,20 +329,20 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
             onMouseDown={(e) => { handleFocus(); e.stopPropagation(); }}
           >
             <button
-              className="text-gray-300 hover:text-gray-500 transition-colors"
+              className="flex items-center justify-center w-6 h-6 rounded text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition-colors"
               onClick={() => setEditTitle(true)}
             >
-              <FiEdit2 size={10} />
+              <FiEdit2 size={11} />
             </button>
             <TooltipWrapper content={isLocked ? "잠금 해제" : "잠금"}>
               <button
                 onClick={() => setIsLocked((prev) => !prev)}
-                className="text-gray-300 hover:text-gray-500 transition-colors"
+                className="flex items-center justify-center w-6 h-6 rounded text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition-colors"
               >
                 {isLocked ? (
-                  <FiLock size={10} className="text-lime-500" />
+                  <FiLock size={11} className="text-lime-500" />
                 ) : (
-                  <FiUnlock size={10} />
+                  <FiUnlock size={11} />
                 )}
               </button>
             </TooltipWrapper>
@@ -345,7 +351,9 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
 
         {/* Content */}
         <div className="flex-1 relative overflow-hidden bg-white">
-          {windowContent[type] ?? null}
+          <Suspense fallback={<div className="w-full h-full bg-white" />}>
+            {windowContent[type] ?? null}
+          </Suspense>
           {!isLocked && (
             <div className="absolute bottom-0 right-0 w-5 h-5 pointer-events-none z-10">
               <svg
