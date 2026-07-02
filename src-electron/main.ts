@@ -16,13 +16,16 @@ let nextServer: ReturnType<typeof spawn> | null = null;
 const waitForPort = (port: number, timeoutMs = 30000): Promise<void> =>
   new Promise((resolve, reject) => {
     const deadline = Date.now() + timeoutMs;
+    let done = false;
     const check = () => {
+      if (done) return;
       if (Date.now() > deadline) {
+        done = true;
         return reject(new Error(`port ${port} not ready after ${timeoutMs}ms`));
       }
       const socket = net.createConnection(port, "127.0.0.1");
-      socket.on("connect", () => { socket.destroy(); resolve(); });
-      socket.on("error", () => { socket.destroy(); setTimeout(check, 500); });
+      socket.on("connect", () => { done = true; socket.destroy(); resolve(); });
+      socket.on("error", () => { socket.destroy(); if (!done) setTimeout(check, 500); });
     };
     check();
   });
@@ -58,6 +61,10 @@ app.whenReady().then(async () => {
       desktopCapturer
         .getSources({ types: ["screen", "window"] })
         .then((sources) => {
+          if (sources.length === 0) {
+            callback({});
+            return;
+          }
           callback({ video: sources[0] });
         })
         .catch((err) => {
@@ -69,8 +76,6 @@ app.whenReady().then(async () => {
   );
 
   if (!isDev) {
-    // asar 밖의 unpacked 경로에 있는 standalone server.js를
-    // Electron 내장 Node(ELECTRON_RUN_AS_NODE)로 직접 실행
     const standaloneDir = path.join(
       process.resourcesPath,
       "app.asar.unpacked",
@@ -78,6 +83,16 @@ app.whenReady().then(async () => {
       "standalone"
     );
     const serverPath = path.join(standaloneDir, "server.js");
+
+    if (!require("fs").existsSync(serverPath)) {
+      const { dialog } = require("electron");
+      dialog.showErrorBox(
+        "서버 파일 없음",
+        `Next.js 서버를 찾을 수 없습니다.\n${serverPath}`
+      );
+      app.quit();
+      return;
+    }
 
     nextServer = spawn(process.execPath, [serverPath], {
       env: {
@@ -99,6 +114,13 @@ app.whenReady().then(async () => {
       await waitForPort(3001, 30000);
     } catch (err) {
       console.error("Next.js 서버 시작 실패:", err);
+      const { dialog } = require("electron");
+      dialog.showErrorBox(
+        "서버 시작 실패",
+        "Next.js 서버가 30초 안에 시작되지 않았습니다.\n앱을 다시 시작해 주세요."
+      );
+      app.quit();
+      return;
     }
   }
 

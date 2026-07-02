@@ -12,7 +12,6 @@
     "dev:electron": "wait-on http://localhost:3000 && electron .",
     "dev": "npm run build:ts && concurrently -k \"npm run dev:web\" \"npm run dev:electron\"",
     "build:web": "next build",
-    "start:next": "next start -p 3001",
     "copy:standalone": "node scripts/copy-standalone.js",
     "build:app": "npm run build:ts && npm run build:web && npm run copy:standalone && electron-builder",
     "type-check": "tsc --noEmit",

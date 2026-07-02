@@ -4,5 +4,9 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const electron_1 = require("electron");
 electron_1.contextBridge.exposeInMainWorld("electronAPI", {
     send: (channel, data) => electron_1.ipcRenderer.send(channel, data),
-    on: (channel, fn) => electron_1.ipcRenderer.on(channel, (_, args) => fn(args)),
+    on: (channel, fn) => {
+        const listener = (_, args) => fn(args);
+        electron_1.ipcRenderer.on(channel, listener);
+        return () => electron_1.ipcRenderer.removeListener(channel, listener);
+    },
 });

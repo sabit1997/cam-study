@@ -60,6 +60,7 @@ jobs:
 
   build-mac:
     runs-on: macos-latest
+    continue-on-error: true
     env:
       NEXT_PUBLIC_API_URL: https://api.oeyo-cam.site
       NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ vars.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
@@ -162,6 +163,7 @@ jobs:
 
   release:
     needs: [build-linux, build-mac, build-windows]
+    if: always()
     runs-on: ubuntu-latest
     steps:
       - name: 코드 체크아웃
@@ -175,6 +177,7 @@ jobs:
 
       - name: macOS 설치 프로그램 다운로드
         uses: actions/download-artifact@v4
+        continue-on-error: true
         with:
           name: installers-mac
           path: dist
