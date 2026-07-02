@@ -22,10 +22,14 @@ const CameraView = ({ onRatioChange }: CameraViewProps) => {
     const loadDevices = async () => {
       if (!navigator.mediaDevices?.enumerateDevices) return;
       try {
-        const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        const tempStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+        });
         tempStream.getTracks().forEach((t) => t.stop());
       } catch {
-        toast.error("카메라 접근 권한이 없습니다. 브라우저 설정을 확인해주세요.");
+        toast.error(
+          "카메라 접근 권한이 없습니다. 브라우저 설정을 확인해주세요."
+        );
         return;
       }
       const all = await navigator.mediaDevices.enumerateDevices();
@@ -54,7 +58,11 @@ const CameraView = ({ onRatioChange }: CameraViewProps) => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: targetId
-          ? { deviceId: { exact: targetId }, width: { ideal: 1280 }, height: { ideal: 720 } }
+          ? {
+              deviceId: { exact: targetId },
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+            }
           : { width: { ideal: 1280 }, height: { ideal: 720 } },
       });
       streamRef.current = stream;
@@ -95,12 +103,16 @@ const CameraView = ({ onRatioChange }: CameraViewProps) => {
           ref={videoRef}
           muted
           playsInline
-          className="w-full h-full object-cover"
           style={{
-            filter: isBlur ? "blur(18px)" : "none",
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
             transform: "scaleX(-1)",
           }}
         />
+        {isBlur && <div className="absolute inset-0 backdrop-blur-xs" />}
         {!isStreaming && (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
             <FiCamera size={36} className="opacity-20 mb-2" />

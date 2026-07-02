@@ -14,7 +14,10 @@ interface WindowShareProps {
   onRatioChange?: (ratio: number) => void;
 }
 
-export default function WindowShare({ windowId, onRatioChange }: WindowShareProps) {
+export default function WindowShare({
+  windowId,
+  onRatioChange,
+}: WindowShareProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -46,7 +49,10 @@ export default function WindowShare({ windowId, onRatioChange }: WindowShareProp
       return;
     }
     try {
-      const s = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+      const s = await navigator.mediaDevices.getDisplayMedia({
+        video: true,
+        audio: false,
+      });
       streamRef.current = s;
       const track = s.getVideoTracks()[0];
       track.addEventListener("ended", stopSharing);
@@ -79,8 +85,8 @@ export default function WindowShare({ windowId, onRatioChange }: WindowShareProp
           muted
           playsInline
           className="w-full h-full object-contain"
-          style={{ filter: isBlur ? "blur(18px)" : "none" }}
         />
+        {isBlur && <div className="absolute inset-0 backdrop-blur-xs" />}
         {!started && (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
             <FiMonitor size={36} className="opacity-20 mb-2" />
