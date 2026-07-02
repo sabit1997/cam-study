@@ -1,6 +1,6 @@
 {
   "name": "cam-study",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "private": true,
   "description": "외요의 캠스터디 데스크탑 앱",
   "author": "JUNG YEJI <yejiii1997@gmail.com>",
@@ -99,6 +99,9 @@
         "nsis",
         "zip"
       ]
+    },
+    "nsis": {
+      "artifactName": "CamStudySetup.exe"
     },
     "linux": {
       "icon": "buildResources/icon.png",
