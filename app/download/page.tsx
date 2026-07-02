@@ -38,7 +38,6 @@ export const metadata = {
 export default async function DownloadPage() {
   const release = await getLatestRelease();
 
-  const macAsset = release?.assets.find((a) => a.name.endsWith(".dmg"));
   const winAsset = release?.assets.find((a) => a.name.endsWith(".exe"));
   const version = release?.tag_name ?? "";
 
