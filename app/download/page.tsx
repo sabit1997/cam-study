@@ -17,7 +17,7 @@ async function getLatestRelease(): Promise<GithubRelease | null> {
   try {
     const res = await fetch(
       "https://api.github.com/repos/sabit1997/cam-study/releases/latest",
-      { next: { revalidate: 3600 } }
+      { cache: "no-store" }
     );
     if (!res.ok) return null;
     return res.json();
