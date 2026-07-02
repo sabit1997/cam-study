@@ -299,7 +299,6 @@ const AddWindow = ({ window }: AddWindowProps) => {
                 <span className="w-3 h-3 rounded-full bg-[#ffbd2e] block" />
               </button>
             </TooltipWrapper>
-            <div className="w-3 h-3 rounded-full" style={{ background: "#28c840" }} />
           </div>
 
           {/* Center title */}
