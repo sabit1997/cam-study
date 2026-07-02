@@ -53,9 +53,9 @@ exports.default = async function ({ appOutDir, packager }) {
   // inside the Electron Framework binary. We NOP all three instructions so
   // execution continues past the check instead of hard-aborting.
   //
-  // Offset 0x12a8db0 is specific to electron-nightly 44.0.0-nightly.20260701.
+  // Offset 0x13adbf8 is specific to electron 43.0.0 stable.
   // If you update Electron, re-derive the offset from the crash report.
-  const DCHECK_OFFSET = 0x12a8db0;
+  const DCHECK_OFFSET = 0x13adbf8;
   const BRK0  = 0xd4200000;   // BRK #0
   const HLT0  = 0xd4400000;   // HLT #0
   const BRK1  = 0xd4200020;   // BRK #1
