@@ -47,19 +47,19 @@ const StaticSection = () => {
 
   const weekdayData = DAY_ORDER.map((day) => ({
     day: DAY_LABELS[day],
-    hours: Math.round(((data.weekdayStats?.[day] as number) || 0) / 360) / 10,
+    hours: Math.round(((data.weekdayStats?.[day] as number) || 0) / 3600 * 10) / 10,
   }));
 
   const monthData = [
     {
       name: "지난달",
       hours:
-        Math.round((data.monthComparison?.previousMonthTotal || 0) / 360) / 10,
+        Math.round((data.monthComparison?.previousMonthTotal || 0) / 3600 * 10) / 10,
     },
     {
       name: "이번달",
       hours:
-        Math.round((data.monthComparison?.currentMonthTotal || 0) / 360) / 10,
+        Math.round((data.monthComparison?.currentMonthTotal || 0) / 3600 * 10) / 10,
     },
   ];
 

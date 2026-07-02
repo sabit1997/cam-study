@@ -20,6 +20,10 @@ export class WindowErrorBoundary extends React.Component<Props, State> {
     return { hasError: true };
   }
 
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    console.error("[WindowErrorBoundary]", error, info.componentStack);
+  }
+
   render() {
     if (this.state.hasError) {
       return (

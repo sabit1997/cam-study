@@ -31,7 +31,7 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
   const playerRef = useRef<YT.Player | null>(null);
 
   useEffect(() => {
-    if (Array.isArray(window.url) && window.url.length > 0) {
+    if (window.url && window.url.length > 0) {
       const ids = window.url
         .map((fullUrl) => extractYouTubeId(fullUrl))
         .filter((id): id is string => !!id);
@@ -169,7 +169,7 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
     setIsSubmitted(false);
     setCurrentIndex(0);
 
-    if (Array.isArray(window.url) && window.url.length > 0) {
+    if (window.url && window.url.length > 0) {
       setInputs(
         window.url.map((url) => ({
           value: url,

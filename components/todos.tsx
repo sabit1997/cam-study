@@ -123,7 +123,7 @@ const Todos = ({ window }: { window: Window }) => {
               `}
             >
               <span className="mr-2">{todo.done ? "✅" : "⬜️"}</span>
-              <p className="overflow-ellipsis overflow-hidden">{todo.text}</p>
+              <p className="truncate">{todo.text}</p>
               <button
                 disabled={isDeletePending}
                 type="button"

@@ -18,9 +18,9 @@ import { useDebouncedCallback } from "use-debounce";
 import { useWindowStore } from "@/stores/window-state";
 import Todos from "./todos";
 import Timer from "./timer";
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import TooltipWrapper from "./tooltip-wrapper";
-import useScreenSizeRef from "@/hooks/useScreenSizeRef";
+import useViewportSize from "@/hooks/useViewportSize";
 
 interface AddWindowProps {
   window: Window;
@@ -37,7 +37,7 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
     useDeleteWindow();
 
   const { bringToFront, updateWindowBounds, windows } = useWindowStore();
-  const { vw, vh } = useScreenSizeRef();
+  const { vw, vh } = useViewportSize();
 
   const { id, type, zIndex, x, y, width, height } = window;
   const currentWindow = windows.find((w) => w.id === window.id);
@@ -48,21 +48,21 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
   const pxW = width * scale;
   const pxH = height * scale;
 
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     if (isDeletePending) return;
     deleteWindow(id);
-  };
-
-  const handleClickOrFocus = () => {
-    bringToFront(id);
-    debouncedZIndexUpdate();
-  };
+  }, [isDeletePending, deleteWindow, id]);
 
   const debouncedZIndexUpdate = useDebouncedCallback(() => {
     if (isUpdatePending) return;
     const zIndex = currentWindow?.zIndex ?? 0;
     updateWindow({ id, data: { zIndex } });
   }, 300);
+
+  const handleClickOrFocus = useCallback(() => {
+    bringToFront(id);
+    debouncedZIndexUpdate();
+  }, [bringToFront, id, debouncedZIndexUpdate]);
 
   const debouncedServerUpdate = useDebouncedCallback(
     (rx: number, ry: number, rw: number, rh: number) => {
@@ -72,19 +72,17 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
     500
   );
 
-  const handleMoveOrResize = (
-    px: number,
-    py: number,
-    pw: number,
-    ph: number
-  ) => {
-    const rx = Math.round(px / scale);
-    const ry = Math.round(py / scale);
-    const rw = Math.round(pw / scale);
-    const rh = Math.round(ph / scale);
-    updateWindowBounds(id, rx, ry, rw, rh);
-    debouncedServerUpdate(rx, ry, rw, rh);
-  };
+  const handleMoveOrResize = useCallback(
+    (px: number, py: number, pw: number, ph: number) => {
+      const rx = Math.round(px / scale);
+      const ry = Math.round(py / scale);
+      const rw = Math.round(pw / scale);
+      const rh = Math.round(ph / scale);
+      updateWindowBounds(id, rx, ry, rw, rh);
+      debouncedServerUpdate(rx, ry, rw, rh);
+    },
+    [scale, id, updateWindowBounds, debouncedServerUpdate]
+  );
 
   const windowContent: Partial<Record<Window["type"], React.ReactNode>> = {
     camera: <CameraView isBlur={isBlur} />,
@@ -120,8 +118,8 @@ const AddWindow = ({ window, onOpenOption }: AddWindowProps) => {
       }}
       onDragStart={handleClickOrFocus}
       onResizeStart={handleClickOrFocus}
-      onDragStop={(e, d) => handleMoveOrResize(d.x, d.y, pxW, pxH)}
-      onResizeStop={(e, direction, ref, delta, position) => {
+      onDragStop={(_e, d) => handleMoveOrResize(d.x, d.y, pxW, pxH)}
+      onResizeStop={(_e, _direction, ref, _delta, position) => {
         handleMoveOrResize(
           position.x,
           position.y,

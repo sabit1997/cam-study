@@ -1,12 +1,10 @@
 import { TypeList } from "./dto";
 
-export type WindowType = "none" | "camera" | "youtube" | "window" | "timer";
-
 export interface WindowData {
   id: number;
   user_id: string;
-  type: WindowType;
-  url?: string;
+  type: TypeList;
+  url?: string[];
   z_index: number;
   x: number;
   y: number;
@@ -18,7 +16,7 @@ export interface WindowData {
 export interface Window {
   id: number;
   type: TypeList;
-  url?: string;
+  url?: string[];
   x: number;
   y: number;
   width: number;
