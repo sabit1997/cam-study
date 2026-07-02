@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  output: "standalone",
   experimental: {
     // tree-shake react-icons / recharts — 아이콘 전체 대신 실제 사용 아이콘만 번들링
     optimizePackageImports: ["react-icons", "recharts"],

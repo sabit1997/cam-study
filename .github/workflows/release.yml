@@ -17,10 +17,10 @@ jobs:
       VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
     steps:
       - name: 코드 체크아웃
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Node.js 설정
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: "npm"
@@ -40,6 +40,9 @@ jobs:
 
       - name: Next.js 빌드
         run: npm run build:web
+
+      - name: standalone 정적 파일 복사
+        run: npm run copy:standalone
 
       - name: Electron 빌드 (Linux)
         run: npx electron-builder --linux --publish never
@@ -63,10 +66,10 @@ jobs:
       VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
     steps:
       - name: 코드 체크아웃
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Node.js 설정
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: "npm"
@@ -90,6 +93,9 @@ jobs:
       - name: Next.js 빌드
         run: npm run build:web
 
+      - name: standalone 정적 파일 복사
+        run: npm run copy:standalone
+
       - name: Electron 빌드 (macOS arm64)
         run: npx electron-builder --mac --arm64 --publish never
 
@@ -112,10 +118,10 @@ jobs:
       VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
     steps:
       - name: 코드 체크아웃
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Node.js 설정
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: "npm"
@@ -137,6 +143,9 @@ jobs:
       - name: Next.js 빌드
         run: npm run build:web
 
+      - name: standalone 정적 파일 복사
+        run: npm run copy:standalone
+
       - name: Electron 빌드 (Windows x64)
         run: npx electron-builder --win --x64 --publish never
 
@@ -156,7 +165,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: 코드 체크아웃
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Linux 설치 프로그램 다운로드
         uses: actions/download-artifact@v4
