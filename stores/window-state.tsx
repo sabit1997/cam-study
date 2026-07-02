@@ -49,7 +49,7 @@ export const useWindowStore = create<WindowState>()((set) => ({
       const target = sorted.find((w) => w.id === id);
       if (!target) return state;
       const topZ = sorted[sorted.length - 1]?.zIndex ?? 0;
-      if (target.zIndex === topZ) return state;
+      if (sorted[sorted.length - 1]?.id === id) return state;
 
       const orderMap = new Map(sorted.map((w, i) => [w.id, i + 1]));
       orderMap.set(id, sorted.length + 1);

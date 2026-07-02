@@ -5,13 +5,10 @@ export const metadata = {
   description: "Page for sign in. Email and password required.",
 };
 
-const SignInPage = () => {
+export default function SignInPage() {
   return (
-    <div className="p-10 flex flex-col items-center">
-      <h2 className="text-7xl">SIGN IN</h2>
+    <div className="flex items-center justify-center" style={{ minHeight: "calc(100vh - 36px)" }}>
       <SignInForm />
     </div>
   );
-};
-
-export default SignInPage;
+}

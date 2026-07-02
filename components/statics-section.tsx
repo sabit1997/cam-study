@@ -47,19 +47,25 @@ const StaticSection = () => {
 
   const weekdayData = DAY_ORDER.map((day) => ({
     day: DAY_LABELS[day],
-    hours: Math.round(((data.weekdayStats?.[day] as number) || 0) / 3600 * 10) / 10,
+    hours:
+      Math.round((((data.weekdayStats?.[day] as number) || 0) / 3600) * 10) /
+      10,
   }));
 
   const monthData = [
     {
       name: "지난달",
       hours:
-        Math.round((data.monthComparison?.previousMonthTotal || 0) / 3600 * 10) / 10,
+        Math.round(
+          ((data.monthComparison?.previousMonthTotal || 0) / 3600) * 10
+        ) / 10,
     },
     {
       name: "이번달",
       hours:
-        Math.round((data.monthComparison?.currentMonthTotal || 0) / 3600 * 10) / 10,
+        Math.round(
+          ((data.monthComparison?.currentMonthTotal || 0) / 3600) * 10
+        ) / 10,
     },
   ];
 
@@ -89,7 +95,9 @@ const StaticSection = () => {
         <div className="p-4 border-2 border-dark rounded-xl bg-white shadow-sm">
           <p className="text-xl text-dark font-bold mb-1">월별 비교</p>
           <p
-            className={`text-sm font-bold mb-2 ${isPositive ? "text-positive" : "text-negative"}`}
+            className={`text-sm font-bold mb-2 ${
+              isPositive ? "text-positive" : "text-negative"
+            }`}
           >
             {isPositive ? "+" : ""}
             {formatTime(diff)} ({data.monthComparison?.changeRate || 0}%)
@@ -107,7 +115,7 @@ const StaticSection = () => {
                 formatter={(v) => [`${v}h`, "집중 시간"]}
                 cursor={{ fill: "transparent" }}
               />
-              <Bar dataKey="hours" fill="var(--color-dark)" radius={4} />
+              <Bar dataKey="hours" fill="#8fb870" radius={4} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -127,7 +135,7 @@ const StaticSection = () => {
                 formatter={(v) => [`${v}h`, "집중 시간"]}
                 cursor={{ fill: "transparent" }}
               />
-              <Bar dataKey="hours" fill="var(--color-dark)" radius={4} />
+              <Bar dataKey="hours" fill="#8fb870" radius={4} />
             </BarChart>
           </ResponsiveContainer>
         </div>

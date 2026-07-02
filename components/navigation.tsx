@@ -1,88 +1,170 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import { IoHomeSharp, IoPaperPlane } from "react-icons/io5";
-import { GoPersonFill } from "react-icons/go";
 import Link from "next/link";
 import { useUserStore } from "@/stores/user-state";
-import TooltipWrapper from "./tooltip-wrapper";
+import { useWindowStore } from "@/stores/window-state";
+import { useQueryClient } from "@tanstack/react-query";
+import { useLogout } from "@/apis/services/auth-services/mutation";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { IoBarChartOutline, IoLogOutOutline } from "react-icons/io5";
 
 const Navigation = () => {
-  const pathname = usePathname();
-
   const user = useUserStore((state) => state.user);
+  const logoutUser = useUserStore((state) => state.logout);
+  const setWindows = useWindowStore((state) => state.setWindows);
+  const queryClient = useQueryClient();
+  const router = useRouter();
+  const { mutate: logoutMutate } = useLogout();
 
   const [mounted, setMounted] = useState(false);
+  const [currentTime, setCurrentTime] = useState("");
 
   useEffect(() => {
     setMounted(true);
+    const updateTime = () => {
+      const now = new Date();
+      setCurrentTime(
+        now.toLocaleTimeString("ko-KR", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        })
+      );
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
   }, []);
 
-  const checkActive = (path: string) => {
-    if (path === "/") {
-      return pathname === "/";
-    }
-    return pathname === path || pathname.startsWith(`${path}/`);
+  const handleLogout = () => {
+    logoutMutate(undefined, {
+      onSuccess: () => {
+        queryClient.clear();
+        setWindows([]);
+        logoutUser();
+        router.push("/sign-in");
+      },
+      onError: () => {
+        queryClient.clear();
+        setWindows([]);
+        logoutUser();
+        router.push("/sign-in");
+      },
+    });
   };
 
+  const isAuthenticated = mounted && !!user;
+
   return (
-    <div className="flex justify-between items-center">
-      <ul className="flex gap-10 px-20 py-5">
-        <li>
-          <Link href="/" className="cursor-pointer group">
-            <IoHomeSharp
-              className={`text-8xl mb-3 text-dark transition-colors ${
-                checkActive("/") ? "bg-[#727D73]/50 border border-dark/50" : ""
-              }`}
-            />
-            <p
-              className={`p-0.5 border-2 rounded-md border-dark text-center font-medium ${
-                checkActive("/")
-                  ? "bg-dark text-[var(--text-selected)]"
-                  : "bg-primary text-dark"
-              }`}
-            >
-              HOME
-            </p>
-          </Link>
-        </li>
+    <div
+      style={{
+        height: 36,
+        background: "rgba(255,255,255,0.8)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        borderBottom: "1px solid rgba(0,0,0,0.07)",
+        position: "sticky",
+        top: 0,
+        zIndex: 9999,
+        display: "flex",
+        alignItems: "center",
+        padding: "0 12px",
+        gap: 8,
+      }}
+    >
+      {/* Left: Logo */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+        <div
+          style={{
+            width: 20,
+            height: 20,
+            borderRadius: 6,
+            background: "linear-gradient(135deg, #e8c8f0, #c0b8e8)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <span style={{ color: "#fff", fontSize: 11, fontWeight: 700, lineHeight: 1 }}>C</span>
+        </div>
+        <span style={{ fontSize: 12, fontWeight: 700, color: "#374151", letterSpacing: "0.05em" }}>
+          CAM STUDY
+        </span>
+      </div>
 
-        <li>
-          <Link href="/my-page/record" className="cursor-pointer group">
-            <GoPersonFill
-              className={`text-8xl mb-3 text-dark transition-colors ${
-                checkActive("/my-page")
-                  ? "bg-[#727D73]/50 border border-dark/50"
-                  : ""
-              }`}
-            />
-            <p
-              className={`p-0.5 border-2 rounded-md border-dark text-center font-medium ${
-                checkActive("/my-page")
-                  ? "bg-dark text-[var(--text-selected)]"
-                  : "bg-primary text-dark"
-              }`}
-            >
-              {mounted && user && user.username ? user.username : "MY PAGE"}
-            </p>
-          </Link>
-        </li>
-      </ul>
+      {/* Center spacer */}
+      <div style={{ flex: 1 }} />
 
-      <ul className="flex gap-5 px-4 mb-auto pt-3">
-        <li>
-          <TooltipWrapper content="버그 리포트 보내기">
-            <a
-              href="https://forms.gle/tNZ9ApZpkQptFjMp6"
-              target="_blank"
-              rel="noopener noreferrer"
+      {/* Right: auth actions */}
+      {isAuthenticated && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <Link
+            href="/my-page/record"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              fontSize: 12,
+              color: "#374151",
+              textDecoration: "none",
+              padding: "2px 8px",
+              borderRadius: 6,
+              border: "1px solid rgba(143,184,112,0.4)",
+              background: "rgba(143,184,112,0.08)",
+            }}
+          >
+            <IoBarChartOutline style={{ fontSize: 13 }} />
+            <span>내 통계</span>
+          </Link>
+
+          <span style={{ fontSize: 11, color: "#6b7280", fontVariantNumeric: "tabular-nums" }}>
+            {currentTime}
+          </span>
+
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div
+              style={{
+                width: 22,
+                height: 22,
+                borderRadius: "50%",
+                background: "linear-gradient(135deg, #a8c890, #6a9050)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
             >
-              <IoPaperPlane className="text-4xl text-dark hover:text-blue-600 transition-colors" />
-            </a>
-          </TooltipWrapper>
-        </li>
-      </ul>
+              <span style={{ color: "#fff", fontSize: 10, fontWeight: 700 }}>
+                {user?.username?.charAt(0)?.toUpperCase() ?? "U"}
+              </span>
+            </div>
+            <span style={{ fontSize: 12, color: "#374151", fontWeight: 500 }}>
+              {user?.username}
+            </span>
+          </div>
+
+          <button
+            onClick={handleLogout}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 3,
+              fontSize: 11,
+              color: "#6b7280",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              padding: "2px 6px",
+              borderRadius: 4,
+            }}
+            type="button"
+          >
+            <IoLogOutOutline style={{ fontSize: 14 }} />
+            <span>로그아웃</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 };
