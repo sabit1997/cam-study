@@ -4,6 +4,9 @@ import path from "path";
 import { spawn } from "child_process";
 import net from "net";
 
+// macOS 26 (Tahoe) 호환 workaround: V8 JIT가 Node.js 초기화 중 crash남
+app.commandLine.appendSwitch("js-flags", "--no-opt");
+
 const isDev = !app.isPackaged;
 
 const waitForPort = (port: number): Promise<void> =>

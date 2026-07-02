@@ -75,6 +75,11 @@
     },
     "mac": {
       "icon": "buildResources/icon.icns",
+      "extendInfo": {
+        "LSEnvironment": {
+          "NODE_OPTIONS": "--no-opt"
+        }
+      },
       "target": [
         {
           "target": "dmg",

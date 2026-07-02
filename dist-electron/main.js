@@ -8,6 +8,8 @@ const electron_1 = require("electron");
 const path_1 = __importDefault(require("path"));
 const child_process_1 = require("child_process");
 const net_1 = __importDefault(require("net"));
+// macOS 26 (Tahoe) 호환 workaround: V8 JIT가 Node.js 초기화 중 crash남
+electron_1.app.commandLine.appendSwitch("js-flags", "--no-opt");
 const isDev = !electron_1.app.isPackaged;
 const waitForPort = (port) => new Promise((resolve) => {
     const check = () => {
