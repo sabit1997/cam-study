@@ -28,10 +28,15 @@ const CameraView = ({ isBlur }: CameraViewProps) => {
   useEffect(() => {
     const loadDevices = async () => {
       if (!navigator.mediaDevices?.enumerateDevices) return;
-      const tempStream = await navigator.mediaDevices.getUserMedia({
-        video: true,
-      });
-      tempStream.getTracks().forEach((t) => t.stop());
+      try {
+        const tempStream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+        });
+        tempStream.getTracks().forEach((t) => t.stop());
+      } catch {
+        toast.error("카메라 접근 권한이 없습니다. 브라우저 설정을 확인해주세요.");
+        return;
+      }
 
       const allDevices = await navigator.mediaDevices.enumerateDevices();
       const videoDevices = allDevices

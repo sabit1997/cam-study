@@ -13,25 +13,23 @@ interface ThemeState {
   resetTheme: () => void;
 }
 
+const DEFAULT_THEME = {
+  primaryHex: "#a0c878",
+  darkHex: "#255f38",
+  textHex: "#000000",
+  selectedTextHex: "#ffffff",
+};
+
 export const useThemeStore = create(
   persist(
     (set) => ({
-      primaryHex: "#eee9da",
-      darkHex: "#6096b4",
-      textHex: "#6096b4",
-      selectedTextHex: "#ffffff",
+      ...DEFAULT_THEME,
 
       setPrimaryHex: (hex: string) => set({ primaryHex: hex }),
       setDarkHex: (hex: string) => set({ darkHex: hex }),
       setTextHex: (hex: string) => set({ textHex: hex }),
       setSelectedTextHex: (hex: string) => set({ selectedTextHex: hex }),
-      resetTheme: () =>
-        set({
-          primaryHex: "#a0c878",
-          darkHex: "#255f38",
-          textHex: "#000000",
-          selectedTextHex: "#ffffff",
-        }),
+      resetTheme: () => set(DEFAULT_THEME),
     }),
     {
       name: "theme-store",

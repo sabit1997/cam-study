@@ -45,15 +45,28 @@ export const useWindowStore = create<WindowState>()((set) => ({
 
   bringToFront: (id) =>
     set((state) => {
-      const maxZ = state.windows.reduce(
-        (m, w) => Math.max(m, w.zIndex || 0),
-        0
-      );
-      const target = state.windows.find((w) => w.id === id);
-      if (!target || target.zIndex === maxZ) return state;
+      const sorted = [...state.windows].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
+      const target = sorted.find((w) => w.id === id);
+      if (!target) return state;
+      const topZ = sorted[sorted.length - 1]?.zIndex ?? 0;
+      if (target.zIndex === topZ) return state;
+
+      const orderMap = new Map(sorted.map((w, i) => [w.id, i + 1]));
+      orderMap.set(id, sorted.length + 1);
+
+      // zIndex가 windows.length + 1 초과 시 1부터 재정규화
+      const needsNormalize = topZ + 1 > state.windows.length * 2;
+      if (needsNormalize) {
+        const reordered = sorted
+          .filter((w) => w.id !== id)
+          .concat(target)
+          .map((w, i) => ({ ...w, zIndex: i + 1 }));
+        return { windows: reordered };
+      }
+
       return {
         windows: state.windows.map((w) =>
-          w.id === id ? { ...w, zIndex: maxZ + 1 } : w
+          w.id === id ? { ...w, zIndex: topZ + 1 } : w
         ),
       };
     }),

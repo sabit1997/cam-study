@@ -9,6 +9,8 @@ import { useWindows } from "@/apis/services/window-services/query";
 import type { Window as WindowType } from "@/types/windows";
 import { WindowErrorBoundary } from "./window-error-boundary";
 
+const LOADING_SKELETON_COUNT = 2;
+
 const WindowZone = () => {
   const { data: serverWindows = [], isPending, isSuccess } = useWindows();
 
@@ -34,6 +36,14 @@ const WindowZone = () => {
   return (
     <>
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        {isPending &&
+          Array.from({ length: LOADING_SKELETON_COUNT }).map((_, i) => (
+            <div
+              key={i}
+              className="absolute border-2 border-dark rounded-2xl bg-primary animate-pulse opacity-40"
+              style={{ width: 300, height: 160, left: 120 + i * 80, top: 120 + i * 50 }}
+            />
+          ))}
         {localWindows.map((win: WindowType) => (
           <WindowErrorBoundary key={win.id}>
             <AddWindow window={win} onOpenOption={() => setSelectedId(win.id)} />

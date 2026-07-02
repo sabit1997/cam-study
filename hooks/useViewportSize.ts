@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-const useScreenSizeRef = () => {
+const useViewportSize = () => {
   const [vw, setVw] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth : 1920
   );
@@ -20,4 +20,4 @@ const useScreenSizeRef = () => {
   return { vw, vh };
 };
 
-export default useScreenSizeRef;
+export default useViewportSize;

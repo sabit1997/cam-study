@@ -24,6 +24,9 @@ export default function WindowShare({ isBlur, windowId }: WindowShareProps) {
       setStream(ex);
       setStarted(true);
     }
+    return () => {
+      clearStreamById(windowId);
+    };
   }, [windowId]);
 
   useEffect(() => {

@@ -16,6 +16,7 @@ async function createWindow() {
             preload: path_1.default.join(__dirname, "preload.js"),
             contextIsolation: true,
             nodeIntegration: false,
+            backgroundThrottling: false,
         },
     });
     const url = isDev ? "http://localhost:3000" : "https://cam-study.vercel.app/";
