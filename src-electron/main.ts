@@ -3,10 +3,10 @@ import path from "path";
 import { spawn } from "child_process";
 import net from "net";
 
-// macOS 26 (Tahoe) workaround: renderer 프로세스 V8 JIT 불안정 억제
-// 주의: main 프로세스 startup crash (ElectronMain C++ 레벨)는 이 플래그로 막을 수 없음
+// macOS 26 (Tahoe) workaround: V8 JIT 완전 비활성화
+// main 프로세스는 LSEnvironment.NODE_OPTIONS=--jitless 로 처리, renderer는 여기서 처리
 if (process.platform === "darwin") {
-  app.commandLine.appendSwitch("js-flags", "--no-opt");
+  app.commandLine.appendSwitch("js-flags", "--jitless");
 }
 
 const isDev = !app.isPackaged;

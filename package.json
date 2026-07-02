@@ -48,7 +48,7 @@
     "@types/youtube": "^0.1.2",
     "autoprefixer": "^10.4.21",
     "concurrently": "^9.2.0",
-    "electron": "^43.0.0",
+    "electron": "npm:electron-nightly@^44.0.0-nightly.20260701",
     "electron-builder": "^26.0.12",
     "eslint": "^9",
     "eslint-config-next": "15.3.0",
@@ -74,8 +74,10 @@
     "directories": {
       "buildResources": "buildResources"
     },
+    "afterPack": "./scripts/afterPackMac.js",
     "mac": {
       "icon": "buildResources/icon.icns",
+      "identity": null,
       "target": [
         {
           "target": "dmg",
