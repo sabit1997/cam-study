@@ -1,151 +1,162 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { FiCamera, FiEye, FiEyeOff, FiX } from "react-icons/fi";
 import { toast } from "sonner";
 
+const CAM_DEVICE_LS_KEY = "cam-device-id";
+
 interface CameraViewProps {
-  isBlur: boolean;
+  onRatioChange?: (ratio: number) => void;
 }
 
-const CameraView = ({ isBlur }: CameraViewProps) => {
+const CameraView = ({ onRatioChange }: CameraViewProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const [deviceId, setDeviceId] = useState<string | null>(null);
+  const [deviceId, setDeviceId] = useState<string>("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const [devices, setDevices] = useState<{ id: string; label: string }[]>([]);
-
-  const cleanupVideoStream = () => {
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-    setIsStreaming(false);
-  };
+  const [isBlur, setIsBlur] = useState(false);
+  const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
 
   useEffect(() => {
     const loadDevices = async () => {
       if (!navigator.mediaDevices?.enumerateDevices) return;
       try {
-        const tempStream = await navigator.mediaDevices.getUserMedia({
-          video: true,
-        });
+        const tempStream = await navigator.mediaDevices.getUserMedia({ video: true });
         tempStream.getTracks().forEach((t) => t.stop());
       } catch {
         toast.error("카메라 접근 권한이 없습니다. 브라우저 설정을 확인해주세요.");
         return;
       }
-
-      const allDevices = await navigator.mediaDevices.enumerateDevices();
-      const videoDevices = allDevices
-        .filter((device) => device.kind === "videoinput")
-        .map((device) => ({
-          id: device.deviceId,
-          label: device.label || `Camera (${device.deviceId})`,
-        }));
-
+      const all = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = all.filter((d) => d.kind === "videoinput");
       setDevices(videoDevices);
+      const saved = localStorage.getItem(CAM_DEVICE_LS_KEY) ?? "";
+      if (saved && videoDevices.some((d) => d.deviceId === saved)) {
+        setDeviceId(saved);
+      } else if (videoDevices.length > 0) {
+        setDeviceId(videoDevices[0].deviceId);
+      }
     };
-
     loadDevices();
+    return () => stopStream();
   }, []);
 
-  useEffect(() => {
-    return () => {
-      cleanupVideoStream();
-    };
-  }, []);
+  const stopStream = () => {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+    if (videoRef.current) videoRef.current.srcObject = null;
+    setIsStreaming(false);
+  };
 
-  useEffect(() => {
-    if (isStreaming && videoRef.current && streamRef.current) {
-      const videoEl = videoRef.current;
-      videoEl.srcObject = streamRef.current;
-      videoEl.onloadedmetadata = () => {
-        videoEl.play().catch(console.error);
-      };
-    }
-  }, [isStreaming]);
-
-  const handleStreamStart = async () => {
-    if (!deviceId) {
-      toast.warning("디바이스를 선택해주세요.");
-      return;
-    }
-
+  const startStream = async (id?: string) => {
+    const targetId = id ?? deviceId;
     try {
-      const constraints = {
-        video: {
-          deviceId: { exact: deviceId },
-        },
-      };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: targetId ? { deviceId: { exact: targetId } } : true,
+      });
       streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(() => {});
+      }
       setIsStreaming(true);
+      const track = stream.getVideoTracks()[0];
+      const trackId = track?.getSettings().deviceId;
+      if (trackId) {
+        setDeviceId(trackId);
+        localStorage.setItem(CAM_DEVICE_LS_KEY, trackId);
+      }
+      const settings = track?.getSettings();
+      if (settings?.width && settings?.height && onRatioChange) {
+        onRatioChange(settings.width / settings.height);
+      }
     } catch {
       toast.error("카메라 접근에 실패했습니다.");
     }
   };
 
-  const stopStream = () => {
-    cleanupVideoStream();
+  const handleDeviceChange = (id: string) => {
+    setDeviceId(id);
+    localStorage.setItem(CAM_DEVICE_LS_KEY, id);
+    if (isStreaming) {
+      stopStream();
+      setTimeout(() => startStream(id), 100);
+    }
   };
 
   return (
-    <div className="w-full h-full flex justify-center items-center">
-      {!isStreaming && devices.length > 0 && (
-        <div className="w-full h-full">
-          <ul role="radiogroup" aria-label="카메라 디바이스 선택" className="px-3 py-4 w-full">
-            {devices.map((device) => (
-              <li key={device.id}>
-                <label htmlFor={device.id} className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    id={device.id}
-                    name="deviceId"
-                    value={device.id}
-                    checked={deviceId === device.id}
-                    onChange={() => setDeviceId(device.id)}
-                  />
-                  {device.label}
-                </label>
-              </li>
+    <div className="flex flex-col h-full">
+      {/* Video area */}
+      <div className="flex-1 bg-black relative overflow-hidden">
+        <video
+          ref={videoRef}
+          muted
+          playsInline
+          className="w-full h-full object-cover"
+          style={{
+            filter: isBlur ? "blur(18px)" : "none",
+            transform: "scaleX(-1)",
+          }}
+        />
+        {!isStreaming && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
+            <FiCamera size={36} className="opacity-20 mb-2" />
+            <p className="text-xs opacity-40">카메라 꺼짐</p>
+          </div>
+        )}
+      </div>
+
+      {/* Control bar */}
+      <div className="px-3 py-2.5 bg-gray-50 border-t border-gray-100 flex items-center gap-2 flex-wrap">
+        <button
+          onClick={isStreaming ? stopStream : () => startStream()}
+          className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-medium text-white transition-colors"
+          style={{ background: isStreaming ? "#ff3b30" : "#8fb870" }}
+        >
+          {isStreaming ? (
+            <>
+              <FiX size={11} />
+              중지
+            </>
+          ) : (
+            <>
+              <FiCamera size={11} />
+              시작
+            </>
+          )}
+        </button>
+        <button
+          onClick={() => setIsBlur((b) => !b)}
+          disabled={!isStreaming}
+          className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-gray-200 text-gray-600 hover:bg-gray-100 disabled:opacity-30 transition-colors"
+        >
+          {isBlur ? (
+            <>
+              <FiEye size={11} />
+              블러 해제
+            </>
+          ) : (
+            <>
+              <FiEyeOff size={11} />
+              블러
+            </>
+          )}
+        </button>
+        {devices.length > 1 && (
+          <select
+            value={deviceId}
+            onChange={(e) => handleDeviceChange(e.target.value)}
+            className="text-xs flex-1 min-w-0 rounded-lg border border-gray-200 py-1 px-1.5 bg-white text-gray-600 outline-none"
+          >
+            {devices.map((d) => (
+              <option key={d.deviceId} value={d.deviceId}>
+                {d.label || `Camera ${d.deviceId.slice(0, 6)}`}
+              </option>
             ))}
-          </ul>
-          <button
-            className="block py-2 w-16 bg-dark text-[var(--text-selected)] rounded-md mx-auto"
-            type="button"
-            aria-label="카메라 시작"
-            onClick={handleStreamStart}
-          >
-            Start
-          </button>
-        </div>
-      )}
-
-      {!isStreaming && devices.length === 0 && (
-        <span>디바이스가 없습니다.</span>
-      )}
-
-      {isStreaming && (
-        <div className="relative bg-black w-full h-full flex justify-center items-center group">
-          <video
-            ref={videoRef}
-            autoPlay
-            muted
-            playsInline
-            className={`w-full h-auto bg-black ${isBlur ? "blur-sm" : ""}`}
-          />
-          <button
-            onClick={stopStream}
-            aria-label="카메라 정지"
-            className="absolute bottom-4 px-4 py-2 bg-red-500 text-[var(--text-selected)] rounded-md opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none group-hover:pointer-events-auto focus-visible:opacity-100 focus-visible:pointer-events-auto"
-          >
-            STOP
-          </button>
-        </div>
-      )}
+          </select>
+        )}
+      </div>
     </div>
   );
 };

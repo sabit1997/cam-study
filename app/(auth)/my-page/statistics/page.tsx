@@ -1,7 +1,5 @@
-import StaticSection from "@/components/statics-section";
+import { redirect } from "next/navigation";
 
-const StatisticsPage = async () => {
-  return <StaticSection />;
-};
-
-export default StatisticsPage;
+export default function StatisticsPage() {
+  redirect("/my-page/record");
+}

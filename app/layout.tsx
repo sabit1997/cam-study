@@ -1,6 +1,6 @@
 import "./globals.css";
 import Navigation from "@/components/navigation";
-import localFont from "next/font/local";
+import { Inter } from "next/font/google";
 import type { Metadata } from "next";
 import { Providers } from "./providers";
 import GlobalInitializer from "@/components/global-Initializer";
@@ -13,11 +13,10 @@ export const metadata: Metadata = {
   description: "Web cam study templates for screen sharing.",
 };
 
-const dunggeunmo = localFont({
-  src: "../font/DungGeunMo.woff2",
+const inter = Inter({
+  subsets: ["latin"],
   display: "swap",
-  weight: "100 900",
-  variable: "--font-dunggeunmo",
+  variable: "--font-inter",
 });
 
 export default function RootLayout({
@@ -28,14 +27,14 @@ export default function RootLayout({
   return (
     <html
       lang="ko"
-      className={`${dunggeunmo.variable} h-screen`}
+      className={`${inter.variable} h-screen`}
       suppressHydrationWarning
     >
       <head>
         <link rel="manifest" href="/manifest.json" />
         <meta name="theme-color" content="#6096b4" />
       </head>
-      <body className={`${dunggeunmo.className} h-full`}>
+      <body className={`${inter.className} h-full`}>
         <ServiceWorkerRegister />
         <GlobalInitializer />
         <Providers>

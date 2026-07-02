@@ -35,7 +35,8 @@ const WindowZone = () => {
 
   return (
     <>
-      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+      {/* Safe area: below nav (36px), above dock (80px). overflow-visible so window shadows show. */}
+      <div className="fixed pointer-events-none" style={{ top: 36, left: 0, right: 0, bottom: 80 }}>
         {isPending &&
           Array.from({ length: LOADING_SKELETON_COUNT }).map((_, i) => (
             <div
