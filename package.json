@@ -1,6 +1,6 @@
 {
   "name": "cam-study",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "private": true,
   "description": "외요의 캠스터디 데스크탑 앱",
   "author": "JUNG YEJI <yejiii1997@gmail.com>",
@@ -36,6 +36,7 @@
     "zustand": "^5.0.3"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.1.0",
     "@eslint/eslintrc": "^3",
     "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4.1.4",
