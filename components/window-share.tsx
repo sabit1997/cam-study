@@ -11,18 +11,15 @@ import { toast } from "sonner";
 
 interface WindowShareProps {
   windowId: number;
-  onRatioChange?: (ratio: number) => void;
 }
 
-export default function WindowShare({
-  windowId,
-  onRatioChange,
-}: WindowShareProps) {
+export default function WindowShare({ windowId }: WindowShareProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [started, setStarted] = useState(false);
   const [isBlur, setIsBlur] = useState(false);
+  const [isPickerLoading, setIsPickerLoading] = useState(false);
 
   useEffect(() => {
     const ex = getStreamById(windowId);
@@ -48,6 +45,11 @@ export default function WindowShare({
       setStarted(true);
       return;
     }
+    setIsPickerLoading(true);
+    const stopWaitingForPicker = window.electronAPI?.on(
+      "screen-picker:open",
+      () => setIsPickerLoading(false)
+    );
     try {
       const s = await navigator.mediaDevices.getDisplayMedia({
         video: true,
@@ -56,15 +58,14 @@ export default function WindowShare({
       streamRef.current = s;
       const track = s.getVideoTracks()[0];
       track.addEventListener("ended", stopSharing);
-      const settings = track?.getSettings();
-      if (settings?.width && settings?.height && onRatioChange) {
-        onRatioChange(settings.width / settings.height);
-      }
       setStreamById(windowId, s);
       setStream(s);
       setStarted(true);
     } catch {
       toast.error("화면 공유를 취소했거나 사용할 수 없습니다.");
+    } finally {
+      stopWaitingForPicker?.();
+      setIsPickerLoading(false);
     }
   };
 
@@ -87,11 +88,18 @@ export default function WindowShare({
           className="w-full h-full object-contain"
         />
         {isBlur && <div className="absolute inset-0 backdrop-blur-xs" />}
-        {!started && (
+        {isPickerLoading ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
-            <FiMonitor size={36} className="opacity-20 mb-2" />
-            <p className="text-xs opacity-40">화면 공유 안 함</p>
+            <div className="w-8 h-8 rounded-full border-2 border-gray-200 border-t-gray-400 animate-spin mb-2" />
+            <p className="text-xs opacity-40">공유할 화면 불러오는 중...</p>
           </div>
+        ) : (
+          !started && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
+              <FiMonitor size={36} className="opacity-20 mb-2" />
+              <p className="text-xs opacity-40">화면 공유 안 함</p>
+            </div>
+          )
         )}
       </div>
 
@@ -99,7 +107,8 @@ export default function WindowShare({
       <div className="px-3 py-2.5 bg-gray-50 border-t border-gray-100 flex items-center gap-2">
         <button
           onClick={started ? stopSharing : startSharing}
-          className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-medium text-white transition-colors"
+          disabled={isPickerLoading}
+          className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-medium text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           style={{ background: started ? "#ff3b30" : "#8fb870" }}
         >
           {started ? (

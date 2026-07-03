@@ -14,6 +14,7 @@ if (process.platform === "darwin") {
 }
 const isDev = !electron_1.app.isPackaged;
 let nextServer = null;
+let mainWindow = null;
 const waitForPort = (port, timeoutMs = 30000) => new Promise((resolve, reject) => {
     const deadline = Date.now() + timeoutMs;
     let done = false;
@@ -31,6 +32,18 @@ const waitForPort = (port, timeoutMs = 30000) => new Promise((resolve, reject) =
     };
     check();
 });
+// Electron은 getDisplayMedia에서 video가 요청됐는데 callback에 video 스트림을
+// 못 넘기면(사용자 취소, 소스 없음 등) 예외를 던진다. 이걸 취소하는 공식 API가
+// 없어서(https://github.com/electron/electron/issues/47980), 메인 프로세스가
+// 죽지 않도록 여기서 잡아서 무시한다.
+function safeDisplayMediaCallback(callback, streams) {
+    try {
+        callback(streams);
+    }
+    catch (err) {
+        console.error("화면 공유 요청 취소/거부 처리 중 에러:", err);
+    }
+}
 async function createWindow() {
     const win = new electron_1.BrowserWindow({
         width: 1024,
@@ -42,6 +55,10 @@ async function createWindow() {
             backgroundThrottling: false,
         },
     });
+    win.on("closed", () => {
+        mainWindow = null;
+    });
+    mainWindow = win;
     const url = isDev ? "http://localhost:3000" : "http://localhost:3001";
     await win.loadURL(url);
 }
@@ -51,19 +68,45 @@ electron_1.app.whenReady().then(async () => {
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
         callback({ cancel: false, requestHeaders: details.requestHeaders });
     });
+    // macOS 15+에서는 useSystemPicker가 네이티브 선택창을 띄우고 이 핸들러를 건너뛴다.
+    // Windows/구버전 macOS/Linux 등 미지원 환경에서는 이 핸들러가 그대로 실행되므로
+    // 직접 화면/창 선택 UI(screen-picker 모달)를 렌더러에 띄워 사용자가 고르게 한다.
     electron_1.session.defaultSession.setDisplayMediaRequestHandler((_request, callback) => {
         electron_1.desktopCapturer
-            .getSources({ types: ["screen", "window"] })
-            .then((sources) => {
+            .getSources({
+            types: ["screen", "window"],
+            thumbnailSize: { width: 320, height: 180 },
+        })
+            .then((rawSources) => {
+            // Windows에서는 스캐너 드라이버 등이 만드는 화면에 보이지 않는 배경
+            // 창(예: PfuSshImgProc MainWnd_xxx)도 top-level HWND로 잡혀서 함께
+            // 반환된다. 그런 창은 실제로 렌더링되지 않아 썸네일이 비어 있으므로
+            // 그걸 기준으로 걸러낸다. 화면(screen) 소스는 그대로 둔다.
+            const sources = rawSources.filter((source) => source.id.startsWith("screen:") || !source.thumbnail.isEmpty());
             if (sources.length === 0) {
-                callback({});
+                safeDisplayMediaCallback(callback, {});
                 return;
             }
-            callback({ video: sources[0] });
+            if (!mainWindow) {
+                safeDisplayMediaCallback(callback, { video: sources[0] });
+                return;
+            }
+            mainWindow.webContents.send("screen-picker:open", sources.map((source) => ({
+                id: source.id,
+                name: source.name,
+                thumbnail: source.thumbnail.toDataURL(),
+                isScreen: source.id.startsWith("screen:"),
+            })));
+            electron_1.ipcMain.once("screen-picker:result", (_event, selectedId) => {
+                const selected = selectedId
+                    ? sources.find((source) => source.id === selectedId)
+                    : undefined;
+                safeDisplayMediaCallback(callback, selected ? { video: selected } : {});
+            });
         })
             .catch((err) => {
             console.error("desktopCapturer.getSources 에러:", err);
-            callback({});
+            safeDisplayMediaCallback(callback, {});
         });
     }, { useSystemPicker: true });
     if (!isDev) {
