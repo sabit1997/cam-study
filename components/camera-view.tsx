@@ -6,11 +6,7 @@ import { toast } from "sonner";
 
 const CAM_DEVICE_LS_KEY = "cam-device-id";
 
-interface CameraViewProps {
-  onRatioChange?: (ratio: number) => void;
-}
-
-const CameraView = ({ onRatioChange }: CameraViewProps) => {
+const CameraView = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [deviceId, setDeviceId] = useState<string>("");
@@ -76,10 +72,6 @@ const CameraView = ({ onRatioChange }: CameraViewProps) => {
       if (trackId) {
         setDeviceId(trackId);
         localStorage.setItem(CAM_DEVICE_LS_KEY, trackId);
-      }
-      const settings = track?.getSettings();
-      if (settings?.width && settings?.height && onRatioChange) {
-        onRatioChange(settings.width / settings.height);
       }
     } catch {
       toast.error("카메라 접근에 실패했습니다.");

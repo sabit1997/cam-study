@@ -86,7 +86,6 @@ const AddWindow = ({ window }: AddWindowProps) => {
   const [isMinimized, setIsMinimized] = useState(false);
   const [editTitle, setEditTitle] = useState(false);
   const prevHeightRef = useRef<number | null>(null);
-  const [detectedRatio, setDetectedRatio] = useState<number | null>(null);
   const [titleVal, setTitleVal] = useState(() => {
     if (typeof localStorage === "undefined") return TYPE_LABELS[window.type] ?? "WINDOW";
     const saved = getWinTitles();
@@ -183,17 +182,10 @@ const AddWindow = ({ window }: AddWindowProps) => {
   const minW = MIN_PX[type]?.w ?? 240;
   const minH = MIN_PX[type]?.h ?? 135;
 
-  // Aspect ratio lock: use detected stream ratio for camera/screen, 16:9 for youtube
-  const lockAspectRatio: boolean | number = (() => {
-    if (type === "camera" || type === "window") return detectedRatio ?? true;
-    if (type === "youtube") return 16 / 9;
-    return false;
-  })();
-
   const windowContent: Partial<Record<Window["type"], React.ReactNode>> = {
-    camera: <CameraView onRatioChange={setDetectedRatio} />,
+    camera: <CameraView />,
     youtube: <YouTubePlayer window={window} />,
-    window: <WindowShare windowId={window.id} onRatioChange={setDetectedRatio} />,
+    window: <WindowShare windowId={window.id} />,
     todo: <Todos window={window} />,
     timer: <Timer />,
   };
@@ -205,7 +197,7 @@ const AddWindow = ({ window }: AddWindowProps) => {
       minWidth={minW}
       minHeight={isMinimized ? TITLEBAR_H : minH}
       bounds="parent"
-      lockAspectRatio={isMinimized ? false : lockAspectRatio}
+      lockAspectRatio={false}
       disableDragging={isLocked}
       enableResizing={
         isLocked || isMinimized
