@@ -5,6 +5,7 @@ import type { Metadata } from "next";
 import { Providers } from "./providers";
 import GlobalInitializer from "@/components/global-Initializer";
 import NoticeModal from "@/components/modals/notice-modal";
+import ScreenPickerModal from "@/components/modals/screen-picker-modal";
 import { Toaster } from "sonner";
 import ServiceWorkerRegister from "@/components/service-worker-register";
 
@@ -39,6 +40,7 @@ export default function RootLayout({
         <GlobalInitializer />
         <Providers>
           <NoticeModal />
+          <ScreenPickerModal />
           <Navigation />
           {children}
           <Toaster position="bottom-right" richColors />
