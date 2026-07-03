@@ -3,7 +3,7 @@
   "version": "0.1.6",
   "private": true,
   "description": "외요의 캠스터디 데스크탑 앱",
-  "author": "JUNG YEJI <yejiii1997@gmail.com>",
+  "author": "OEYO <yejiii1997@gmail.com>",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev:https": "node server.js",
