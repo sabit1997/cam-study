@@ -1,5 +1,6 @@
 import { FiMonitor, FiDownload } from "react-icons/fi";
 import Link from "next/link";
+import InstallGuide from "@/components/install-guide";
 
 interface GithubAsset {
   name: string;
@@ -115,6 +116,8 @@ export default async function DownloadPage() {
           </span>
         </a>
       </div>
+
+      <InstallGuide />
 
       {/* Fallback link */}
       <p className="mt-8 text-xs text-gray-300">
