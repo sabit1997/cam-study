@@ -4,7 +4,7 @@ import { useEffect } from "react";
 
 const ServiceWorkerRegister = () => {
   useEffect(() => {
-    if ("serviceWorker" in navigator) {
+    if ("serviceWorker" in navigator && !window.electronAPI) {
       navigator.serviceWorker.register("/sw.js");
     }
   }, []);

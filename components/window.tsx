@@ -218,6 +218,11 @@ const AddWindow = ({ window }: AddWindowProps) => {
       // prop), so updating pos here just causes wasted re-renders with no effect.
       onDragStop={(_e, d) => {
         dragging.current = false;
+        // react-draggable sets pointer-events:none on all iframes during drag
+        // to keep mouse capture. Restore them now so YouTube controls work.
+        document.querySelectorAll("iframe").forEach((f) => {
+          (f as HTMLElement).style.pointerEvents = "auto";
+        });
         const clamped = clampPos(d.x, d.y, sz.w, sz.h, vw, vh);
         // Update local state — React 18 batches this with react-draggable's own
         // setState({dragging:false}), so position prop is correct in the same render
@@ -234,6 +239,9 @@ const AddWindow = ({ window }: AddWindowProps) => {
       onResizeStart={() => { resizing.current = true; }}
       onResizeStop={(_e, _dir, ref, _delta, position) => {
         resizing.current = false;
+        document.querySelectorAll("iframe").forEach((f) => {
+          (f as HTMLElement).style.pointerEvents = "auto";
+        });
         const newW = ref.offsetWidth;
         const newH = ref.offsetHeight;
         const clamped = clampPos(position.x, position.y, newW, newH, vw, vh);

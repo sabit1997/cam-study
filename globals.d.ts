@@ -3,6 +3,7 @@ declare global {
     electronAPI: {
       send(channel: string, data: unknown): void;
       on(channel: string, fn: (data: unknown) => void): () => void;
+      restartAndUpdate(): void;
     };
   }
 }

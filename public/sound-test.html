@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<title>알림음 미리듣기</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, sans-serif; background: #f7f7f5; color: #333; padding: 32px; }
+  h1 { font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+  p  { font-size: 13px; color: #888; margin-bottom: 32px; }
+  h2 { font-size: 13px; font-weight: 600; color: #555; margin-bottom: 12px; letter-spacing: 0.04em; text-transform: uppercase; }
+  .group { margin-bottom: 32px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 10px; }
+  button {
+    padding: 10px 18px; border-radius: 999px; border: 1.5px solid #ddd;
+    background: #fff; font-size: 13px; cursor: pointer; transition: all 0.15s;
+    display: flex; align-items: center; gap: 7px;
+  }
+  button:hover { border-color: #8fb870; color: #8fb870; }
+  button.active { background: #8fb870; color: #fff; border-color: #8fb870; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .work .dot { color: #8fb870; }
+  .break .dot { color: #e8a030; }
+  select-hint { font-size: 12px; color: #aaa; margin-top: 20px; display: block; }
+</style>
+</head>
+<body>
+
+<h1>알림음 미리듣기</h1>
+<p>버튼을 클릭해서 들어보고 마음에 드는 번호를 알려주세요.</p>
+
+<div class="group work">
+  <h2>🍅 집중 완료 사운드 (work done)</h2>
+  <div class="grid" id="work-grid"></div>
+</div>
+
+<div class="group break">
+  <h2>☕ 휴식 완료 사운드 (break done)</h2>
+  <div class="grid" id="break-grid"></div>
+</div>
+
+<script>
+const SOUNDS = {
+  work: [
+    { name: "1. 밝은 3음 차임", fn: workChime3 },
+    { name: "2. 맑은 벨", fn: workBell },
+    { name: "3. 경쾌한 2음 팡파르", fn: workFanfare },
+    { name: "4. 부드러운 핑", fn: workSoftPing },
+    { name: "5. 디지털 알림", fn: workDigital },
+  ],
+  break: [
+    { name: "1. 따뜻한 2음", fn: breakWarm },
+    { name: "2. 낮은 벨", fn: breakBell },
+    { name: "3. 부드러운 내려앉기", fn: breakDescend },
+    { name: "4. 짧은 팝", fn: breakPop },
+    { name: "5. 디지털 알림", fn: breakDigital },
+  ],
+};
+
+function ctx() { return new AudioContext(); }
+
+function tone(ac, freq, startDelay, dur, vol = 0.75, type = "sine") {
+  const osc = ac.createOscillator();
+  const gain = ac.createGain();
+  osc.connect(gain); gain.connect(ac.destination);
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, ac.currentTime + startDelay);
+  gain.gain.setValueAtTime(vol, ac.currentTime + startDelay);
+  gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + startDelay + dur);
+  osc.start(ac.currentTime + startDelay);
+  osc.stop(ac.currentTime + startDelay + dur + 0.05);
+}
+
+// ── Work done sounds ──────────────────────────────────────
+function workChime3() {
+  const ac = ctx();
+  tone(ac, 523.25, 0,    0.6);  // C5
+  tone(ac, 659.25, 0.15, 0.6);  // E5
+  tone(ac, 783.99, 0.3,  0.8);  // G5
+  setTimeout(() => ac.close(), 2000);
+}
+
+function workBell() {
+  const ac = ctx();
+  tone(ac, 880, 0, 1.2, 0.7);    // A5 맑은 벨
+  tone(ac, 1108, 0.05, 0.8, 0.3); // C#6 배음
+  setTimeout(() => ac.close(), 2000);
+}
+
+function workFanfare() {
+  const ac = ctx();
+  tone(ac, 523.25, 0,    0.25, 0.7);  // C5
+  tone(ac, 659.25, 0.22, 0.25, 0.7);  // E5
+  tone(ac, 783.99, 0.44, 0.5,  0.7);  // G5
+  tone(ac, 1046.5, 0.66, 0.7,  0.75); // C6
+  setTimeout(() => ac.close(), 2500);
+}
+
+function workSoftPing() {
+  const ac = ctx();
+  tone(ac, 1046.5, 0, 0.9, 0.65); // C6
+  setTimeout(() => ac.close(), 1500);
+}
+
+function workDigital() {
+  const ac = ctx();
+  [0, 0.12, 0.24].forEach(d => tone(ac, 880, d, 0.1, 0.7, "square"));
+  setTimeout(() => ac.close(), 1500);
+}
+
+// ── Break done sounds ─────────────────────────────────────
+function breakWarm() {
+  const ac = ctx();
+  tone(ac, 392.0,  0,   0.7, 0.75); // G4
+  tone(ac, 523.25, 0.2, 0.9, 0.75); // C5
+  setTimeout(() => ac.close(), 2000);
+}
+
+function breakBell() {
+  const ac = ctx();
+  tone(ac, 440, 0, 1.2, 0.7);      // A4
+  tone(ac, 554.37, 0.05, 0.8, 0.3); // C#5 배음
+  setTimeout(() => ac.close(), 2000);
+}
+
+function breakDescend() {
+  const ac = ctx();
+  tone(ac, 659.25, 0,    0.5, 0.7); // E5
+  tone(ac, 523.25, 0.2,  0.5, 0.7); // C5
+  tone(ac, 392.0,  0.4,  0.8, 0.7); // G4
+  setTimeout(() => ac.close(), 2000);
+}
+
+function breakPop() {
+  const ac = ctx();
+  const osc = ac.createOscillator();
+  const gain = ac.createGain();
+  osc.connect(gain); gain.connect(ac.destination);
+  osc.type = "sine";
+  osc.frequency.setValueAtTime(600, ac.currentTime);
+  osc.frequency.exponentialRampToValueAtTime(300, ac.currentTime + 0.15);
+  gain.gain.setValueAtTime(0.8, ac.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.2);
+  osc.start(ac.currentTime);
+  osc.stop(ac.currentTime + 0.25);
+  setTimeout(() => ac.close(), 1000);
+}
+
+function breakDigital() {
+  const ac = ctx();
+  tone(ac, 523.25, 0,    0.1, 0.7, "square");
+  tone(ac, 392.0,  0.15, 0.1, 0.7, "square");
+  setTimeout(() => ac.close(), 1000);
+}
+
+// ── Render buttons ────────────────────────────────────────
+["work", "break"].forEach(type => {
+  const grid = document.getElementById(`${type}-grid`);
+  SOUNDS[type].forEach(({ name, fn }) => {
+    const btn = document.createElement("button");
+    btn.innerHTML = `<span class="dot"></span>${name}`;
+    btn.onclick = () => {
+      document.querySelectorAll("button").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      setTimeout(() => btn.classList.remove("active"), 1200);
+      fn();
+    };
+    grid.appendChild(btn);
+  });
+});
+</script>
+</body>
+</html>

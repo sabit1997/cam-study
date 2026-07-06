@@ -33,6 +33,15 @@ export const usePostTimeGoal = () => {
   });
 };
 
+export const usePatchPomoCycles = () => {
+  return useMutation({
+    mutationFn: TimerService.patchPomoCycles,
+    meta: {
+      ERROR_SOURCE: "[사이클 저장 실패]",
+    },
+  });
+};
+
 export const useResetTime = (date: string) => {
   const queryClient = useQueryClient();
 

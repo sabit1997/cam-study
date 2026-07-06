@@ -6,6 +6,7 @@ import {
   session,
   Streams,
 } from "electron";
+import { autoUpdater } from "electron-updater";
 import path from "path";
 import { spawn } from "child_process";
 import net from "net";
@@ -53,6 +54,38 @@ function safeDisplayMediaCallback(
   }
 }
 
+function setupAutoUpdater() {
+  // 개발 환경에서는 업데이트 체크 생략
+  if (isDev) return;
+
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on("update-available", (info) => {
+    mainWindow?.webContents.send("update:available", info.version);
+  });
+
+  autoUpdater.on("download-progress", (progress) => {
+    mainWindow?.webContents.send("update:progress", Math.floor(progress.percent));
+  });
+
+  autoUpdater.on("update-downloaded", () => {
+    mainWindow?.webContents.send("update:downloaded");
+  });
+
+  autoUpdater.on("error", (err) => {
+    console.error("Auto-updater error:", err.message);
+  });
+
+  // 앱 준비 후 5초 뒤 체크 (앱 로딩이 완전히 끝난 후)
+  setTimeout(() => autoUpdater.checkForUpdates(), 5000);
+}
+
+// 렌더러에서 "재시작 후 업데이트 설치" 요청 처리
+ipcMain.on("update:restart", () => {
+  autoUpdater.quitAndInstall(false, true);
+});
+
 async function createWindow() {
   const win = new BrowserWindow({
     width: 1024,
@@ -72,6 +105,7 @@ async function createWindow() {
 
   const url = isDev ? "http://localhost:3000" : "http://localhost:3001";
   await win.loadURL(url);
+  setupAutoUpdater();
 }
 
 app.whenReady().then(async () => {

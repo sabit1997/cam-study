@@ -69,4 +69,12 @@ export default class TimerService {
       method: AxiosMethod.DELETE,
     });
   };
+
+  public static readonly patchPomoCycles = (cycles: number): Promise<void> => {
+    return request({
+      url: TimerEndPoints.patchPomoCycles(),
+      method: AxiosMethod.PATCH,
+      data: { cycles },
+    });
+  };
 }

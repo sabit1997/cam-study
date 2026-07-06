@@ -12,6 +12,7 @@ const CameraView = () => {
   const [deviceId, setDeviceId] = useState<string>("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [isBlur, setIsBlur] = useState(false);
+  const [blurAmount, setBlurAmount] = useState(4);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
 
   useEffect(() => {
@@ -104,7 +105,12 @@ const CameraView = () => {
             transform: "scaleX(-1)",
           }}
         />
-        {isBlur && <div className="absolute inset-0 backdrop-blur-xs" />}
+        {isBlur && (
+          <div
+            className="absolute inset-0"
+            style={{ backdropFilter: `blur(${blurAmount}px)` }}
+          />
+        )}
         {!isStreaming && (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
             <FiCamera size={36} className="opacity-20 mb-2" />
@@ -149,6 +155,17 @@ const CameraView = () => {
             </>
           )}
         </button>
+        {isBlur && (
+          <input
+            type="range"
+            min={1}
+            max={20}
+            value={blurAmount}
+            onChange={(e) => setBlurAmount(Number(e.target.value))}
+            className="w-20 accent-gray-500"
+            title={`블러 강도: ${blurAmount}px`}
+          />
+        )}
         {devices.length > 1 && (
           <select
             value={deviceId}

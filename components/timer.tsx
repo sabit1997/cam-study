@@ -2,13 +2,15 @@
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { IoPlay, IoPauseSharp } from "react-icons/io5";
-import { LuTimerReset } from "react-icons/lu";
+import { LuTimerReset, LuSkipForward } from "react-icons/lu";
 import { formatSeconds } from "@/utils/formatSeconds";
+import { playPomoSound } from "@/utils/pomoSound";
 import PomodoroSettingsModal from "./modals/pomodoro-settings-modal";
 import { useGetTodayTime } from "@/apis/services/timer-services/query";
 import {
   usePostTime,
   useResetTime,
+  usePatchPomoCycles,
 } from "@/apis/services/timer-services/mutation";
 import { toast } from "sonner";
 
@@ -31,6 +33,7 @@ const Timer: React.FC = () => {
   const { mutate: postTime, isPending: isPostTimePending } = usePostTime();
   const { mutate: resetTime, isPending: isResetTimePending } =
     useResetTime(todayDate);
+  const { mutate: patchCycles } = usePatchPomoCycles();
 
   // ── Stopwatch ──
   const [mode, setMode] = useState<TimerMode>("stopwatch");
@@ -44,8 +47,14 @@ const Timer: React.FC = () => {
   const goalReachedRef = useRef(false);
 
   // ── Pomodoro ──
-  const [workMins, setWorkMins] = useState(DEFAULT_WORK_MINS);
-  const [breakMins, setBreakMins] = useState(DEFAULT_BREAK_MINS);
+  const [workMins, setWorkMins] = useState(() => {
+    const v = parseInt(localStorage.getItem("pomo-work-mins") ?? "", 10);
+    return Number.isFinite(v) && v > 0 ? v : DEFAULT_WORK_MINS;
+  });
+  const [breakMins, setBreakMins] = useState(() => {
+    const v = parseInt(localStorage.getItem("pomo-break-mins") ?? "", 10);
+    return Number.isFinite(v) && v > 0 ? v : DEFAULT_BREAK_MINS;
+  });
   const [showPomoSettings, setShowPomoSettings] = useState(false);
 
   const workSecs = workMins * 60;
@@ -65,6 +74,7 @@ const Timer: React.FC = () => {
   const [pomoRemaining, setPomoRemaining] = useState(workMins * 60);
   const [pomoCycle, setPomoCycle] = useState(0);
   const pomoIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pomoWorkStartRef = useRef<Date | null>(null);
 
   useEffect(() => {
     if (!isTodayTimePending && todayTimeRes) {
@@ -72,15 +82,25 @@ const Timer: React.FC = () => {
       baseTotalSecondsRef.current = total;
       setElapsed(total);
       setGoalInSeconds((todayTimeRes.dailyHourGoal || 0) * 3600);
+      const serverCycles = todayTimeRes.pomoCycles ?? 0;
+      pomoStateRef.current.cycle = serverCycles;
+      setPomoCycle(serverCycles);
     }
   }, [todayTimeRes, isTodayTimePending]);
 
   useEffect(() => {
     const handleBeforeUnload = () => {
+      const now = new Date();
       if (startAtRef.current) {
         postTime({
           startAt: startAtRef.current.toISOString(),
-          endAt: new Date().toISOString(),
+          endAt: now.toISOString(),
+        });
+      }
+      if (pomoWorkStartRef.current) {
+        postTime({
+          startAt: pomoWorkStartRef.current.toISOString(),
+          endAt: now.toISOString(),
         });
       }
     };
@@ -177,14 +197,29 @@ const Timer: React.FC = () => {
   const pomoStart = useCallback(() => {
     if (pomoIntervalRef.current) return;
     setPomoRunning(true);
+    if (pomoStateRef.current.phase === "work" && !pomoWorkStartRef.current) {
+      pomoWorkStartRef.current = new Date();
+    }
     pomoIntervalRef.current = setInterval(() => {
       const s = pomoStateRef.current;
       if (s.remaining <= 1) {
+        const now = new Date();
         const nextPhase: PomoPhase = s.phase === "work" ? "break" : "work";
         if (s.phase === "work") {
+          if (pomoWorkStartRef.current) {
+            postTime({
+              startAt: pomoWorkStartRef.current.toISOString(),
+              endAt: now.toISOString(),
+            });
+            pomoWorkStartRef.current = null;
+          }
           s.cycle++;
+          patchCycles(s.cycle);
+          playPomoSound("workDone");
           toast.success("집중 완료! 잠깐 쉬어가세요 ☕");
         } else {
+          pomoWorkStartRef.current = now;
+          playPomoSound("breakDone");
           toast.success("휴식 완료! 다시 집중해봐요 🍅");
         }
         s.phase = nextPhase;
@@ -196,33 +231,62 @@ const Timer: React.FC = () => {
       setPomoRemaining(s.remaining);
       setPomoCycle(s.cycle);
     }, 1000);
-  }, [workSecs, breakSecs]);
+  }, [workSecs, breakSecs, postTime, patchCycles]);
 
   const pomoStop = useCallback(() => {
     if (pomoIntervalRef.current) {
       clearInterval(pomoIntervalRef.current);
       pomoIntervalRef.current = null;
     }
+    if (pomoStateRef.current.phase === "work" && pomoWorkStartRef.current) {
+      postTime({
+        startAt: pomoWorkStartRef.current.toISOString(),
+        endAt: new Date().toISOString(),
+      });
+      pomoWorkStartRef.current = null;
+    }
     setPomoRunning(false);
-  }, []);
+  }, [postTime]);
 
   const pomoReset = useCallback(() => {
-    pomoStop();
+    if (pomoIntervalRef.current) {
+      clearInterval(pomoIntervalRef.current);
+      pomoIntervalRef.current = null;
+    }
+    pomoWorkStartRef.current = null;
     pomoStateRef.current = { phase: "work", remaining: workSecs, cycle: 0 };
     setPomoPhase("work");
     setPomoRemaining(workSecs);
     setPomoCycle(0);
-  }, [pomoStop, workSecs]);
+    setPomoRunning(false);
+    patchCycles(0);
+  }, [workSecs, patchCycles]);
+
+  const skipBreak = useCallback(() => {
+    if (pomoStateRef.current.phase !== "break") return;
+    pomoStateRef.current.phase = "work";
+    pomoStateRef.current.remaining = workSecs;
+    if (pomoRunning) pomoWorkStartRef.current = new Date();
+    setPomoPhase("work");
+    setPomoRemaining(workSecs);
+  }, [workSecs, pomoRunning]);
 
   const applyPomoSettings = (w: number, b: number) => {
     setWorkMins(w);
     setBreakMins(b);
-    pomoStop();
+    localStorage.setItem("pomo-work-mins", String(w));
+    localStorage.setItem("pomo-break-mins", String(b));
+    if (pomoIntervalRef.current) {
+      clearInterval(pomoIntervalRef.current);
+      pomoIntervalRef.current = null;
+    }
+    pomoWorkStartRef.current = null;
     const newWorkSecs = w * 60;
     pomoStateRef.current = { phase: "work", remaining: newWorkSecs, cycle: 0 };
     setPomoPhase("work");
     setPomoRemaining(newWorkSecs);
     setPomoCycle(0);
+    setPomoRunning(false);
   };
 
   // Pomodoro ring
@@ -352,7 +416,7 @@ const Timer: React.FC = () => {
           </div>
 
           {/* Controls */}
-          <div className="flex gap-3">
+          <div className="flex gap-3 items-center">
             <button
               onClick={pomoRunning ? pomoStop : pomoStart}
               className="w-12 h-12 rounded-full flex items-center justify-center text-white shadow-md transition-transform hover:scale-105 active:scale-95"
@@ -366,6 +430,15 @@ const Timer: React.FC = () => {
             >
               <LuTimerReset size={15} />
             </button>
+            {pomoPhase === "break" && (
+              <button
+                onClick={skipBreak}
+                className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-full border-2 border-orange-200 text-orange-400 hover:border-orange-300 hover:text-orange-500 transition-colors"
+              >
+                <LuSkipForward size={13} />
+                건너뛰기
+              </button>
+            )}
           </div>
 
           {/* Stats */}
