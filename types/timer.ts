@@ -17,6 +17,7 @@ export type GetTodayTimeRes = {
   id: number;
   totalSeconds: number;
   userId: string;
+  pomoCycles: number;
 };
 
 export type GetTimerGoalRes = {

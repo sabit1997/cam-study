@@ -46,4 +46,5 @@ export const TimerEndPoints = {
   postTimerGoal: () => `/timer/goal`,
   getTimerAnalytics: (year: number, month: number) =>
     `/timer/analytics?year=${year}&month=${month}`,
+  patchPomoCycles: () => `/timer/today/cycles`,
 };
