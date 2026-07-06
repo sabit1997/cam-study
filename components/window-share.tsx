@@ -19,6 +19,7 @@ export default function WindowShare({ windowId }: WindowShareProps) {
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [started, setStarted] = useState(false);
   const [isBlur, setIsBlur] = useState(false);
+  const [blurAmount, setBlurAmount] = useState(4);
   const [isPickerLoading, setIsPickerLoading] = useState(false);
 
   useEffect(() => {
@@ -87,7 +88,12 @@ export default function WindowShare({ windowId }: WindowShareProps) {
           playsInline
           className="w-full h-full object-contain"
         />
-        {isBlur && <div className="absolute inset-0 backdrop-blur-xs" />}
+        {isBlur && (
+          <div
+            className="absolute inset-0"
+            style={{ backdropFilter: `blur(${blurAmount}px)` }}
+          />
+        )}
         {isPickerLoading ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-500">
             <div className="w-8 h-8 rounded-full border-2 border-gray-200 border-t-gray-400 animate-spin mb-2" />
@@ -140,6 +146,17 @@ export default function WindowShare({ windowId }: WindowShareProps) {
             </>
           )}
         </button>
+        {isBlur && (
+          <input
+            type="range"
+            min={1}
+            max={20}
+            value={blurAmount}
+            onChange={(e) => setBlurAmount(Number(e.target.value))}
+            className="w-20 accent-gray-500"
+            title={`블러 강도: ${blurAmount}px`}
+          />
+        )}
       </div>
     </div>
   );
