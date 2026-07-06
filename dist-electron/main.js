@@ -4,6 +4,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const electron_1 = require("electron");
+const electron_updater_1 = require("electron-updater");
 const path_1 = __importDefault(require("path"));
 const child_process_1 = require("child_process");
 const net_1 = __importDefault(require("net"));
@@ -44,6 +45,31 @@ function safeDisplayMediaCallback(callback, streams) {
         console.error("화면 공유 요청 취소/거부 처리 중 에러:", err);
     }
 }
+function setupAutoUpdater() {
+    // 개발 환경에서는 업데이트 체크 생략
+    if (isDev)
+        return;
+    electron_updater_1.autoUpdater.autoDownload = true;
+    electron_updater_1.autoUpdater.autoInstallOnAppQuit = true;
+    electron_updater_1.autoUpdater.on("update-available", (info) => {
+        mainWindow?.webContents.send("update:available", info.version);
+    });
+    electron_updater_1.autoUpdater.on("download-progress", (progress) => {
+        mainWindow?.webContents.send("update:progress", Math.floor(progress.percent));
+    });
+    electron_updater_1.autoUpdater.on("update-downloaded", () => {
+        mainWindow?.webContents.send("update:downloaded");
+    });
+    electron_updater_1.autoUpdater.on("error", (err) => {
+        console.error("Auto-updater error:", err.message);
+    });
+    // 앱 준비 후 5초 뒤 체크 (앱 로딩이 완전히 끝난 후)
+    setTimeout(() => electron_updater_1.autoUpdater.checkForUpdates(), 5000);
+}
+// 렌더러에서 "재시작 후 업데이트 설치" 요청 처리
+electron_1.ipcMain.on("update:restart", () => {
+    electron_updater_1.autoUpdater.quitAndInstall(false, true);
+});
 async function createWindow() {
     const win = new electron_1.BrowserWindow({
         width: 1024,
@@ -61,6 +87,7 @@ async function createWindow() {
     mainWindow = win;
     const url = isDev ? "http://localhost:3000" : "http://localhost:3001";
     await win.loadURL(url);
+    setupAutoUpdater();
 }
 electron_1.app.whenReady().then(async () => {
     electron_1.session.defaultSession.webRequest.onBeforeSendHeaders({ urls: ["*://*.youtube.com/*", "*://*.youtube-nocookie.com/*"] }, (details, callback) => {

@@ -8,6 +8,7 @@ import NoticeModal from "@/components/modals/notice-modal";
 import ScreenPickerModal from "@/components/modals/screen-picker-modal";
 import { Toaster } from "sonner";
 import ServiceWorkerRegister from "@/components/service-worker-register";
+import UpdateNotifier from "@/components/update-notifier";
 
 export const metadata: Metadata = {
   title: { template: "%s | CAM STUDY", default: "CAM STUDY" },
@@ -44,6 +45,7 @@ export default function RootLayout({
           <Navigation />
           {children}
           <Toaster position="bottom-right" richColors />
+          <UpdateNotifier />
         </Providers>
       </body>
     </html>

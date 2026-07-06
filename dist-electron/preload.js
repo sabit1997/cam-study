@@ -9,4 +9,5 @@ electron_1.contextBridge.exposeInMainWorld("electronAPI", {
         electron_1.ipcRenderer.on(channel, listener);
         return () => electron_1.ipcRenderer.removeListener(channel, listener);
     },
+    restartAndUpdate: () => electron_1.ipcRenderer.send("update:restart"),
 });
