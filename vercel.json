@@ -1,0 +1,4 @@
+{
+  "installCommand": "node scripts/vercel-install.js",
+  "buildCommand": "next build"
+}

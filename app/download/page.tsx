@@ -2,33 +2,22 @@ import { FiMonitor, FiDownload } from "react-icons/fi";
 import Link from "next/link";
 import InstallGuide from "@/components/install-guide";
 
-interface GithubAsset {
-  name: string;
-  browser_download_url: string;
-  size: number;
-}
+const REPO = "sabit1997/cam-study";
+const BASE = `https://github.com/${REPO}/releases/latest/download`;
 
-interface GithubRelease {
-  tag_name: string;
-  name: string;
-  assets: GithubAsset[];
-}
-
-async function getLatestRelease(): Promise<GithubRelease | null> {
+// API는 버전 표시용으로만 사용 — 다운로드 URL은 latest/download 패턴으로 고정
+async function getLatestVersion(): Promise<string> {
   try {
     const res = await fetch(
-      "https://api.github.com/repos/sabit1997/cam-study/releases/latest",
-      { cache: "no-store" }
+      `https://api.github.com/repos/${REPO}/releases/latest`,
+      { next: { revalidate: 300 } }
     );
-    if (!res.ok) return null;
-    return res.json();
+    if (!res.ok) return "";
+    const data = await res.json();
+    return data.tag_name ?? "";
   } catch {
-    return null;
+    return "";
   }
-}
-
-function formatSize(bytes: number) {
-  return `${(bytes / 1024 / 1024).toFixed(0)}MB`;
 }
 
 export const metadata = {
@@ -37,13 +26,11 @@ export const metadata = {
 };
 
 export default async function DownloadPage() {
-  const release = await getLatestRelease();
+  const version = await getLatestVersion();
 
-  const winAsset = release?.assets.find((a) => a.name.endsWith(".exe"));
-  const macAsset = release?.assets.find((a) => a.name.endsWith(".dmg"));
-  const version = release?.tag_name ?? "";
-
-  const fallbackUrl = "https://github.com/sabit1997/cam-study/releases/latest";
+  const macUrl = `${BASE}/CamStudySetup.dmg`;
+  const winUrl = `${BASE}/CamStudySetup.exe`;
+  const fallbackUrl = `https://github.com/${REPO}/releases/latest`;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white flex flex-col items-center justify-center px-4 py-16">
@@ -70,7 +57,7 @@ export default async function DownloadPage() {
       <div className="flex flex-col sm:flex-row gap-4 w-full max-w-xl">
         {/* Mac */}
         <a
-          href={macAsset?.browser_download_url ?? fallbackUrl}
+          href={macUrl}
           className="flex-1 group flex flex-col items-center gap-3 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm hover:shadow-md transition-shadow"
         >
           <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor" className="text-gray-700">
@@ -79,9 +66,6 @@ export default async function DownloadPage() {
           <div className="text-center">
             <p className="font-semibold text-gray-800">Mac</p>
             <p className="text-xs text-gray-400">Apple Silicon (arm64)</p>
-            {macAsset && (
-              <p className="text-xs text-gray-300 mt-0.5">{formatSize(macAsset.size)}</p>
-            )}
           </div>
           <span
             className="flex items-center gap-1.5 text-xs px-4 py-1.5 rounded-full font-medium text-white transition-opacity group-hover:opacity-90"
@@ -94,7 +78,7 @@ export default async function DownloadPage() {
 
         {/* Windows */}
         <a
-          href={winAsset?.browser_download_url ?? fallbackUrl}
+          href={winUrl}
           className="flex-1 group flex flex-col items-center gap-3 rounded-2xl border border-gray-100 bg-white p-6 shadow-sm hover:shadow-md transition-shadow"
         >
           <svg viewBox="0 0 24 24" width="36" height="36" fill="currentColor" className="text-gray-700">
@@ -103,9 +87,6 @@ export default async function DownloadPage() {
           <div className="text-center">
             <p className="font-semibold text-gray-800">Windows</p>
             <p className="text-xs text-gray-400">x64 (64비트)</p>
-            {winAsset && (
-              <p className="text-xs text-gray-300 mt-0.5">{formatSize(winAsset.size)}</p>
-            )}
           </div>
           <span
             className="flex items-center gap-1.5 text-xs px-4 py-1.5 rounded-full font-medium text-white transition-opacity group-hover:opacity-90"

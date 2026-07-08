@@ -46,3 +46,4 @@ next-env.d.ts
 Caddyfile
 /dist
 app/api/\[...path]/route.ts
+CLAUDE.md
