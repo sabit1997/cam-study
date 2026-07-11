@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { FiAlertCircle, FiSkipBack, FiSkipForward, FiX, FiPlus, FiChevronDown } from "react-icons/fi";
 import { IoLogoYoutube } from "react-icons/io5";
 import { toast } from "sonner";
+import YouTube, { YouTubeEvent } from "react-youtube";
 import { Window } from "@/types/windows";
 import { usePatchWindow } from "@/apis/services/window-services/mutation";
 import { extractYouTubeId } from "@/utils/extractYouTubeId";
@@ -25,7 +26,6 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState("");
   const [showInput, setShowInput] = useState(false);
-  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Restore from server on mount
   useEffect(() => {
@@ -100,20 +100,23 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
     setCurrent((prev) => Math.min(prev, Math.max(0, next.length - 1)));
   };
 
-  // 영상 종료 시 다음 영상으로 (마지막이면 처음으로)
-  useEffect(() => {
-    const handleMessage = (e: MessageEvent) => {
-      if (e.origin !== "https://www.youtube.com") return;
-      try {
-        const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data;
-        if (data.event === "onStateChange" && data.info === 0) {
-          setCurrent((prev) => (prev + 1) % videos.length);
-        }
-      } catch {}
-    };
-    globalThis.addEventListener("message", handleMessage);
-    return () => globalThis.removeEventListener("message", handleMessage);
-  }, [videos.length]);
+  // 영상 종료 시 다음 영상으로 이동. 마지막 영상이면 첫 번째로 순환.
+  // 영상이 1개뿐이면 처음으로 되감아 다시 재생한다.
+  // react-youtube의 인스턴스별 onEnd 콜백을 사용하므로
+  // 여러 YouTube 창이 열려있어도 다른 창에 영향을 주지 않는다.
+  const videosRef = useRef(videos);
+  useEffect(() => { videosRef.current = videos; }, [videos]);
+
+  const handleVideoEnd = useCallback((event: YouTubeEvent<number>) => {
+    const len = videosRef.current.length;
+    if (len === 0) return;
+    if (len === 1) {
+      event.target.seekTo(0, true);
+      event.target.playVideo();
+      return;
+    }
+    setCurrent((prev) => (prev + 1) % len);
+  }, []);
 
   const cur = videos[Math.min(current, videos.length - 1)];
 
@@ -122,13 +125,17 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
       {/* Player */}
       <div className="flex-1 bg-black relative min-h-0">
         {cur ? (
-          <iframe
-            ref={iframeRef}
+          <YouTube
             key={cur.id}
-            src={`https://www.youtube.com/embed/${cur.id}?rel=0&modestbranding=1&autoplay=1&enablejsapi=1`}
-            className="w-full h-full border-0"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
+            videoId={cur.id}
+            className="w-full h-full"
+            iframeClassName="w-full h-full"
+            opts={{
+              width: "100%",
+              height: "100%",
+              playerVars: { autoplay: 1, rel: 0, modestbranding: 1 },
+            }}
+            onEnd={handleVideoEnd}
           />
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-600">
