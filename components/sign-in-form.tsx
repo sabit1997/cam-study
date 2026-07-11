@@ -7,32 +7,58 @@ import { useUserStore } from "@/stores/user-state";
 import Link from "next/link";
 import { FiMail, FiLock, FiEye, FiEyeOff } from "react-icons/fi";
 
+// request.ts가 plain object { message, code, response }로 reject하므로
+// instanceof Error 대신 응답 형태를 직접 확인한다.
+function getLoginErrorMessage(error: unknown): string {
+  if (error && typeof error === "object" && "response" in error) {
+    const status = (error as { response?: { status?: number } }).response?.status;
+    if (status === 400 || status === 401 || status === 404) {
+      return "이메일 또는 비밀번호가 올바르지 않습니다.";
+    }
+    if (status && status >= 500) {
+      return "서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
+    }
+  }
+  return "로그인 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.";
+}
+
 const SignInForm = () => {
   const router = useRouter();
-  const { mutate: signIn, isPending, isError, error } = useLogin();
+  const { mutate: signIn, isPending, isError, error, reset: resetMutation } = useLogin();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const loginUser = useUserStore((state) => state.login);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (email && password) {
-      signIn(
-        { email, password },
-        {
-          onSuccess: (data) => {
-            loginUser(data);
-            router.replace("/");
-            router.refresh();
-          },
-        }
-      );
-    } else {
-      alert("아이디, 비밀번호를 입력해주세요.");
-    }
+  const clearErrors = () => {
+    setValidationError(null);
+    if (isError) resetMutation();
   };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setValidationError(null);
+
+    if (!email || !password) {
+      setValidationError("이메일과 비밀번호를 입력해주세요.");
+      return;
+    }
+
+    signIn(
+      { email, password },
+      {
+        onSuccess: (data) => {
+          loginUser(data);
+          router.replace("/");
+          router.refresh();
+        },
+      }
+    );
+  };
+
+  const displayError =
+    validationError ?? (isError ? getLoginErrorMessage(error) : null);
 
   return (
     <div className="relative flex flex-col items-center w-full">
@@ -76,7 +102,7 @@ const SignInForm = () => {
               type="email"
               placeholder="이메일"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => { setEmail(e.target.value); clearErrors(); }}
               className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm text-gray-700 outline-none transition-all"
               style={{
                 background: "rgba(249,250,251,0.8)",
@@ -96,7 +122,7 @@ const SignInForm = () => {
               type={showPassword ? "text" : "password"}
               placeholder="비밀번호"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => { setPassword(e.target.value); clearErrors(); }}
               className="w-full pl-9 pr-10 py-2.5 rounded-xl text-sm text-gray-700 outline-none transition-all"
               style={{
                 background: "rgba(249,250,251,0.8)",
@@ -115,9 +141,9 @@ const SignInForm = () => {
           </div>
 
           {/* Error message */}
-          {(isError && error instanceof Error) && (
+          {displayError && (
             <div className="flex gap-2 items-center text-xs text-red-500 bg-red-50 border border-red-100 rounded-xl px-3 py-2.5">
-              <span>{error.message}</span>
+              <span>{displayError}</span>
             </div>
           )}
 
