@@ -75,6 +75,9 @@ const Timer: React.FC = () => {
   const [pomoCycle, setPomoCycle] = useState(0);
   const pomoIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const pomoWorkStartRef = useRef<Date | null>(null);
+  // 사이클은 초기 로드 시에만 서버에서 동기화한다.
+  // postTime 성공 → today 쿼리 재조회 시 pomoCycles가 인메모리 카운터를 덮어쓰는 경쟁 조건 방지.
+  const pomoInitializedRef = useRef(false);
 
   useEffect(() => {
     if (!isTodayTimePending && todayTimeRes) {
@@ -82,9 +85,12 @@ const Timer: React.FC = () => {
       baseTotalSecondsRef.current = total;
       setElapsed(total);
       setGoalInSeconds((todayTimeRes.dailyHourGoal || 0) * 3600);
-      const serverCycles = todayTimeRes.pomoCycles ?? 0;
-      pomoStateRef.current.cycle = serverCycles;
-      setPomoCycle(serverCycles);
+      if (!pomoInitializedRef.current) {
+        pomoInitializedRef.current = true;
+        const serverCycles = todayTimeRes.pomoCycles ?? 0;
+        pomoStateRef.current.cycle = serverCycles;
+        setPomoCycle(serverCycles);
+      }
     }
   }, [todayTimeRes, isTodayTimePending]);
 
@@ -280,12 +286,24 @@ const Timer: React.FC = () => {
       clearInterval(pomoIntervalRef.current);
       pomoIntervalRef.current = null;
     }
-    pomoWorkStartRef.current = null;
+    // 설정 변경 직전까지 집중했던 시간 저장 (일시정지 없이 설정 창을 열 수는 없지만 방어적으로 처리)
+    if (pomoWorkStartRef.current) {
+      postTime({
+        startAt: pomoWorkStartRef.current.toISOString(),
+        endAt: new Date().toISOString(),
+      });
+      pomoWorkStartRef.current = null;
+    }
     const newWorkSecs = w * 60;
-    pomoStateRef.current = { phase: "work", remaining: newWorkSecs, cycle: 0 };
+    // 사이클은 하루 누적값이므로 설정 변경 시 초기화하지 않는다
+    const currentCycle = pomoStateRef.current.cycle;
+    pomoStateRef.current = {
+      phase: "work",
+      remaining: newWorkSecs,
+      cycle: currentCycle,
+    };
     setPomoPhase("work");
     setPomoRemaining(newWorkSecs);
-    setPomoCycle(0);
     setPomoRunning(false);
   };
 
