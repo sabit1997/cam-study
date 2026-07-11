@@ -85,7 +85,6 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
       setVideos(next);
       syncToServer(next);
       setInputUrl("");
-      setShowInput(false);
     } catch {
       toast.error("영상 확인에 실패했습니다.");
     } finally {
