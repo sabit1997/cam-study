@@ -158,6 +158,10 @@ app.whenReady().then(async () => {
             }))
           );
 
+          // 이전 공유 요청이 취소돼 남아있을 수 있는 리스너를 먼저 제거한 뒤 등록.
+          // 제거하지 않으면 취소 → 재시도마다 리스너가 누적되어
+          // 오래된 핸들러가 다음 요청의 결과를 가로채는 버그가 발생한다.
+          ipcMain.removeAllListeners("screen-picker:result");
           ipcMain.once(
             "screen-picker:result",
             (_event, selectedId: string | null) => {

@@ -9,11 +9,17 @@ const CAM_DEVICE_LS_KEY = "cam-device-id";
 const CameraView = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const isMountedRef = useRef(true);
   const [deviceId, setDeviceId] = useState<string>("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [isBlur, setIsBlur] = useState(false);
   const [blurAmount, setBlurAmount] = useState(4);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => { isMountedRef.current = false; };
+  }, []);
 
   useEffect(() => {
     const loadDevices = async () => {
@@ -84,7 +90,7 @@ const CameraView = () => {
     localStorage.setItem(CAM_DEVICE_LS_KEY, id);
     if (isStreaming) {
       stopStream();
-      setTimeout(() => startStream(id), 100);
+      setTimeout(() => { if (isMountedRef.current) startStream(id); }, 100);
     }
   };
 
