@@ -54,6 +54,12 @@ function safeDisplayMediaCallback(
   }
 }
 
+function normalizeReleaseNotes(notes: string | Array<{ note?: string | null }> | null | undefined): string | null {
+  if (!notes) return null;
+  if (typeof notes === "string") return notes.trim() || null;
+  return notes.map((n) => n.note ?? "").filter(Boolean).join("\n") || null;
+}
+
 function setupAutoUpdater() {
   // 개발 환경에서는 업데이트 체크 생략
   if (isDev) return;
@@ -62,7 +68,10 @@ function setupAutoUpdater() {
   autoUpdater.autoInstallOnAppQuit = true;
 
   autoUpdater.on("update-available", (info) => {
-    mainWindow?.webContents.send("update:available", info.version);
+    mainWindow?.webContents.send("update:available", {
+      version: info.version,
+      releaseNotes: normalizeReleaseNotes(info.releaseNotes),
+    });
   });
 
   autoUpdater.on("download-progress", (progress) => {
