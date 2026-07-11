@@ -9,55 +9,6 @@ permissions:
   contents: write
 
 jobs:
-  build-linux:
-    runs-on: ubuntu-latest
-    env:
-      NEXT_PUBLIC_API_URL: https://api.oeyo-cam.site
-      NEXT_PUBLIC_VAPID_PUBLIC_KEY: ${{ vars.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}
-      VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
-    steps:
-      - name: 코드 체크아웃
-        uses: actions/checkout@v4
-
-      - name: Node.js 설정
-        uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-          cache: "npm"
-
-      - name: 의존성 설치
-        run: npm ci
-
-      - name: .env.production 생성
-        run: |
-          echo "NEXT_PUBLIC_API_URL=https://api.oeyo-cam.site" >> .env.production
-          echo "NEXT_PUBLIC_VAPID_PUBLIC_KEY=${{ vars.NEXT_PUBLIC_VAPID_PUBLIC_KEY }}" >> .env.production
-          echo "VAPID_PRIVATE_KEY=${{ secrets.VAPID_PRIVATE_KEY }}" >> .env.production
-          echo "YOUTUBE_API_KEY=${{ secrets.YOUTUBE_API_KEY }}" >> .env.production
-
-      - name: TypeScript 컴파일
-        run: npm run build:ts
-
-      - name: Next.js 빌드
-        run: npm run build:web
-
-      - name: standalone 정적 파일 복사
-        run: npm run copy:standalone
-
-      - name: Electron 빌드 (Linux)
-        run: npx electron-builder --linux --publish never
-
-      - name: dist 디렉터리 확인 (Linux)
-        run: ls -la dist/
-
-      - name: Linux 아티팩트 업로드
-        uses: actions/upload-artifact@v4
-        with:
-          name: installers-linux
-          path: |
-            dist/*.AppImage
-            dist/*.deb
-
   build-mac:
     runs-on: macos-latest
     continue-on-error: true
@@ -110,6 +61,8 @@ jobs:
           path: |
             dist/*.dmg
             dist/*.zip
+            dist/*.yml
+            dist/*.blockmap
 
   build-windows:
     runs-on: windows-latest
@@ -160,20 +113,16 @@ jobs:
           path: |
             dist/*.exe
             dist/*.zip
+            dist/*.yml
+            dist/*.blockmap
 
   release:
-    needs: [build-linux, build-mac, build-windows]
+    needs: [build-mac, build-windows]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: 코드 체크아웃
         uses: actions/checkout@v4
-
-      - name: Linux 설치 프로그램 다운로드
-        uses: actions/download-artifact@v4
-        with:
-          name: installers-linux
-          path: dist
 
       - name: macOS 설치 프로그램 다운로드
         uses: actions/download-artifact@v4
@@ -200,8 +149,6 @@ jobs:
           tag_name: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
           files: |
-            dist/*.AppImage
-            dist/*.deb
             dist/*.dmg
             dist/*.zip
             dist/*.exe

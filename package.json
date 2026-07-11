@@ -106,7 +106,8 @@
       "artifactName": "CamStudySetup.exe"
     },
     "dmg": {
-      "artifactName": "CamStudySetup.dmg"
+      "artifactName": "CamStudySetup.dmg",
+      "title": "외요의 캠스터디"
     },
     "linux": {
       "icon": "buildResources/icon.png",
