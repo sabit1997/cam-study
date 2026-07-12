@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
 import { FiUser, FiMail, FiLock, FiEye, FiEyeOff } from "react-icons/fi";
+import { useThemeStore } from "@/stores/theme-state";
 
 const SignUpForm = () => {
   const router = useRouter();
@@ -14,6 +15,7 @@ const SignUpForm = () => {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const { mutate: signUp, isPending } = useSignup();
+  const isDarkMode = useThemeStore((state) => state.isDarkMode);
 
   const validatePassword = (pw: string): boolean => {
     const pattern = /^(?=.*[A-Za-z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
@@ -72,24 +74,26 @@ const SignUpForm = () => {
         >
           <span className="text-white text-sm font-bold">C</span>
         </div>
-        <span className="text-base font-semibold text-gray-700">CAM STUDY</span>
+        <span className="text-base font-semibold text-gray-700 dark:text-gray-300">CAM STUDY</span>
       </div>
 
       {/* Card */}
       <div
         className="w-full max-w-sm rounded-2xl overflow-hidden"
         style={{
-          background: "rgba(255,255,255,0.88)",
+          background: isDarkMode ? "rgba(22,24,34,0.92)" : "rgba(255,255,255,0.88)",
           backdropFilter: "blur(24px)",
           WebkitBackdropFilter: "blur(24px)",
-          border: "1px solid rgba(255,255,255,0.95)",
-          boxShadow: "0 4px 16px rgba(0,0,0,0.08), 0 16px 48px rgba(0,0,0,0.1)",
+          border: isDarkMode ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(255,255,255,0.95)",
+          boxShadow: isDarkMode
+            ? "0 4px 16px rgba(0,0,0,0.4), 0 16px 48px rgba(0,0,0,0.5)"
+            : "0 4px 16px rgba(0,0,0,0.08), 0 16px 48px rgba(0,0,0,0.1)",
         }}
       >
         {/* Header */}
-        <div className="px-6 pt-6 pb-5 border-b border-gray-100">
-          <h2 className="text-xl font-semibold text-gray-800">시작해볼까요</h2>
-          <p className="text-sm text-gray-400 mt-1">새 계정을 만들어보세요</p>
+        <div className="px-6 pt-6 pb-5 border-b border-gray-100 dark:border-gray-700/50">
+          <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">시작해볼까요</h2>
+          <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">새 계정을 만들어보세요</p>
         </div>
 
         {/* Form body */}
@@ -97,7 +101,7 @@ const SignUpForm = () => {
           {/* Name field */}
           <div className="relative">
             <FiUser
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500"
               size={16}
             />
             <input
@@ -106,10 +110,10 @@ const SignUpForm = () => {
               value={username}
               maxLength={4}
               onChange={(e) => setUsername(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm text-gray-700 outline-none transition-all"
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm text-gray-700 dark:text-gray-200 outline-none transition-all"
               style={{
-                background: "rgba(249,250,251,0.8)",
-                border: "1px solid rgba(229,231,235,0.8)",
+                background: isDarkMode ? "rgba(15,17,25,0.6)" : "rgba(249,250,251,0.8)",
+                border: isDarkMode ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(229,231,235,0.8)",
               }}
               autoComplete="name"
             />
@@ -118,7 +122,7 @@ const SignUpForm = () => {
           {/* Email field */}
           <div className="relative">
             <FiMail
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500"
               size={16}
             />
             <input
@@ -126,10 +130,10 @@ const SignUpForm = () => {
               placeholder="이메일"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm text-gray-700 outline-none transition-all"
+              className="w-full pl-9 pr-4 py-2.5 rounded-xl text-sm text-gray-700 dark:text-gray-200 outline-none transition-all"
               style={{
-                background: "rgba(249,250,251,0.8)",
-                border: "1px solid rgba(229,231,235,0.8)",
+                background: isDarkMode ? "rgba(15,17,25,0.6)" : "rgba(249,250,251,0.8)",
+                border: isDarkMode ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(229,231,235,0.8)",
               }}
               autoComplete="email"
             />
@@ -138,7 +142,7 @@ const SignUpForm = () => {
           {/* Password field */}
           <div className="relative">
             <FiLock
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500"
               size={16}
             />
             <input
@@ -146,29 +150,29 @@ const SignUpForm = () => {
               placeholder="비밀번호"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full pl-9 pr-10 py-2.5 rounded-xl text-sm text-gray-700 outline-none transition-all"
+              className="w-full pl-9 pr-10 py-2.5 rounded-xl text-sm text-gray-700 dark:text-gray-200 outline-none transition-all"
               style={{
-                background: "rgba(249,250,251,0.8)",
-                border: "1px solid rgba(229,231,235,0.8)",
+                background: isDarkMode ? "rgba(15,17,25,0.6)" : "rgba(249,250,251,0.8)",
+                border: isDarkMode ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(229,231,235,0.8)",
               }}
               autoComplete="new-password"
             />
             <button
               type="button"
               onClick={() => setShowPassword((v) => !v)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
               tabIndex={-1}
             >
               {showPassword ? <FiEyeOff size={15} /> : <FiEye size={15} />}
             </button>
           </div>
-          <p className="text-xs text-gray-400 -mt-1">
+          <p className="text-xs text-gray-400 dark:text-gray-500 -mt-1">
             8자 이상, 숫자, 특수문자 모두 포함
           </p>
 
           {/* Error message */}
           {error && (
-            <div className="flex gap-2 items-center text-xs text-red-500 bg-red-50 border border-red-100 rounded-xl px-3 py-2.5">
+            <div className="flex gap-2 items-center text-xs text-red-500 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-800/40 rounded-xl px-3 py-2.5">
               <span>{error}</span>
             </div>
           )}
@@ -184,7 +188,7 @@ const SignUpForm = () => {
           </button>
 
           {/* Sign in link */}
-          <p className="text-xs text-center text-gray-400">
+          <p className="text-xs text-center text-gray-400 dark:text-gray-500">
             이미 계정이 있으신가요?{" "}
             <Link href="/sign-in" className="text-lime-600 font-medium hover:underline">
               로그인

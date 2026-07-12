@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { FiCheck, FiMonitor } from 'react-icons/fi';
 import useClickOutside from '@/hooks/useClickOutside';
 import useEscapeKey from '@/hooks/useEscapeKey';
+import { useThemeStore } from '@/stores/theme-state';
 
 interface ScreenSource {
   id: string;
@@ -20,6 +21,7 @@ const RESULT_CHANNEL = 'screen-picker:result';
 const ACCENT = '#8fb870';
 
 const ScreenPickerModal = () => {
+  const isDarkMode = useThemeStore((state) => state.isDarkMode);
   const [sources, setSources] = useState<ScreenSource[] | null>(null);
   const [activeTab, setActiveTab] = useState<SourceTab>('screen');
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -68,7 +70,7 @@ const ScreenPickerModal = () => {
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-9999999">
       <div
         ref={modalRef}
-        className="w-[420px] max-h-[80vh] flex flex-col overflow-hidden bg-white"
+        className="w-[420px] max-h-[80vh] flex flex-col overflow-hidden bg-white dark:bg-[#1a1c2a]"
         style={{
           borderRadius: 13,
           border: '1px solid rgba(255,255,255,0.85)',
@@ -81,8 +83,10 @@ const ScreenPickerModal = () => {
           className="flex items-center px-3 flex-shrink-0"
           style={{
             height: 38,
-            background: 'linear-gradient(180deg, #fafafa 0%, #f4f4f6 100%)',
-            borderBottom: '1px solid rgba(0,0,0,0.07)',
+            background: isDarkMode
+              ? 'linear-gradient(180deg, #1e2030 0%, #1a1c2a 100%)'
+              : 'linear-gradient(180deg, #fafafa 0%, #f4f4f6 100%)',
+            borderBottom: isDarkMode ? '1px solid rgba(255,255,255,0.07)' : '1px solid rgba(0,0,0,0.07)',
           }}
         >
           <button
@@ -94,9 +98,9 @@ const ScreenPickerModal = () => {
           </button>
 
           <div className="flex-1 flex items-center justify-center gap-1.5">
-            <FiMonitor size={11} className="text-gray-400" />
+            <FiMonitor size={11} className="text-gray-400 dark:text-gray-500" />
             <span
-              className="text-[11px] font-semibold text-gray-400"
+              className="text-[11px] font-semibold text-gray-400 dark:text-gray-500"
               style={{ letterSpacing: '0.12em' }}
             >
               SCREEN SHARE
@@ -115,7 +119,7 @@ const ScreenPickerModal = () => {
             className={`flex-1 text-xs px-3 py-1.5 rounded-full border font-medium transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
               activeTab === 'screen'
                 ? 'text-white'
-                : 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                : 'border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800'
             }`}
             style={
               activeTab === 'screen'
@@ -147,7 +151,7 @@ const ScreenPickerModal = () => {
         {/* Sources */}
         <div className="p-3 overflow-y-auto">
           {visibleItems.length === 0 ? (
-            <p className="text-xs text-center py-8 text-gray-400">
+            <p className="text-xs text-center py-8 text-gray-400 dark:text-gray-500">
               공유할 수 있는 항목이 없습니다.
             </p>
           ) : (
@@ -163,10 +167,10 @@ const ScreenPickerModal = () => {
                     style={{
                       border: selected
                         ? `2px solid ${ACCENT}`
-                        : '1px solid rgba(0,0,0,0.08)',
+                        : isDarkMode ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.08)',
                     }}
                   >
-                    <div className="relative w-full aspect-video bg-gray-100">
+                    <div className="relative w-full aspect-video bg-gray-100 dark:bg-gray-700">
                       <Image
                         src={source.thumbnail}
                         alt={source.name}
@@ -183,8 +187,8 @@ const ScreenPickerModal = () => {
                         </div>
                       )}
                     </div>
-                    <div className="px-2 py-1.5 bg-white border-t border-gray-100">
-                      <span className="text-[11px] text-gray-600 truncate block">
+                    <div className="px-2 py-1.5 bg-white dark:bg-[#1e2030] border-t border-gray-100 dark:border-gray-700">
+                      <span className="text-[11px] text-gray-600 dark:text-gray-300 truncate block">
                         {source.name}
                       </span>
                     </div>
@@ -196,7 +200,7 @@ const ScreenPickerModal = () => {
         </div>
 
         {/* Footer */}
-        <div className="px-3 py-2.5 border-t border-gray-100 flex justify-end shrink-0">
+        <div className="px-3 py-2.5 border-t border-gray-100 dark:border-gray-700 flex justify-end shrink-0">
           <button
             type="button"
             onClick={() => respond(selectedId)}

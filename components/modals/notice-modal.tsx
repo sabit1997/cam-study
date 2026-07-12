@@ -34,7 +34,7 @@ export default function NoticeModal() {
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-      <div className="bg-white p-6 rounded-xl max-w-md w-full shadow-xl">
+      <div className="bg-white dark:bg-[#1a1c2a] dark:text-gray-200 p-6 rounded-xl max-w-md w-full shadow-xl">
         <h2 className="text-xl font-bold mb-4">📢 공지사항</h2>
         <p>
           2025년 9월 17일(수) 이전에 가입하신 회원께서는

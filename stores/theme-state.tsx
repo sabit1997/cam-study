@@ -6,11 +6,13 @@ interface ThemeState {
   darkHex: string;
   textHex: string;
   selectedTextHex: string;
+  isDarkMode: boolean;
   setPrimaryHex: (hex: string) => void;
   setDarkHex: (hex: string) => void;
   setTextHex: (hex: string) => void;
   setSelectedTextHex: (hex: string) => void;
   resetTheme: () => void;
+  toggleDarkMode: () => void;
 }
 
 const DEFAULT_THEME = {
@@ -18,6 +20,7 @@ const DEFAULT_THEME = {
   darkHex: "#255f38",
   textHex: "#000000",
   selectedTextHex: "#ffffff",
+  isDarkMode: false,
 };
 
 export const useThemeStore = create(
@@ -30,6 +33,7 @@ export const useThemeStore = create(
       setTextHex: (hex: string) => set({ textHex: hex }),
       setSelectedTextHex: (hex: string) => set({ selectedTextHex: hex }),
       resetTheme: () => set(DEFAULT_THEME),
+      toggleDarkMode: () => set((s: ThemeState) => ({ isDarkMode: !s.isDarkMode })),
     }),
     {
       name: "theme-store",
@@ -38,6 +42,7 @@ export const useThemeStore = create(
         darkHex: state.darkHex,
         textHex: state.textHex,
         selectedTextHex: state.selectedTextHex,
+        isDarkMode: state.isDarkMode,
       }),
     }
   )

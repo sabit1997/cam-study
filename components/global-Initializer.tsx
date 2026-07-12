@@ -5,7 +5,7 @@ import { applyThemeColors } from "@/utils/set-theme-color";
 import { useEffect } from "react";
 
 const GlobalInitializer = () => {
-  const { primaryHex, darkHex, textHex, selectedTextHex } = useThemeStore();
+  const { primaryHex, darkHex, textHex, selectedTextHex, isDarkMode } = useThemeStore();
 
   useEffect(() => {
     applyThemeColors({
@@ -15,6 +15,10 @@ const GlobalInitializer = () => {
       selectedText: selectedTextHex,
     });
   }, [primaryHex, darkHex, textHex, selectedTextHex]);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle("dark", isDarkMode);
+  }, [isDarkMode]);
 
   return null;
 };

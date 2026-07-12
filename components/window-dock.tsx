@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useThemeStore } from "@/stores/theme-state";
 import Link from "next/link";
 import {
   IoLogoYoutube,
@@ -79,6 +80,7 @@ const DOCK_ITEMS: DockItem[] = [
 export default function WindowDock() {
   const { mutate: createWindow, isPending } = useCreateWindow();
   const windows = useWindowStore((state) => state.windows);
+  const isDarkMode = useThemeStore((state) => state.isDarkMode);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   const handleCreate = (item: DockItem) => {
@@ -110,12 +112,14 @@ export default function WindowDock() {
         bottom: 16,
         left: "50%",
         transform: "translateX(-50%)",
-        background: "rgba(255,255,255,0.6)",
+        background: isDarkMode ? "rgba(20,22,32,0.85)" : "rgba(255,255,255,0.6)",
         backdropFilter: "blur(24px)",
         WebkitBackdropFilter: "blur(24px)",
-        border: "1px solid rgba(255,255,255,0.9)",
+        border: isDarkMode ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(255,255,255,0.9)",
         borderRadius: 24,
-        boxShadow: "0 2px 6px rgba(0,0,0,0.06), 0 10px 28px rgba(0,0,0,0.08)",
+        boxShadow: isDarkMode
+          ? "0 2px 6px rgba(0,0,0,0.3), 0 10px 28px rgba(0,0,0,0.4)"
+          : "0 2px 6px rgba(0,0,0,0.06), 0 10px 28px rgba(0,0,0,0.08)",
         padding: "8px 12px",
         display: "flex",
         alignItems: "center",
@@ -184,7 +188,7 @@ export default function WindowDock() {
         style={{
           width: 1,
           height: 32,
-          background: "rgba(0,0,0,0.1)",
+          background: isDarkMode ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.1)",
           margin: "0 4px",
           flexShrink: 0,
         }}
