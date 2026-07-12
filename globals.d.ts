@@ -4,6 +4,11 @@ declare global {
       send(channel: string, data: unknown): void;
       on(channel: string, fn: (data: unknown) => void): () => void;
       restartAndUpdate(): void;
+      checkUpdateState(): Promise<
+        | { phase: "ready" }
+        | { phase: "available"; version: string; releaseNotes: string | null }
+        | null
+      >;
     };
   }
 }

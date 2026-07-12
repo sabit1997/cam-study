@@ -72,10 +72,11 @@ function setupAutoUpdater() {
   autoUpdater.autoInstallOnAppQuit = true;
 
   autoUpdater.on("update-available", (info) => {
-    mainWindow?.webContents.send("update:available", {
+    cachedUpdateInfo = {
       version: info.version,
       releaseNotes: normalizeReleaseNotes(info.releaseNotes),
-    });
+    };
+    mainWindow?.webContents.send("update:available", cachedUpdateInfo);
   });
 
   autoUpdater.on("download-progress", (progress) => {
@@ -83,6 +84,7 @@ function setupAutoUpdater() {
   });
 
   autoUpdater.on("update-downloaded", () => {
+    updateDownloaded = true;
     mainWindow?.webContents.send("update:downloaded");
   });
 
@@ -93,6 +95,17 @@ function setupAutoUpdater() {
   // 앱 준비 후 5초 뒤 체크 (앱 로딩이 완전히 끝난 후)
   setTimeout(() => autoUpdater.checkForUpdates(), 5000);
 }
+
+// 업데이트 상태를 메모리에 보존 — 렌더러가 늦게 마운트돼도 조회 가능
+let cachedUpdateInfo: { version: string; releaseNotes: string | null } | null = null;
+let updateDownloaded = false;
+
+// 렌더러 마운트 시 놓친 업데이트 상태 조회용 핸들러
+ipcMain.handle("update:check-state", () => {
+  if (updateDownloaded) return { phase: "ready" };
+  if (cachedUpdateInfo) return { phase: "available", ...cachedUpdateInfo };
+  return null;
+});
 
 // 렌더러에서 "재시작 후 업데이트 설치" 요청 처리
 ipcMain.on("update:restart", () => {

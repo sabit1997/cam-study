@@ -16,6 +16,18 @@ export default function UpdateNotifier() {
   useEffect(() => {
     if (!window.electronAPI) return;
 
+    // 마운트 시 이미 완료된 업데이트 상태 조회 (IPC 메시지를 놓쳤을 경우 복구)
+    window.electronAPI.checkUpdateState?.().then((s) => {
+      if (!s) return;
+      if (s.phase === "ready") {
+        setState({ phase: "ready" });
+        setDismissed(false);
+      } else if (s.phase === "available") {
+        setState({ phase: "available", version: s.version, releaseNotes: s.releaseNotes });
+        setDismissed(false);
+      }
+    });
+
     const offAvailable = window.electronAPI.on("update:available", (payload) => {
       const p = payload as { version: string; releaseNotes: string | null };
       setState({ phase: "available", version: p.version, releaseNotes: p.releaseNotes });
