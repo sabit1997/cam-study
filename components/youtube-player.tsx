@@ -146,8 +146,8 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
 
       {/* 오버레이 컨트롤 — URL 패널 열릴 때는 항상 표시, 닫혀있을 때는 hover 시 표시 */}
       <div
-        className={`absolute bottom-0 left-0 right-0
-                    bg-gradient-to-t from-black/70 to-transparent
+        className={`absolute bottom-0 left-0 right-0 pt-4
+                    bg-gradient-to-t from-black/80 to-black/50
                     transition-opacity duration-200
                     ${showInput ? "opacity-100" : "opacity-0 hover:opacity-100"}`}
       >
@@ -187,7 +187,7 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
 
         {/* URL 입력 패널 (접기/펼치기) */}
         {showInput && (
-          <div className="px-3 pb-2.5 border-t border-white/10">
+          <div className="px-3 pb-2.5 border-t border-white/20">
             {error && (
               <p className="text-[11px] text-red-400 mt-1.5 mb-1 flex items-center gap-1">
                 <FiAlertCircle size={10} />

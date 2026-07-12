@@ -115,9 +115,9 @@ const CameraView = ({ onAspectRatioDetected }: CameraViewProps) => {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Video area */}
-      <div className="flex-1 bg-black relative overflow-hidden">
+    <div className="relative h-full">
+      {/* 비디오: 전체 영역 차지 */}
+      <div className="absolute inset-0 bg-black">
         <video
           ref={videoRef}
           muted
@@ -145,8 +145,13 @@ const CameraView = ({ onAspectRatioDetected }: CameraViewProps) => {
         )}
       </div>
 
-      {/* Control bar */}
-      <div className="px-3 py-2.5 bg-gray-50 border-t border-gray-100 flex items-center gap-2 flex-wrap">
+      {/* 컨트롤바: 스트림 없을 때는 항상 표시, 있을 때는 hover 시 표시 */}
+      <div
+        className={`absolute bottom-0 left-0 right-0 px-3 py-2 flex items-center gap-2 flex-wrap
+                    bg-gradient-to-t from-black/50 to-transparent backdrop-blur-sm
+                    transition-opacity duration-200
+                    ${isStreaming ? "opacity-0 hover:opacity-100" : "opacity-100"}`}
+      >
         <button
           onClick={isStreaming ? stopStream : () => startStream()}
           className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-medium text-white transition-colors"
@@ -167,7 +172,7 @@ const CameraView = ({ onAspectRatioDetected }: CameraViewProps) => {
         <button
           onClick={() => setIsBlur((b) => !b)}
           disabled={!isStreaming}
-          className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-gray-200 text-gray-600 hover:bg-gray-100 disabled:opacity-30 transition-colors"
+          className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-white/30 text-white hover:bg-white/20 disabled:opacity-30 transition-colors"
         >
           {isBlur ? (
             <>
@@ -188,7 +193,7 @@ const CameraView = ({ onAspectRatioDetected }: CameraViewProps) => {
             max={20}
             value={blurAmount}
             onChange={(e) => setBlurAmount(Number(e.target.value))}
-            className="w-20 accent-gray-500"
+            className="w-20 accent-white"
             title={`블러 강도: ${blurAmount}px`}
           />
         )}
@@ -196,7 +201,7 @@ const CameraView = ({ onAspectRatioDetected }: CameraViewProps) => {
           <select
             value={deviceId}
             onChange={(e) => handleDeviceChange(e.target.value)}
-            className="text-xs flex-1 min-w-0 rounded-lg border border-gray-200 py-1 px-1.5 bg-white text-gray-600 outline-none"
+            className="text-xs flex-1 min-w-0 rounded-lg border border-white/30 py-1 px-1.5 bg-black/30 text-white outline-none"
           >
             {devices.map((d) => (
               <option key={d.deviceId} value={d.deviceId}>
