@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LuDownload, LuRefreshCw, LuX } from "react-icons/lu";
 
 type UpdateState =
@@ -9,9 +9,23 @@ type UpdateState =
   | { phase: "downloading"; percent: number }
   | { phase: "ready" };
 
+const DISMISSED_KEY = "update-notifier-dismissed-version";
+
+function isDismissedVersion(version: string) {
+  try { return localStorage.getItem(DISMISSED_KEY) === version; } catch { return false; }
+}
+function saveDismissedVersion(version: string) {
+  try { localStorage.setItem(DISMISSED_KEY, version); } catch { /* ignore */ }
+}
+function clearDismissedVersion() {
+  try { localStorage.removeItem(DISMISSED_KEY); } catch { /* ignore */ }
+}
+
 export default function UpdateNotifier() {
   const [state, setState] = useState<UpdateState>({ phase: "idle" });
   const [dismissed, setDismissed] = useState(false);
+  // available/downloading 단계에서 버전 추적 (dismiss 저장용)
+  const pendingVersion = useRef<string | null>(null);
 
   useEffect(() => {
     if (!window.electronAPI) return;
@@ -20,29 +34,41 @@ export default function UpdateNotifier() {
     window.electronAPI.checkUpdateState?.().then((s) => {
       if (!s) return;
       if (s.phase === "ready") {
+        // ready는 항상 표시 (재시작 유도가 목적)
+        clearDismissedVersion();
         setState({ phase: "ready" });
         setDismissed(false);
       } else if (s.phase === "available") {
+        pendingVersion.current = s.version;
         setState({ phase: "available", version: s.version, releaseNotes: s.releaseNotes });
-        setDismissed(false);
+        // 이전에 이 버전을 이미 닫은 경우 다시 띄우지 않음
+        setDismissed(isDismissedVersion(s.version));
       }
     });
 
     const offAvailable = window.electronAPI.on("update:available", (payload) => {
       const p = payload as { version: string; releaseNotes: string | null };
+      pendingVersion.current = p.version;
       setState({ phase: "available", version: p.version, releaseNotes: p.releaseNotes });
-      setDismissed(false);
+      setDismissed(isDismissedVersion(p.version));
     });
     const offProgress = window.electronAPI.on("update:progress", (percent) => {
       setState({ phase: "downloading", percent: percent as number });
     });
     const offReady = window.electronAPI.on("update:downloaded", () => {
+      // 다운로드 완료: dismissed 기록 지우고 항상 표시
+      clearDismissedVersion();
       setState({ phase: "ready" });
       setDismissed(false);
     });
 
     return () => { offAvailable(); offProgress(); offReady(); };
   }, []);
+
+  function dismissCurrent() {
+    if (pendingVersion.current) saveDismissedVersion(pendingVersion.current);
+    setDismissed(true);
+  }
 
   // ready 단계는 dismissed 상태와 무관하게 항상 표시 (재시작 유도가 목적)
   if (state.phase === "idle") return null;
@@ -66,7 +92,7 @@ export default function UpdateNotifier() {
               <p className="font-semibold text-[#3d6b28] text-xs">새 버전 {state.version}</p>
               <p className="text-[11px] text-[#6a9f50]">백그라운드에서 다운로드 중...</p>
             </div>
-            <button onClick={() => setDismissed(true)} className="text-[#a0c888] hover:text-[#6a9f50]">
+            <button onClick={dismissCurrent} className="text-[#a0c888] hover:text-[#6a9f50]">
               <LuX size={13} />
             </button>
           </div>
@@ -82,7 +108,7 @@ export default function UpdateNotifier() {
       )}
 
       {state.phase === "downloading" && (
-        <>
+        <div className="flex items-center gap-3">
           <LuDownload size={16} className="text-[#6a9f50] flex-shrink-0 animate-bounce" />
           <div className="flex-1">
             <p className="font-semibold text-[#3d6b28] text-xs mb-1">업데이트 다운로드 중</p>
@@ -94,7 +120,10 @@ export default function UpdateNotifier() {
             </div>
             <p className="text-[11px] text-[#6a9f50] mt-0.5">{state.percent}%</p>
           </div>
-        </>
+          <button onClick={dismissCurrent} className="text-[#a0c888] hover:text-[#6a9f50]">
+            <LuX size={13} />
+          </button>
+        </div>
       )}
 
       {state.phase === "ready" && (
@@ -119,3 +148,4 @@ export default function UpdateNotifier() {
     </div>
   );
 }
+

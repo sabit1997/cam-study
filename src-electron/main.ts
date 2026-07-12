@@ -2,12 +2,15 @@ import {
   app,
   BrowserWindow,
   desktopCapturer,
+  dialog,
   ipcMain,
   session,
   Streams,
 } from "electron";
 import { autoUpdater } from "electron-updater";
 import path from "path";
+import os from "os";
+import fs from "fs";
 import { spawn } from "child_process";
 import net from "net";
 
@@ -109,8 +112,64 @@ ipcMain.handle("update:check-state", () => {
 
 // 렌더러에서 "재시작 후 업데이트 설치" 요청 처리
 ipcMain.on("update:restart", () => {
-  autoUpdater.quitAndInstall(false, true);
+  if (process.platform === "darwin") {
+    // Squirrel.Mac은 코드서명 없는 앱의 업데이트를 설치하지 못한다.
+    // ZIP을 직접 추출해 앱 번들을 교체하는 셸 스크립트로 우회한다.
+    installMacUpdate();
+  } else {
+    autoUpdater.quitAndInstall(false, true);
+  }
 });
+
+function installMacUpdate() {
+  // electron-updater가 캐시한 ZIP 경로 취득
+  const helper = (autoUpdater as unknown as Record<string, unknown>).downloadedUpdateHelper as
+    | { file?: string | null; cacheDir?: string }
+    | null
+    | undefined;
+  const zipPath: string =
+    helper?.file ??
+    path.join(helper?.cacheDir ?? os.tmpdir(), "update.zip");
+
+  if (!fs.existsSync(zipPath)) {
+    // 캐시 없으면 Squirrel 방식으로 폴백 (Windows/서명 환경에서도 동작)
+    autoUpdater.quitAndInstall(false, true);
+    return;
+  }
+
+  // process.execPath = /path/to/앱.app/Contents/MacOS/앱이름
+  const appBundlePath = process.execPath.replace(/\/Contents\/MacOS\/[^/]+$/, "");
+  const tempDir = path.join(os.tmpdir(), `cam-study-update-${Date.now()}`);
+  const scriptPath = path.join(os.tmpdir(), "cam-study-update.sh");
+
+  // 앱이 완전히 종료된 뒤 실행되는 셸 스크립트
+  const script = [
+    "#!/bin/bash",
+    "sleep 2",
+    `TEMP="${tempDir}"`,
+    `ZIP="${zipPath}"`,
+    `APP="${appBundlePath}"`,
+    `mkdir -p "$TEMP"`,
+    // ditto -xk: PKzip(ZIP) 형식 전개
+    `ditto -xk "$ZIP" "$TEMP" 2>/dev/null || unzip -q "$ZIP" -d "$TEMP"`,
+    `NEW_APP=$(find "$TEMP" -maxdepth 1 -name "*.app" | head -1)`,
+    `[ -z "$NEW_APP" ] && exit 1`,
+    `rm -rf "$APP"`,
+    `cp -R "$NEW_APP" "$APP"`,
+    `rm -rf "$TEMP"`,
+    `open "$APP"`,
+  ].join("\n");
+
+  fs.writeFileSync(scriptPath, script, { mode: 0o755 });
+
+  const child = spawn("bash", [scriptPath], {
+    detached: true,
+    stdio: "ignore",
+  });
+  child.unref();
+
+  app.quit();
+}
 
 async function createWindow() {
   const win = new BrowserWindow({
@@ -218,8 +277,7 @@ app.whenReady().then(async () => {
     );
     const serverPath = path.join(standaloneDir, "server.js");
 
-    if (!require("fs").existsSync(serverPath)) {
-      const { dialog } = require("electron");
+    if (!fs.existsSync(serverPath)) {
       dialog.showErrorBox(
         "서버 파일 없음",
         `Next.js 서버를 찾을 수 없습니다.\n${serverPath}`
@@ -248,7 +306,6 @@ app.whenReady().then(async () => {
       await waitForPort(3001, 30000);
     } catch (err) {
       console.error("Next.js 서버 시작 실패:", err);
-      const { dialog } = require("electron");
       dialog.showErrorBox(
         "서버 시작 실패",
         "Next.js 서버가 30초 안에 시작되지 않았습니다.\n앱을 다시 시작해 주세요."
