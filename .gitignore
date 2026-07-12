@@ -45,5 +45,6 @@ next-env.d.ts
 
 Caddyfile
 /dist
+/dist-electron
 app/api/\[...path]/route.ts
 CLAUDE.md

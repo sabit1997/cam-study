@@ -319,7 +319,7 @@ const Timer: React.FC = () => {
   return (
     <div className="flex flex-col h-full">
       {/* Mode tabs */}
-      <div className="flex border-b border-gray-100 flex-shrink-0">
+      <div className="flex border-b border-gray-100 shrink-0">
         {(["stopwatch", "pomodoro"] as const).map((m) => (
           <button
             key={m}
