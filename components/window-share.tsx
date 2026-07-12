@@ -17,6 +17,8 @@ interface WindowShareProps {
 export default function WindowShare({ windowId, onAspectRatioDetected }: WindowShareProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const trackRef = useRef<MediaStreamTrack | null>(null);
+  const trackEndedHandlerRef = useRef<(() => void) | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [started, setStarted] = useState(false);
   const [isBlur, setIsBlur] = useState(false);
@@ -84,7 +86,10 @@ export default function WindowShare({ windowId, onAspectRatioDetected }: WindowS
       });
       streamRef.current = s;
       const track = s.getVideoTracks()[0];
-      track.addEventListener("ended", stopSharing);
+      trackRef.current = track;
+      const handler = () => stopSharing();
+      trackEndedHandlerRef.current = handler;
+      track.addEventListener("ended", handler);
       setStreamById(windowId, s);
       setStream(s);
       setStarted(true);
@@ -99,6 +104,11 @@ export default function WindowShare({ windowId, onAspectRatioDetected }: WindowS
   };
 
   const stopSharing = () => {
+    if (trackRef.current && trackEndedHandlerRef.current) {
+      trackRef.current.removeEventListener("ended", trackEndedHandlerRef.current);
+      trackRef.current = null;
+      trackEndedHandlerRef.current = null;
+    }
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     clearStreamById(windowId);
