@@ -5,6 +5,7 @@ export interface WindowData {
   user_id: string;
   type: TypeList;
   url?: string[];
+  urlTitles?: string[];
   z_index: number;
   x: number;
   y: number;
@@ -17,6 +18,7 @@ export interface Window {
   id: number;
   type: TypeList;
   url?: string[];
+  urlTitles?: string[];
   x: number;
   y: number;
   width: number;

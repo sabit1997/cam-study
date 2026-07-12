@@ -406,7 +406,7 @@ const AddWindow = ({ window }: AddWindowProps) => {
                   onChange={(e) => setTitleVal(e.target.value)}
                   onBlur={commitTitle}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") commitTitle();
+                    if (e.key === "Enter") e.currentTarget.blur();
                     if (e.key === "Escape") setEditTitle(false);
                   }}
                   className="text-[11px] font-semibold tracking-widest text-center bg-white border border-lime-400 rounded-md px-2 py-0.5 outline-none w-28"

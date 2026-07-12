@@ -29,21 +29,21 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
 
   // Restore from server on mount
   useEffect(() => {
-    if (window.url && window.url.length > 0) {
-      const loaded = window.url
-        .map((url) => {
-          const id = extractYouTubeId(url);
-          return id ? { id, title: `Video` } : null;
-        })
-        .filter((v): v is YtVideo => v !== null);
-      setVideos(loaded);
-    }
+    if (!window.url || window.url.length === 0) return;
+    const loaded = window.url
+      .map((url, i) => {
+        const id = extractYouTubeId(url);
+        return id ? { id, title: window.urlTitles?.[i] || id } : null;
+      })
+      .filter((v): v is YtVideo => v !== null);
+    setVideos(loaded);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const syncToServer = useCallback(
     (list: YtVideo[]) => {
       const urls = list.map((v) => `https://www.youtube.com/watch?v=${v.id}`);
-      updateWindow({ id: window.id, data: { url: urls } });
+      const urlTitles = list.map((v) => v.title);
+      updateWindow({ id: window.id, data: { url: urls, urlTitles } });
     },
     [updateWindow, window.id]
   );
