@@ -127,13 +127,22 @@ function installMacUpdate() {
     | { file?: string | null; cacheDir?: string }
     | null
     | undefined;
+
   const zipPath: string =
     helper?.file ??
-    path.join(helper?.cacheDir ?? os.tmpdir(), "update.zip");
+    path.join(helper?.cacheDir ?? os.tmpdir(), "pending", "update.zip");
+
+  // 진단: 경로 정보 로그
+  console.log("[update] helper.file:", helper?.file);
+  console.log("[update] helper.cacheDir:", helper?.cacheDir);
+  console.log("[update] zipPath:", zipPath);
+  console.log("[update] zipExists:", fs.existsSync(zipPath));
 
   if (!fs.existsSync(zipPath)) {
-    // 캐시 없으면 Squirrel 방식으로 폴백 (Windows/서명 환경에서도 동작)
-    autoUpdater.quitAndInstall(false, true);
+    dialog.showErrorBox(
+      "업데이트 파일 없음",
+      `다운로드된 업데이트 파일을 찾을 수 없습니다.\n경로: ${zipPath}\n\n수동으로 최신 버전을 다운로드해 주세요.`
+    );
     return;
   }
 
@@ -141,26 +150,37 @@ function installMacUpdate() {
   const appBundlePath = process.execPath.replace(/\/Contents\/MacOS\/[^/]+$/, "");
   const tempDir = path.join(os.tmpdir(), `cam-study-update-${Date.now()}`);
   const scriptPath = path.join(os.tmpdir(), "cam-study-update.sh");
+  const logPath = path.join(os.tmpdir(), "cam-study-update.log");
+
+  console.log("[update] appBundlePath:", appBundlePath);
+  console.log("[update] scriptPath:", scriptPath);
 
   // 앱이 완전히 종료된 뒤 실행되는 셸 스크립트
   const script = [
     "#!/bin/bash",
+    `exec > "${logPath}" 2>&1`,
+    "set -x",
     "sleep 2",
     `TEMP="${tempDir}"`,
     `ZIP="${zipPath}"`,
     `APP="${appBundlePath}"`,
     `mkdir -p "$TEMP"`,
-    // ditto -xk: PKzip(ZIP) 형식 전개
-    `ditto -xk "$ZIP" "$TEMP" 2>/dev/null || unzip -q "$ZIP" -d "$TEMP"`,
+    `ditto -xk "$ZIP" "$TEMP" || unzip -q "$ZIP" -d "$TEMP"`,
     `NEW_APP=$(find "$TEMP" -maxdepth 1 -name "*.app" | head -1)`,
-    `[ -z "$NEW_APP" ] && exit 1`,
+    `echo "NEW_APP=$NEW_APP"`,
+    `[ -z "$NEW_APP" ] && echo "ERROR: .app not found in ZIP" && exit 1`,
     `rm -rf "$APP"`,
     `cp -R "$NEW_APP" "$APP"`,
     `rm -rf "$TEMP"`,
     `open "$APP"`,
   ].join("\n");
 
-  fs.writeFileSync(scriptPath, script, { mode: 0o755 });
+  try {
+    fs.writeFileSync(scriptPath, script, { mode: 0o755 });
+  } catch (err) {
+    dialog.showErrorBox("업데이트 오류", `스크립트 생성 실패: ${err}`);
+    return;
+  }
 
   const child = spawn("bash", [scriptPath], {
     detached: true,
