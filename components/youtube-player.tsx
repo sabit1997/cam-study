@@ -120,9 +120,9 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
   const cur = videos[Math.min(current, videos.length - 1)];
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Player */}
-      <div className="flex-1 bg-black relative min-h-0">
+    <div className="relative h-full bg-black">
+      {/* Player: 전체 영역 차지 — 컨트롤 오버레이 덕분에 iframe이 16:9 컨테이너를 온전히 사용 */}
+      <div className="absolute inset-0">
         {cur ? (
           <YouTube
             key={cur.id}
@@ -144,27 +144,32 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
         )}
       </div>
 
-      {/* 하단 고정 바 */}
-      <div className="flex-shrink-0 border-t border-gray-100 bg-gray-50">
+      {/* 오버레이 컨트롤 — URL 패널 열릴 때는 항상 표시, 닫혀있을 때는 hover 시 표시 */}
+      <div
+        className={`absolute bottom-0 left-0 right-0
+                    bg-gradient-to-t from-black/70 to-transparent
+                    transition-opacity duration-200
+                    ${showInput ? "opacity-100" : "opacity-0 hover:opacity-100"}`}
+      >
         {/* 네비게이션 + 추가 버튼 */}
         <div className="flex items-center justify-between px-3 py-1.5">
           <button
             onClick={() => setCurrent((p) => (p - 1 + videos.length) % videos.length)}
             disabled={videos.length <= 1}
-            className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-25 transition-colors"
+            className="p-1 text-white/60 hover:text-white disabled:opacity-25 transition-colors"
           >
             <FiSkipBack size={14} />
           </button>
 
           <div className="flex items-center gap-2">
             {videos.length > 0 && (
-              <span className="text-xs text-gray-400 font-medium tabular-nums">
+              <span className="text-xs text-white/60 font-medium tabular-nums">
                 {current + 1} / {videos.length}
               </span>
             )}
             <button
               onClick={() => { setShowInput((v) => !v); setError(""); }}
-              className="flex items-center gap-1 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+              className="flex items-center gap-1 text-xs text-white/60 hover:text-white transition-colors"
               title="영상 추가"
             >
               {showInput ? <FiChevronDown size={13} /> : <FiPlus size={13} />}
@@ -174,7 +179,7 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
           <button
             onClick={() => setCurrent((p) => (p + 1) % videos.length)}
             disabled={videos.length <= 1}
-            className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-25 transition-colors"
+            className="p-1 text-white/60 hover:text-white disabled:opacity-25 transition-colors"
           >
             <FiSkipForward size={14} />
           </button>
@@ -182,9 +187,9 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
 
         {/* URL 입력 패널 (접기/펼치기) */}
         {showInput && (
-          <div className="px-3 pb-2.5 border-t border-gray-100">
+          <div className="px-3 pb-2.5 border-t border-white/10">
             {error && (
-              <p className="text-[11px] text-red-500 mt-1.5 mb-1 flex items-center gap-1">
+              <p className="text-[11px] text-red-400 mt-1.5 mb-1 flex items-center gap-1">
                 <FiAlertCircle size={10} />
                 {error}
               </p>
@@ -196,7 +201,7 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
                 onChange={(e) => { setInputUrl(e.target.value); setError(""); }}
                 onKeyDown={(e) => e.key === "Enter" && addVideo()}
                 placeholder="유튜브 URL을 붙여넣으세요..."
-                className="flex-1 text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 outline-none focus:border-lime-400 bg-white transition-colors"
+                className="flex-1 text-xs px-2.5 py-1.5 rounded-lg border border-white/20 outline-none focus:border-lime-400 bg-white/10 text-white placeholder:text-white/40 transition-colors"
               />
               <button
                 onClick={addVideo}
@@ -214,8 +219,8 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
                     key={v.id}
                     className={`flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full cursor-pointer transition-colors ${
                       i === current
-                        ? "bg-lime-100 text-lime-700"
-                        : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+                        ? "bg-lime-100/80 text-lime-700"
+                        : "bg-white/10 text-white/60 hover:bg-white/20"
                     }`}
                     onClick={() => setCurrent(i)}
                   >
@@ -225,7 +230,7 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
                         e.stopPropagation();
                         removeVideo(i);
                       }}
-                      className="hover:text-red-500 ml-0.5 flex-shrink-0"
+                      className="hover:text-red-400 ml-0.5 flex-shrink-0"
                     >
                       <FiX size={9} />
                     </button>

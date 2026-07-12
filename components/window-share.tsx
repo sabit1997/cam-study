@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect } from "react";
+import { useRef, useState, useEffect, useCallback } from "react";
 import { FiMonitor, FiEye, FiEyeOff, FiX } from "react-icons/fi";
 import {
   getStreamById,
@@ -11,9 +11,10 @@ import { toast } from "sonner";
 
 interface WindowShareProps {
   windowId: number;
+  onAspectRatioDetected?: (ratio: number) => void;
 }
 
-export default function WindowShare({ windowId }: WindowShareProps) {
+export default function WindowShare({ windowId, onAspectRatioDetected }: WindowShareProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
@@ -22,16 +23,41 @@ export default function WindowShare({ windowId }: WindowShareProps) {
   const [blurAmount, setBlurAmount] = useState(4);
   const [isPickerLoading, setIsPickerLoading] = useState(false);
 
+  // track.getSettings()로 스트림 비율 감지 후 부모에게 전달
+  const reportAspectRatio = useCallback(
+    (s: MediaStream) => {
+      const track = s.getVideoTracks()[0];
+      if (!track) return;
+      const { width, height } = track.getSettings();
+      if (width && height) onAspectRatioDetected?.(width / height);
+    },
+    [onAspectRatioDetected]
+  );
+
+  // loadedmetadata fallback — track.getSettings()가 0을 반환하는 브라우저 대비
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const handler = () => {
+      const { videoWidth: vw, videoHeight: vh } = video;
+      if (vw && vh) onAspectRatioDetected?.(vw / vh);
+    };
+    video.addEventListener("loadedmetadata", handler);
+    return () => video.removeEventListener("loadedmetadata", handler);
+  }, [onAspectRatioDetected]);
+
   useEffect(() => {
     const ex = getStreamById(windowId);
     if (ex) {
       streamRef.current = ex;
       setStream(ex);
       setStarted(true);
+      reportAspectRatio(ex);
     }
     return () => {
       clearStreamById(windowId);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [windowId]);
 
   useEffect(() => {
@@ -62,6 +88,8 @@ export default function WindowShare({ windowId }: WindowShareProps) {
       setStreamById(windowId, s);
       setStream(s);
       setStarted(true);
+      // 신규 스트림 비율 즉시 감지
+      reportAspectRatio(s);
     } catch {
       toast.error("화면 공유를 취소했거나 사용할 수 없습니다.");
     } finally {
@@ -79,14 +107,14 @@ export default function WindowShare({ windowId }: WindowShareProps) {
   };
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Video area */}
-      <div className="flex-1 bg-gray-900 relative overflow-hidden">
+    <div className="relative h-full">
+      {/* 비디오: 전체 영역 차지 — 창 비율이 스트림 비율과 일치하므로 object-cover로 여백 없이 채움 */}
+      <div className="absolute inset-0 bg-gray-900">
         <video
           ref={videoRef}
           muted
           playsInline
-          className="w-full h-full object-contain"
+          className="w-full h-full object-cover"
         />
         {isBlur && (
           <div
@@ -109,8 +137,13 @@ export default function WindowShare({ windowId }: WindowShareProps) {
         )}
       </div>
 
-      {/* Control bar */}
-      <div className="px-3 py-2.5 bg-gray-50 border-t border-gray-100 flex items-center gap-2">
+      {/* 컨트롤바: 스트림 없을 때는 항상 표시, 있을 때는 hover 시 표시 */}
+      <div
+        className={`absolute bottom-0 left-0 right-0 px-3 py-2 flex items-center gap-2
+                    bg-gradient-to-t from-black/50 to-transparent
+                    transition-opacity duration-200
+                    ${started ? "opacity-0 hover:opacity-100" : "opacity-100"}`}
+      >
         <button
           onClick={started ? stopSharing : startSharing}
           disabled={isPickerLoading}
@@ -132,7 +165,7 @@ export default function WindowShare({ windowId }: WindowShareProps) {
         <button
           onClick={() => setIsBlur((b) => !b)}
           disabled={!started}
-          className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-gray-200 text-gray-600 hover:bg-gray-100 disabled:opacity-30 transition-colors"
+          className="flex items-center gap-1.5 text-xs px-2.5 py-1.5 rounded-full border border-white/30 text-white hover:bg-white/20 disabled:opacity-30 transition-colors"
         >
           {isBlur ? (
             <>
@@ -153,7 +186,7 @@ export default function WindowShare({ windowId }: WindowShareProps) {
             max={20}
             value={blurAmount}
             onChange={(e) => setBlurAmount(Number(e.target.value))}
-            className="w-20 accent-gray-500"
+            className="w-20 accent-white"
             title={`블러 강도: ${blurAmount}px`}
           />
         )}
