@@ -72,7 +72,8 @@ function setupAutoUpdater() {
   if (isDev) return;
 
   autoUpdater.autoDownload = true;
-  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.autoInstallOnAppQuit = false; // macOS Squirrel 충돌 방지 (installMacUpdate로 대체)
+  autoUpdater.logger = { info: console.log, warn: console.warn, error: console.error, debug: console.debug }; // 상세 진단 로그
 
   autoUpdater.on("update-available", (info) => {
     cachedUpdateInfo = {
@@ -83,16 +84,20 @@ function setupAutoUpdater() {
   });
 
   autoUpdater.on("download-progress", (progress) => {
-    mainWindow?.webContents.send("update:progress", Math.floor(progress.percent));
+    cachedPercent = Math.floor(progress.percent);
+    mainWindow?.webContents.send("update:progress", cachedPercent);
   });
 
   autoUpdater.on("update-downloaded", () => {
     updateDownloaded = true;
+    cachedPercent = null;
     mainWindow?.webContents.send("update:downloaded");
   });
 
   autoUpdater.on("error", (err) => {
     console.error("Auto-updater error:", err.message);
+    cachedPercent = null;
+    mainWindow?.webContents.send("update:error", err.message);
   });
 
   // 앱 준비 후 5초 뒤 체크 (앱 로딩이 완전히 끝난 후)
@@ -101,11 +106,13 @@ function setupAutoUpdater() {
 
 // 업데이트 상태를 메모리에 보존 — 렌더러가 늦게 마운트돼도 조회 가능
 let cachedUpdateInfo: { version: string; releaseNotes: string | null } | null = null;
+let cachedPercent: number | null = null;
 let updateDownloaded = false;
 
 // 렌더러 마운트 시 놓친 업데이트 상태 조회용 핸들러
 ipcMain.handle("update:check-state", () => {
   if (updateDownloaded) return { phase: "ready" };
+  if (cachedPercent !== null) return { phase: "downloading", percent: cachedPercent };
   if (cachedUpdateInfo) return { phase: "available", ...cachedUpdateInfo };
   return null;
 });

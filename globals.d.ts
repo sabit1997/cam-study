@@ -6,6 +6,7 @@ declare global {
       restartAndUpdate(): void;
       checkUpdateState(): Promise<
         | { phase: "ready" }
+        | { phase: "downloading"; percent: number }
         | { phase: "available"; version: string; releaseNotes: string | null }
         | null
       >;

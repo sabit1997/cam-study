@@ -7,7 +7,8 @@ type UpdateState =
   | { phase: "idle" }
   | { phase: "available"; version: string; releaseNotes: string | null }
   | { phase: "downloading"; percent: number }
-  | { phase: "ready" };
+  | { phase: "ready" }
+  | { phase: "error"; message: string };
 
 const DISMISSED_KEY = "update-notifier-dismissed-version";
 
@@ -38,6 +39,9 @@ export default function UpdateNotifier() {
         clearDismissedVersion();
         setState({ phase: "ready" });
         setDismissed(false);
+      } else if (s.phase === "downloading") {
+        setState({ phase: "downloading", percent: s.percent });
+        setDismissed(false);
       } else if (s.phase === "available") {
         pendingVersion.current = s.version;
         setState({ phase: "available", version: s.version, releaseNotes: s.releaseNotes });
@@ -61,8 +65,12 @@ export default function UpdateNotifier() {
       setState({ phase: "ready" });
       setDismissed(false);
     });
+    const offError = window.electronAPI.on("update:error", (message) => {
+      setState({ phase: "error", message: message as string });
+      setDismissed(false);
+    });
 
-    return () => { offAvailable(); offProgress(); offReady(); };
+    return () => { offAvailable(); offProgress(); offReady(); offError(); };
   }, []);
 
   function dismissCurrent() {
@@ -90,7 +98,7 @@ export default function UpdateNotifier() {
             <LuDownload size={16} className="text-[#6a9f50] flex-shrink-0" />
             <div className="flex-1 leading-snug">
               <p className="font-semibold text-[#3d6b28] text-xs">새 버전 {state.version}</p>
-              <p className="text-[11px] text-[#6a9f50]">백그라운드에서 다운로드 중...</p>
+              <p className="text-[11px] text-[#6a9f50]">자동으로 다운로드됩니다</p>
             </div>
             <button onClick={dismissCurrent} className="text-[#a0c888] hover:text-[#6a9f50]">
               <LuX size={13} />
@@ -121,6 +129,24 @@ export default function UpdateNotifier() {
             <p className="text-[11px] text-[#6a9f50] mt-0.5">{state.percent}%</p>
           </div>
           <button onClick={dismissCurrent} className="text-[#a0c888] hover:text-[#6a9f50]">
+            <LuX size={13} />
+          </button>
+        </div>
+      )}
+
+      {state.phase === "error" && (
+        <div className="flex items-center gap-3">
+          <LuX size={16} className="text-red-400 flex-shrink-0" />
+          <div className="flex-1 leading-snug">
+            <p className="font-semibold text-[#3d6b28] text-xs">업데이트 실패</p>
+            <p className="text-[11px] text-[#6a9f50]">
+              <a href="/download" className="underline hover:text-[#3d6b28]">
+                수동으로 다운로드
+              </a>
+              하거나 나중에 다시 시도해 주세요
+            </p>
+          </div>
+          <button onClick={() => setDismissed(true)} className="text-[#a0c888] hover:text-[#6a9f50]">
             <LuX size={13} />
           </button>
         </div>
