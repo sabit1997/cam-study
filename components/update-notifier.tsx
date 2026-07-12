@@ -32,7 +32,9 @@ export default function UpdateNotifier() {
     return () => { offAvailable(); offProgress(); offReady(); };
   }, []);
 
-  if (dismissed || state.phase === "idle") return null;
+  // ready 단계는 dismissed 상태와 무관하게 항상 표시 (재시작 유도가 목적)
+  if (state.phase === "idle") return null;
+  if (dismissed && state.phase !== "ready") return null;
 
   return (
     <div

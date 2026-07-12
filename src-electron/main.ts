@@ -54,10 +54,14 @@ function safeDisplayMediaCallback(
   }
 }
 
+function stripHtml(str: string): string {
+  return str.replace(/<[^>]*>/g, " ").replace(/&[a-z]+;/g, " ").replace(/\s+/g, " ").trim();
+}
+
 function normalizeReleaseNotes(notes: string | Array<{ note?: string | null }> | null | undefined): string | null {
   if (!notes) return null;
-  if (typeof notes === "string") return notes.trim() || null;
-  return notes.map((n) => n.note ?? "").filter(Boolean).join("\n") || null;
+  if (typeof notes === "string") return stripHtml(notes) || null;
+  return notes.map((n) => n.note ?? "").filter(Boolean).map(stripHtml).join("\n") || null;
 }
 
 function setupAutoUpdater() {
