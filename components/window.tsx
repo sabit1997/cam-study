@@ -137,6 +137,33 @@ const AddWindow = ({ window }: AddWindowProps) => {
   const dragging = useRef(false);
   const resizing = useRef(false);
 
+  // 스트림 비율 감지 시 창 자동 리사이즈 (화면공유·카메라)
+  // 매 렌더마다 최신 sz를 ref에 기록해 effect 내 stale closure 방지
+  const szRef = useRef(sz);
+  szRef.current = sz;
+  const autoResizedForRatio = useRef<number | null>(null);
+  useEffect(() => {
+    if (contentRatio === null) return;
+    // youtube는 서버 저장값을 그대로 사용 (마운트 시 자동 리사이�� 불필요)
+    if (type !== "window" && type !== "camera") return;
+    // 같은 비율로 이미 리사이즈한 경우 재실행 방지
+    if (autoResizedForRatio.current === contentRatio) return;
+    autoResizedForRatio.current = contentRatio;
+
+    const w = szRef.current.w;
+    const correctH = Math.round(w / contentRatio) + TITLEBAR_H;
+    if (Math.abs(correctH - szRef.current.h) < 4) return; // 이미 거의 맞으면 생략
+    const clamped = clampPos(pos.x, pos.y, w, correctH, vw, vh);
+    setPos(clamped);
+    setSz({ w, h: correctH });
+    const rx = Math.round(clamped.x / scale);
+    const ry = Math.round(clamped.y / scale);
+    const rw = Math.round(w / scale);
+    const rh = Math.round(correctH / scale);
+    updateWindowBounds(id, rx, ry, rw, rh);
+    debouncedServerUpdate(rx, ry, rw, rh);
+  }, [contentRatio]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Sync from store/viewport only when not interacting (e.g. page load, viewport resize)
   useEffect(() => {
     if (dragging.current || resizing.current) return;
