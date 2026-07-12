@@ -23,20 +23,21 @@ export const useWindowStore = create<WindowState>()((set) => ({
   setWindows: (windows) => set(() => ({ windows })),
 
   mergeWindows: (serverWindows) =>
-    set((state) => ({
-      windows: serverWindows.map((sw) => {
-        const lw = state.windows.find((w) => w.id === sw.id);
-        if (!lw) return sw;
-        return {
-          ...sw,
-          x: lw.x,
-          y: lw.y,
-          width: lw.width,
-          height: lw.height,
-          zIndex: lw.zIndex,
-        };
-      }),
-    })),
+    set((state) => {
+      const maxLocalZ = state.windows.reduce((m, w) => Math.max(m, w.zIndex || 0), 0);
+      let nextZ = maxLocalZ;
+      return {
+        windows: serverWindows.map((sw) => {
+          const lw = state.windows.find((w) => w.id === sw.id);
+          if (!lw) {
+            // 새 창은 현재 로컬 최고 zIndex 위에 배치
+            nextZ += 1;
+            return { ...sw, zIndex: nextZ };
+          }
+          return { ...sw, x: lw.x, y: lw.y, width: lw.width, height: lw.height, zIndex: lw.zIndex };
+        }),
+      };
+    }),
 
   updateWindowType: (id, type) =>
     set((state) => ({
