@@ -10,17 +10,24 @@ import {
 } from "@/apis/services/window-services/mutation";
 import { useDebouncedCallback } from "use-debounce";
 import { useWindowStore } from "@/stores/window-state";
-import React, { useState, useCallback, useEffect, useRef, lazy, Suspense } from "react";
+import React, {
+  useState,
+  useCallback,
+  useEffect,
+  useRef,
+  lazy,
+  Suspense,
+} from "react";
 import TooltipWrapper from "./tooltip-wrapper";
 import useViewportSize from "@/hooks/useViewportSize";
 import { TypeList } from "@/types/dto";
 
 // 창 타입별 컴포넌트를 lazy load — 초기 번들에 포함되지 않고 첫 사용 시 로드
-const CameraView   = lazy(() => import("./camera-view"));
+const CameraView = lazy(() => import("./camera-view"));
 const YouTubePlayer = lazy(() => import("./youtube-player"));
-const WindowShare  = lazy(() => import("./window-share"));
-const Todos        = lazy(() => import("./todos"));
-const Timer        = lazy(() => import("./timer"));
+const WindowShare = lazy(() => import("./window-share"));
+const Todos = lazy(() => import("./todos"));
+const Timer = lazy(() => import("./timer"));
 
 interface AddWindowProps {
   window: Window;
@@ -29,17 +36,17 @@ interface AddWindowProps {
 const TITLEBAR_H = 38;
 
 const REF_W = 1920;
-const NAV_H = 36;  // navigation bar height px
+const NAV_H = 36; // navigation bar height px
 const DOCK_H = 80; // dock + padding + bottom offset px
 
 // Type-specific minimum sizes in pixels (generous enough to show all UI)
 const MIN_PX: Record<TypeList, { w: number; h: number }> = {
-  none:    { w: 240, h: 135 },
-  camera:  { w: 280, h: 180 }, // control bar ~46px + some video
-  window:  { w: 280, h: 180 },
+  none: { w: 240, h: 135 },
+  camera: { w: 280, h: 180 }, // control bar ~46px + some video
+  window: { w: 280, h: 180 },
   youtube: { w: 320, h: 260 }, // player + nav + url input
-  todo:    { w: 260, h: 240 }, // header + tabs + items + input
-  timer:   { w: 240, h: 300 }, // pomodoro ring 144px + tabs + controls
+  todo: { w: 260, h: 240 }, // header + tabs + items + input
+  timer: { w: 240, h: 350 }, // pomodoro ring 144px + tabs + controls
 };
 
 const TYPE_LABELS: Record<TypeList, string> = {
@@ -72,8 +79,12 @@ function clearWinTitle(id: number) {
 }
 
 function clampPos(
-  x: number, y: number, w: number, h: number,
-  vw: number, vh: number,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  vw: number,
+  vh: number
 ) {
   return {
     x: Math.max(0, Math.min(x, Math.max(0, vw - w))),
@@ -86,20 +97,26 @@ const AddWindow = ({ window }: AddWindowProps) => {
   const [isMinimized, setIsMinimized] = useState(false);
   const [editTitle, setEditTitle] = useState(false);
   const prevHeightRef = useRef<number | null>(null);
+  // youtube는 항상 16/9, camera/window(화면공유)는 스트림 감지 후 설정
+  const [contentRatio, setContentRatio] = useState<number | null>(
+    window.type === "youtube" ? 16 / 9 : null
+  );
   const [titleVal, setTitleVal] = useState(() => {
-    if (typeof localStorage === "undefined") return TYPE_LABELS[window.type] ?? "WINDOW";
+    if (typeof localStorage === "undefined")
+      return TYPE_LABELS[window.type] ?? "WINDOW";
     const saved = getWinTitles();
     return saved[window.id] ?? TYPE_LABELS[window.type] ?? "WINDOW";
   });
 
   const { mutate: updateWindow, isPending: isUpdatePending } = usePatchWindow();
-  const { mutate: deleteWindow, isPending: isDeletePending } = useDeleteWindow();
+  const { mutate: deleteWindow, isPending: isDeletePending } =
+    useDeleteWindow();
 
   // Granular subscriptions — other windows' zIndex changes don't re-render this component
   const bringToFront = useWindowStore((s) => s.bringToFront);
   const updateWindowBounds = useWindowStore((s) => s.updateWindowBounds);
   const currentZIndex = useWindowStore(
-    (s) => s.windows.find((w) => w.id === window.id)?.zIndex ?? window.zIndex,
+    (s) => s.windows.find((w) => w.id === window.id)?.zIndex ?? window.zIndex
   );
 
   const { vw, vh } = useViewportSize();
@@ -156,7 +173,7 @@ const AddWindow = ({ window }: AddWindowProps) => {
       if (isUpdatePending) return;
       updateWindow({ id, data: { x: rx, y: ry, width: rw, height: rh } });
     },
-    500,
+    500
   );
 
   const debouncedZIndexUpdate = useDebouncedCallback(() => {
@@ -180,12 +197,32 @@ const AddWindow = ({ window }: AddWindowProps) => {
   }, [titleVal, id, type]);
 
   const minW = MIN_PX[type]?.w ?? 240;
-  const minH = MIN_PX[type]?.h ?? 135;
+  // 비율 고정 모드: minH를 minW 기준으로 자동 계산
+  const minH =
+    contentRatio !== null
+      ? Math.round(minW / contentRatio) + TITLEBAR_H
+      : (MIN_PX[type]?.h ?? 135);
+
+  // lockAspectRatioExtraHeight를 TITLEBAR_H로 설정하면
+  // re-resizable이 타이틀바를 자동 보정해 콘텐츠 영역이 정확히 contentRatio 비율로 유지됨
+  const aspectProps =
+    contentRatio !== null && !isMinimized
+      ? {
+          lockAspectRatio: contentRatio,
+          lockAspectRatioExtraHeight: TITLEBAR_H,
+          lockAspectRatioExtraWidth: 0,
+        }
+      : { lockAspectRatio: false as const };
 
   const windowContent: Partial<Record<Window["type"], React.ReactNode>> = {
-    camera: <CameraView />,
+    camera: <CameraView onAspectRatioDetected={setContentRatio} />,
     youtube: <YouTubePlayer window={window} />,
-    window: <WindowShare windowId={window.id} />,
+    window: (
+      <WindowShare
+        windowId={window.id}
+        onAspectRatioDetected={setContentRatio}
+      />
+    ),
     todo: <Todos window={window} />,
     timer: <Timer />,
   };
@@ -197,22 +234,35 @@ const AddWindow = ({ window }: AddWindowProps) => {
       minWidth={minW}
       minHeight={isMinimized ? TITLEBAR_H : minH}
       bounds="parent"
-      lockAspectRatio={false}
+      {...aspectProps}
       disableDragging={isLocked}
       enableResizing={
         isLocked || isMinimized
           ? false
           : {
-              top: true, right: true, bottom: true, left: true,
-              topRight: true, bottomRight: true, bottomLeft: true, topLeft: true,
+              top: true,
+              right: true,
+              bottom: true,
+              left: true,
+              topRight: true,
+              bottomRight: true,
+              bottomLeft: true,
+              topLeft: true,
             }
       }
-      style={{ zIndex: currentZIndex, position: "absolute", pointerEvents: "auto", willChange: "transform" }}
+      style={{
+        zIndex: currentZIndex,
+        position: "absolute",
+        pointerEvents: "auto",
+        willChange: "transform",
+      }}
       dragHandleClassName="drag-handle"
       // ── Drag ──────────────────────────────────────────────────────────────
       // DO NOT call handleFocus here — that triggers a Zustand update which
       // causes a re-render that interrupts react-draggable's drag initiation.
-      onDragStart={() => { dragging.current = true; }}
+      onDragStart={() => {
+        dragging.current = true;
+      }}
       // DO NOT update pos in onDrag — in react-rnd controlled mode, during active
       // drag react-draggable uses its internal state for rendering (ignores position
       // prop), so updating pos here just causes wasted re-renders with no effect.
@@ -236,14 +286,26 @@ const AddWindow = ({ window }: AddWindowProps) => {
         debouncedServerUpdate(rx, ry, rw, rh);
       }}
       // ── Resize ────────────────────────────────────────────────────────────
-      onResizeStart={() => { resizing.current = true; }}
-      onResizeStop={(_e, _dir, ref, _delta, position) => {
+      onResizeStart={() => {
+        resizing.current = true;
+      }}
+      onResizeStop={(_e, dir, ref, _delta, position) => {
         resizing.current = false;
         document.querySelectorAll("iframe").forEach((f) => {
           (f as HTMLElement).style.pointerEvents = "auto";
         });
-        const newW = ref.offsetWidth;
-        const newH = ref.offsetHeight;
+        let newW = ref.offsetWidth;
+        let newH = ref.offsetHeight;
+        // floating-point 오차 보정 — lockAspectRatioExtraHeight 공식이 정수로 딱 떨어지지 않을 수 있음
+        if (contentRatio !== null) {
+          if (dir === "top" || dir === "bottom") {
+            // 세로 드래그 → height 기준으로 width 재계산
+            newW = Math.round((newH - TITLEBAR_H) * contentRatio);
+          } else {
+            // 가로/코너 드래그 → width 기준으로 height 재계산
+            newH = Math.round(newW / contentRatio) + TITLEBAR_H;
+          }
+        }
         const clamped = clampPos(position.x, position.y, newW, newH, vw, vh);
         setPos(clamped);
         setSz({ w: newW, h: newH });
@@ -281,7 +343,10 @@ const AddWindow = ({ window }: AddWindowProps) => {
           {/* Traffic lights */}
           <div
             className="flex items-center gap-1.5"
-            onMouseDown={(e) => { handleFocus(); e.stopPropagation(); }}
+            onMouseDown={(e) => {
+              handleFocus();
+              e.stopPropagation();
+            }}
           >
             <TooltipWrapper content="닫기">
               <button
@@ -302,9 +367,7 @@ const AddWindow = ({ window }: AddWindowProps) => {
           </div>
 
           {/* Center title */}
-          <div
-            className="flex-1 flex items-center justify-center"
-          >
+          <div className="flex-1 flex items-center justify-center">
             {editTitle ? (
               <div
                 className="flex items-center gap-1"
@@ -321,7 +384,10 @@ const AddWindow = ({ window }: AddWindowProps) => {
                   }}
                   className="text-[11px] font-semibold tracking-widest text-center bg-white border border-lime-400 rounded-md px-2 py-0.5 outline-none w-28"
                 />
-                <button onClick={commitTitle} className="text-green-500 hover:text-green-600">
+                <button
+                  onClick={commitTitle}
+                  className="text-green-500 hover:text-green-600"
+                >
                   <FiCheck size={11} />
                 </button>
               </div>
@@ -340,7 +406,10 @@ const AddWindow = ({ window }: AddWindowProps) => {
           {/* Right: Edit + Lock */}
           <div
             className="flex items-center gap-1.5"
-            onMouseDown={(e) => { handleFocus(); e.stopPropagation(); }}
+            onMouseDown={(e) => {
+              handleFocus();
+              e.stopPropagation();
+            }}
           >
             <button
               className="flex items-center justify-center w-6 h-6 rounded text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition-colors"
@@ -364,7 +433,10 @@ const AddWindow = ({ window }: AddWindowProps) => {
         </div>
 
         {/* Content — 최소화 시 숨김 */}
-        <div className="flex-1 relative overflow-hidden bg-white" style={{ display: isMinimized ? "none" : undefined }}>
+        <div
+          className="flex-1 relative overflow-hidden bg-white"
+          style={{ display: isMinimized ? "none" : undefined }}
+        >
           <Suspense fallback={<div className="w-full h-full bg-white" />}>
             {windowContent[type] ?? null}
           </Suspense>

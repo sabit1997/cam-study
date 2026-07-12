@@ -6,7 +6,11 @@ import { toast } from "sonner";
 
 const CAM_DEVICE_LS_KEY = "cam-device-id";
 
-const CameraView = () => {
+interface CameraViewProps {
+  onAspectRatioDetected?: (ratio: number) => void;
+}
+
+const CameraView = ({ onAspectRatioDetected }: CameraViewProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const isMountedRef = useRef(true);
@@ -20,6 +24,18 @@ const CameraView = () => {
     isMountedRef.current = true;
     return () => { isMountedRef.current = false; };
   }, []);
+
+  // track.getSettings()가 0을 반환하는 환경의 fallback
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    const handler = () => {
+      const { videoWidth: vw, videoHeight: vh } = video;
+      if (vw && vh) onAspectRatioDetected?.(vw / vh);
+    };
+    video.addEventListener("loadedmetadata", handler);
+    return () => video.removeEventListener("loadedmetadata", handler);
+  }, [onAspectRatioDetected]);
 
   useEffect(() => {
     const loadDevices = async () => {
@@ -75,10 +91,14 @@ const CameraView = () => {
       }
       setIsStreaming(true);
       const track = stream.getVideoTracks()[0];
-      const trackId = track?.getSettings().deviceId;
-      if (trackId) {
-        setDeviceId(trackId);
-        localStorage.setItem(CAM_DEVICE_LS_KEY, trackId);
+      const settings = track?.getSettings();
+      if (settings?.deviceId) {
+        setDeviceId(settings.deviceId);
+        localStorage.setItem(CAM_DEVICE_LS_KEY, settings.deviceId);
+      }
+      // 실제 협상된 해상도로 비율 감지 (기기마다 4:3, 16:9 등 다를 수 있음)
+      if (settings?.width && settings?.height) {
+        onAspectRatioDetected?.(settings.width / settings.height);
       }
     } catch {
       toast.error("카메라 접근에 실패했습니다.");
