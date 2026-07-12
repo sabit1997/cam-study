@@ -1,6 +1,6 @@
 {
   "name": "cam-study",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "private": true,
   "description": "외요의 캠스터디 데스크탑 앱",
   "author": "OEYO <yejiii1997@gmail.com>",
@@ -80,6 +80,7 @@
     "mac": {
       "icon": "buildResources/icon.icns",
       "identity": null,
+      "artifactName": "cam-study-${version}-${arch}-mac.${ext}",
       "target": [
         {
           "target": "dmg",
