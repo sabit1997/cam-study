@@ -19,6 +19,7 @@ import React, {
   Suspense,
 } from "react";
 import TooltipWrapper from "./tooltip-wrapper";
+import { useThemeStore } from "@/stores/theme-state";
 import useViewportSize from "@/hooks/useViewportSize";
 import { TypeList } from "@/types/dto";
 
@@ -119,6 +120,7 @@ const AddWindow = ({ window }: AddWindowProps) => {
     (s) => s.windows.find((w) => w.id === window.id)?.zIndex ?? window.zIndex
   );
 
+  const isDarkMode = useThemeStore((state) => state.isDarkMode);
   const { vw, vh } = useViewportSize();
   const { id, type, x, y, width, height } = window;
   const scale = vw / REF_W;
@@ -351,7 +353,7 @@ const AddWindow = ({ window }: AddWindowProps) => {
         onMouseDown={handleFocus}
         style={{
           borderRadius: 13,
-          border: "1px solid rgba(255,255,255,0.85)",
+          border: isDarkMode ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(255,255,255,0.85)",
           boxShadow:
             "0 2px 4px rgba(0,0,0,0.04), 0 8px 20px rgba(0,0,0,0.1), 0 20px 50px rgba(0,0,0,0.08)",
         }}
@@ -361,8 +363,10 @@ const AddWindow = ({ window }: AddWindowProps) => {
           className="drag-handle flex items-center px-3 flex-shrink-0 select-none"
           style={{
             height: 38,
-            background: "linear-gradient(180deg, #fafafa 0%, #f4f4f6 100%)",
-            borderBottom: "1px solid rgba(0,0,0,0.07)",
+            background: isDarkMode
+              ? "linear-gradient(180deg, #1e2030 0%, #1a1c2a 100%)"
+              : "linear-gradient(180deg, #fafafa 0%, #f4f4f6 100%)",
+            borderBottom: isDarkMode ? "1px solid rgba(255,255,255,0.07)" : "1px solid rgba(0,0,0,0.07)",
             cursor: isLocked ? "default" : "grab",
             borderRadius: "13px 13px 0 0",
           }}
@@ -409,7 +413,7 @@ const AddWindow = ({ window }: AddWindowProps) => {
                     if (e.key === "Enter") e.currentTarget.blur();
                     if (e.key === "Escape") setEditTitle(false);
                   }}
-                  className="text-[11px] font-semibold tracking-widest text-center bg-white border border-lime-400 rounded-md px-2 py-0.5 outline-none w-28"
+                  className="text-[11px] font-semibold tracking-widest text-center bg-white dark:bg-gray-800 dark:text-gray-200 border border-lime-400 rounded-md px-2 py-0.5 outline-none w-28"
                 />
                 <button
                   onClick={commitTitle}
@@ -420,7 +424,7 @@ const AddWindow = ({ window }: AddWindowProps) => {
               </div>
             ) : (
               <span
-                className="text-[11px] font-semibold text-gray-400 hover:text-gray-600 transition-colors cursor-text"
+                className="text-[11px] font-semibold text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400 transition-colors cursor-text"
                 style={{ letterSpacing: "0.12em" }}
                 onDoubleClick={() => setEditTitle(true)}
                 title="더블클릭으로 이름 변경"
@@ -439,7 +443,7 @@ const AddWindow = ({ window }: AddWindowProps) => {
             }}
           >
             <button
-              className="flex items-center justify-center w-6 h-6 rounded text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition-colors"
+              className="flex items-center justify-center w-6 h-6 rounded text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               onClick={() => setEditTitle(true)}
             >
               <FiEdit2 size={11} />
@@ -447,7 +451,7 @@ const AddWindow = ({ window }: AddWindowProps) => {
             <TooltipWrapper content={isLocked ? "잠금 해제" : "잠금"}>
               <button
                 onClick={() => setIsLocked((prev) => !prev)}
-                className="flex items-center justify-center w-6 h-6 rounded text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition-colors"
+                className="flex items-center justify-center w-6 h-6 rounded text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
               >
                 {isLocked ? (
                   <FiLock size={11} className="text-lime-500" />
@@ -461,10 +465,10 @@ const AddWindow = ({ window }: AddWindowProps) => {
 
         {/* Content — 최소화 시 숨김 */}
         <div
-          className="flex-1 relative overflow-hidden bg-white"
+          className="flex-1 relative overflow-hidden bg-white dark:bg-[#161822]"
           style={{ display: isMinimized ? "none" : undefined }}
         >
-          <Suspense fallback={<div className="w-full h-full bg-white" />}>
+          <Suspense fallback={<div className="w-full h-full bg-white dark:bg-[#161822]" />}>
             {windowContent[type] ?? null}
           </Suspense>
           {!isLocked && (
@@ -473,7 +477,7 @@ const AddWindow = ({ window }: AddWindowProps) => {
                 width="10"
                 height="10"
                 viewBox="0 0 10 10"
-                className="absolute bottom-1.5 right-1.5 text-gray-300"
+                className="absolute bottom-1.5 right-1.5 text-gray-300 dark:text-gray-700"
               >
                 <path
                   d="M9 1L1 9M5.5 1L1 5.5M9 4.5L4.5 9"

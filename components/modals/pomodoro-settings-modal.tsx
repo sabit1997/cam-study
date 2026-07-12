@@ -35,15 +35,15 @@ export default function PomodoroSettingsModal({
       }}
     >
       <div
-        className="bg-white rounded-2xl shadow-xl px-6 py-5 flex flex-col gap-4"
+        className="bg-white dark:bg-[#1a1c2a] rounded-2xl shadow-xl px-6 py-5 flex flex-col gap-4"
         style={{ width: 280, border: "1px solid rgba(255,255,255,0.9)" }}
       >
-        <h3 className="text-sm font-semibold text-gray-700 text-center">
+        <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 text-center">
           포모도로 시간 설정
         </h3>
 
         <div className="flex items-center gap-3">
-          <label className="text-xs text-gray-400 w-12 shrink-0">집중</label>
+          <label className="text-xs text-gray-400 dark:text-gray-500 w-12 shrink-0">집중</label>
           <div className="flex items-center gap-2 flex-1">
             <input
               type="number"
@@ -52,14 +52,14 @@ export default function PomodoroSettingsModal({
               value={workInput}
               onChange={(e) => setWorkInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleApply()}
-              className="no-spin w-full text-sm text-center rounded-lg border border-gray-200 py-1.5 bg-gray-50 text-gray-700 outline-none focus:border-lime-400 transition-colors"
+              className="no-spin w-full text-sm text-center rounded-lg border border-gray-200 dark:border-gray-700 py-1.5 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200 outline-none focus:border-lime-400 transition-colors"
             />
             <span className="text-xs text-gray-400 shrink-0">분</span>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <label className="text-xs text-gray-400 w-12 shrink-0">휴식</label>
+          <label className="text-xs text-gray-400 dark:text-gray-500 w-12 shrink-0">휴식</label>
           <div className="flex items-center gap-2 flex-1">
             <input
               type="number"
@@ -68,7 +68,7 @@ export default function PomodoroSettingsModal({
               value={breakInput}
               onChange={(e) => setBreakInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleApply()}
-              className="no-spin w-full text-sm text-center rounded-lg border border-gray-200 py-1.5 bg-gray-50 text-gray-700 outline-none focus:border-lime-400 transition-colors"
+              className="no-spin w-full text-sm text-center rounded-lg border border-gray-200 dark:border-gray-700 py-1.5 bg-gray-50 dark:bg-gray-800 text-gray-700 dark:text-gray-200 outline-none focus:border-lime-400 transition-colors"
             />
             <span className="text-xs text-gray-400 shrink-0">분</span>
           </div>
@@ -77,7 +77,7 @@ export default function PomodoroSettingsModal({
         <div className="flex gap-2 pt-1">
           <button
             onClick={onClose}
-            className="flex-1 py-2 text-xs rounded-xl border border-gray-200 text-gray-400 hover:text-gray-600 transition-colors"
+            className="flex-1 py-2 text-xs rounded-xl border border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
           >
             취소
           </button>

@@ -27,6 +27,7 @@ import { formatSeconds } from "@/utils/formatSeconds";
 import YearMonthSelector from "./year-month-selector";
 import { Loading } from "./loading";
 import { Error } from "./error";
+import { useThemeStore } from "@/stores/theme-state";
 
 const DAY_ORDER = [
   "MONDAY",
@@ -50,12 +51,6 @@ const DAY_LABELS: Record<string, string> = {
 const COLOR_GREEN = "#8fb870";
 const COLOR_AMBER = "#e8c070";
 
-const cardStyle: React.CSSProperties = {
-  background: "rgba(255,255,255,0.9)",
-  borderRadius: 16,
-  border: "1px solid rgba(255,255,255,0.9)",
-  boxShadow: "0 2px 8px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.08)",
-};
 
 export default function MyStatsPage() {
   const router = useRouter();
@@ -71,6 +66,30 @@ export default function MyStatsPage() {
   const setWindows = useWindowStore((state) => state.setWindows);
   const queryClient = useQueryClient();
   const { mutate: logoutMutate } = useLogout();
+  const isDarkMode = useThemeStore((state) => state.isDarkMode);
+
+  const cardStyle: React.CSSProperties = isDarkMode ? {
+    background: "rgba(22, 24, 34, 0.88)",
+    borderRadius: 16,
+    border: "1px solid rgba(255, 255, 255, 0.07)",
+    boxShadow: "0 2px 8px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.5)",
+  } : {
+    background: "rgba(255,255,255,0.9)",
+    borderRadius: 16,
+    border: "1px solid rgba(255,255,255,0.9)",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.06), 0 8px 24px rgba(0,0,0,0.08)",
+  };
+
+  const textPrimary = isDarkMode ? "#e5e7eb" : "#374151";
+  const textSecondary = isDarkMode ? "#9ca3af" : "#6b7280";
+  const textMuted = isDarkMode ? "#6b7280" : "#9ca3af";
+  const tooltipStyle: React.CSSProperties = {
+    borderRadius: 10,
+    border: isDarkMode ? "1px solid rgba(255,255,255,0.08)" : "1px solid rgba(0,0,0,0.08)",
+    fontSize: 12,
+    backgroundColor: isDarkMode ? "#1a1c2a" : "#fff",
+    color: isDarkMode ? "#e5e7eb" : "#374151",
+  };
 
   const { data: analyticsData, isPending: analyticsLoading, isError: analyticsError } =
     useGetTimerAnalytics(year, month);
@@ -164,10 +183,10 @@ export default function MyStatsPage() {
       <div
         style={{
           height: 56,
-          background: "rgba(255,255,255,0.8)",
+          background: isDarkMode ? "rgba(13,17,23,0.88)" : "rgba(255,255,255,0.8)",
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
-          borderBottom: "1px solid rgba(0,0,0,0.07)",
+          borderBottom: isDarkMode ? "1px solid rgba(255,255,255,0.07)" : "1px solid rgba(0,0,0,0.07)",
           display: "flex",
           alignItems: "center",
           padding: "0 20px",
@@ -182,7 +201,7 @@ export default function MyStatsPage() {
             alignItems: "center",
             gap: 4,
             fontSize: 13,
-            color: "#6b7280",
+            color: textSecondary,
             textDecoration: "none",
           }}
         >
@@ -190,7 +209,7 @@ export default function MyStatsPage() {
           <span>홈</span>
         </Link>
 
-        <h1 style={{ fontSize: 15, fontWeight: 700, color: "#374151", marginLeft: 4 }}>
+        <h1 style={{ fontSize: 15, fontWeight: 700, color: textPrimary, marginLeft: 4 }}>
           내 통계
         </h1>
 
@@ -214,7 +233,7 @@ export default function MyStatsPage() {
                   {user.username?.charAt(0)?.toUpperCase() ?? "U"}
                 </span>
               </div>
-              <span style={{ fontSize: 13, color: "#374151", fontWeight: 500 }}>
+              <span style={{ fontSize: 13, color: textPrimary, fontWeight: 500 }}>
                 {user.username}
               </span>
             </div>
@@ -224,9 +243,9 @@ export default function MyStatsPage() {
               onClick={() => setEditGoals((v) => !v)}
               style={{
                 fontSize: 12,
-                color: editGoals ? "#8fb870" : "#6b7280",
+                color: editGoals ? "#8fb870" : textSecondary,
                 background: "none",
-                border: `1px solid ${editGoals ? "#8fb870" : "rgba(0,0,0,0.15)"}`,
+                border: `1px solid ${editGoals ? "#8fb870" : isDarkMode ? "rgba(255,255,255,0.15)" : "rgba(0,0,0,0.15)"}`,
                 borderRadius: 8,
                 padding: "4px 10px",
                 cursor: "pointer",
@@ -243,7 +262,7 @@ export default function MyStatsPage() {
                 alignItems: "center",
                 gap: 4,
                 fontSize: 12,
-                color: "#6b7280",
+                color: textSecondary,
                 background: "none",
                 border: "none",
                 cursor: "pointer",
@@ -275,7 +294,7 @@ export default function MyStatsPage() {
         {/* Goal editor (collapsible) */}
         {editGoals && (
           <div style={{ ...cardStyle, padding: "16px 20px" }}>
-            <p style={{ fontSize: 13, fontWeight: 600, color: "#374151", marginBottom: 10 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: textPrimary, marginBottom: 10 }}>
               일일 목표 시간 설정
             </p>
             <form
@@ -294,14 +313,14 @@ export default function MyStatsPage() {
                   width: 100,
                   padding: "6px 12px",
                   borderRadius: 10,
-                  border: "1px solid rgba(229,231,235,0.9)",
+                  border: isDarkMode ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(229,231,235,0.9)",
                   fontSize: 14,
-                  background: "rgba(249,250,251,0.9)",
-                  color: "#374151",
+                  background: isDarkMode ? "rgba(15,17,25,0.6)" : "rgba(249,250,251,0.9)",
+                  color: textPrimary,
                   outline: "none",
                 }}
               />
-              <span style={{ fontSize: 13, color: "#6b7280" }}>시간</span>
+              <span style={{ fontSize: 13, color: textSecondary }}>시간</span>
               <button
                 type="submit"
                 disabled={isGoalPending || !goalInput}
@@ -333,7 +352,7 @@ export default function MyStatsPage() {
             setYear={setYear}
             setMonth={setMonth}
           />
-          <p style={{ fontSize: 11, color: "#9ca3af" }}>* 최대 2년간의 기록을 볼 수 있습니다.</p>
+          <p style={{ fontSize: 11, color: textMuted }}>* 최대 2년간의 기록을 볼 수 있습니다.</p>
         </div>
 
         {isLoading && <Loading />}
@@ -351,18 +370,18 @@ export default function MyStatsPage() {
             >
               {/* 이번 달 집중 */}
               <div style={{ ...cardStyle, padding: 16 }}>
-                <p style={{ fontSize: 11, color: "#9ca3af", marginBottom: 4 }}>이번 달 집중</p>
-                <p style={{ fontSize: 24, fontWeight: 700, color: "#374151" }}>
+                <p style={{ fontSize: 11, color: textMuted, marginBottom: 4 }}>이번 달 집중</p>
+                <p style={{ fontSize: 24, fontWeight: 700, color: textPrimary }}>
                   {currentMonthHours}h
                 </p>
-                <p style={{ fontSize: 11, color: "#6b7280", marginTop: 2, marginBottom: 8 }}>
+                <p style={{ fontSize: 11, color: textSecondary, marginTop: 2, marginBottom: 8 }}>
                   목표 {goalHours}h
                 </p>
                 <div
                   style={{
                     height: 6,
                     borderRadius: 3,
-                    background: "rgba(0,0,0,0.06)",
+                    background: isDarkMode ? "rgba(255,255,255,0.08)" : "rgba(0,0,0,0.06)",
                     overflow: "hidden",
                   }}
                 >
@@ -380,7 +399,7 @@ export default function MyStatsPage() {
 
               {/* 전월 대비 */}
               <div style={{ ...cardStyle, padding: 16 }}>
-                <p style={{ fontSize: 11, color: "#9ca3af", marginBottom: 4 }}>전월 대비</p>
+                <p style={{ fontSize: 11, color: textMuted, marginBottom: 4 }}>전월 대비</p>
                 <p
                   style={{
                     fontSize: 22,
@@ -391,27 +410,27 @@ export default function MyStatsPage() {
                   {isPositiveDiff ? "+" : ""}
                   {changeRate}%
                 </p>
-                <p style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>
+                <p style={{ fontSize: 11, color: textSecondary, marginTop: 4 }}>
                   {isPositiveDiff ? "+" : ""}{formatTime(diff)} / 전달: {prevMonthHours}h
                 </p>
               </div>
 
               {/* 최고 집중일 */}
               <div style={{ ...cardStyle, padding: 16 }}>
-                <p style={{ fontSize: 11, color: "#9ca3af", marginBottom: 4 }}>최고 집중일</p>
-                <p style={{ fontSize: 24, fontWeight: 700, color: "#374151" }}>
+                <p style={{ fontSize: 11, color: textMuted, marginBottom: 4 }}>최고 집중일</p>
+                <p style={{ fontSize: 24, fontWeight: 700, color: textPrimary }}>
                   {bestFocusHours}h
                 </p>
-                <p style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>{bestFocusDate}</p>
+                <p style={{ fontSize: 11, color: textSecondary, marginTop: 4 }}>{bestFocusDate}</p>
               </div>
 
               {/* 월간 달성률 */}
               <div style={{ ...cardStyle, padding: 16 }}>
-                <p style={{ fontSize: 11, color: "#9ca3af", marginBottom: 4 }}>월간 달성률</p>
-                <p style={{ fontSize: 24, fontWeight: 700, color: "#374151" }}>
+                <p style={{ fontSize: 11, color: textMuted, marginBottom: 4 }}>월간 달성률</p>
+                <p style={{ fontSize: 24, fontWeight: 700, color: textPrimary }}>
                   {Math.round(monthGoalPct * 100)}%
                 </p>
-                <p style={{ fontSize: 11, color: "#6b7280", marginTop: 4 }}>
+                <p style={{ fontSize: 11, color: textSecondary, marginTop: 4 }}>
                   {currentMonthHours}h / {goalHours}h
                 </p>
               </div>
@@ -423,7 +442,7 @@ export default function MyStatsPage() {
                 style={{
                   fontSize: 13,
                   fontWeight: 600,
-                  color: "#374151",
+                  color: textPrimary,
                   marginBottom: 16,
                 }}
               >
@@ -434,25 +453,21 @@ export default function MyStatsPage() {
                   <BarChart data={dailyChartData} barSize={14}>
                     <XAxis
                       dataKey="date"
-                      tick={{ fontSize: 10, fill: "#9ca3af" }}
+                      tick={{ fontSize: 10, fill: textMuted }}
                       axisLine={false}
                       tickLine={false}
                       interval="preserveStartEnd"
                     />
                     <YAxis
-                      tick={{ fontSize: 10, fill: "#9ca3af" }}
+                      tick={{ fontSize: 10, fill: textMuted }}
                       axisLine={false}
                       tickLine={false}
                       width={30}
                     />
                     <Tooltip
                       formatter={(v) => [`${v}h`, "집중 시간"]}
-                      cursor={{ fill: "rgba(0,0,0,0.04)" }}
-                      contentStyle={{
-                        borderRadius: 10,
-                        border: "1px solid rgba(0,0,0,0.08)",
-                        fontSize: 12,
-                      }}
+                      cursor={{ fill: isDarkMode ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)" }}
+                      contentStyle={tooltipStyle}
                     />
                     <Bar dataKey="hours" radius={[4, 4, 0, 0]}>
                       {dailyChartData.map((entry, index) => (
@@ -465,7 +480,7 @@ export default function MyStatsPage() {
                   </BarChart>
                 </ResponsiveContainer>
               ) : (
-                <p style={{ fontSize: 13, color: "#9ca3af", textAlign: "center", padding: "20px 0" }}>
+                <p style={{ fontSize: 13, color: textMuted, textAlign: "center", padding: "20px 0" }}>
                   이번 달 데이터가 없습니다.
                 </p>
               )}
@@ -477,7 +492,7 @@ export default function MyStatsPage() {
                 style={{
                   fontSize: 13,
                   fontWeight: 600,
-                  color: "#374151",
+                  color: textPrimary,
                   marginBottom: 16,
                 }}
               >
@@ -487,19 +502,15 @@ export default function MyStatsPage() {
                 <BarChart data={weekdayData} barSize={28}>
                   <XAxis
                     dataKey="day"
-                    tick={{ fontSize: 12, fill: "#6b7280" }}
+                    tick={{ fontSize: 12, fill: textSecondary }}
                     axisLine={false}
                     tickLine={false}
                   />
                   <YAxis hide />
                   <Tooltip
                     formatter={(v) => [`${v}h`, "집중 시간"]}
-                    cursor={{ fill: "rgba(0,0,0,0.04)" }}
-                    contentStyle={{
-                      borderRadius: 10,
-                      border: "1px solid rgba(0,0,0,0.08)",
-                      fontSize: 12,
-                    }}
+                    cursor={{ fill: isDarkMode ? "rgba(255,255,255,0.04)" : "rgba(0,0,0,0.04)" }}
+                    contentStyle={tooltipStyle}
                   />
                   <Bar dataKey="hours" fill={COLOR_GREEN} radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -512,7 +523,7 @@ export default function MyStatsPage() {
                 style={{
                   fontSize: 13,
                   fontWeight: 600,
-                  color: "#374151",
+                  color: textPrimary,
                   marginBottom: 12,
                 }}
               >
@@ -525,9 +536,9 @@ export default function MyStatsPage() {
                       style={{
                         textAlign: "left",
                         padding: "8px 12px",
-                        color: "#9ca3af",
+                        color: textMuted,
                         fontWeight: 600,
-                        borderBottom: "1px solid rgba(0,0,0,0.06)",
+                        borderBottom: isDarkMode ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(0,0,0,0.06)",
                       }}
                     >
                       날짜
@@ -536,9 +547,9 @@ export default function MyStatsPage() {
                       style={{
                         textAlign: "left",
                         padding: "8px 12px",
-                        color: "#9ca3af",
+                        color: textMuted,
                         fontWeight: 600,
-                        borderBottom: "1px solid rgba(0,0,0,0.06)",
+                        borderBottom: isDarkMode ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(0,0,0,0.06)",
                       }}
                     >
                       집중 시간
@@ -547,9 +558,9 @@ export default function MyStatsPage() {
                       style={{
                         textAlign: "left",
                         padding: "8px 12px",
-                        color: "#9ca3af",
+                        color: textMuted,
                         fontWeight: 600,
-                        borderBottom: "1px solid rgba(0,0,0,0.06)",
+                        borderBottom: isDarkMode ? "1px solid rgba(255,255,255,0.06)" : "1px solid rgba(0,0,0,0.06)",
                       }}
                     >
                       목표
@@ -562,14 +573,14 @@ export default function MyStatsPage() {
                       <tr
                         key={idx}
                         style={{
-                          borderBottom: "1px solid rgba(0,0,0,0.04)",
+                          borderBottom: isDarkMode ? "1px solid rgba(255,255,255,0.04)" : "1px solid rgba(0,0,0,0.04)",
                         }}
                       >
-                        <td style={{ padding: "8px 12px", color: "#374151" }}>{item.date}</td>
-                        <td style={{ padding: "8px 12px", color: "#374151", fontWeight: 500 }}>
+                        <td style={{ padding: "8px 12px", color: textPrimary }}>{item.date}</td>
+                        <td style={{ padding: "8px 12px", color: textPrimary, fontWeight: 500 }}>
                           {formatSeconds(item.totalSeconds)}
                         </td>
-                        <td style={{ padding: "8px 12px", color: "#6b7280" }}>
+                        <td style={{ padding: "8px 12px", color: textSecondary }}>
                           {item.dailyHourGoal}h
                         </td>
                       </tr>
@@ -578,7 +589,7 @@ export default function MyStatsPage() {
                     <tr>
                       <td
                         colSpan={3}
-                        style={{ textAlign: "center", padding: "24px 12px", color: "#9ca3af" }}
+                        style={{ textAlign: "center", padding: "24px 12px", color: textMuted }}
                       >
                         데이터가 없습니다.
                       </td>

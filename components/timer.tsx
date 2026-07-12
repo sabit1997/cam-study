@@ -13,6 +13,7 @@ import {
   usePatchPomoCycles,
 } from "@/apis/services/timer-services/mutation";
 import { toast } from "sonner";
+import { useThemeStore } from "@/stores/theme-state";
 
 type TimerMode = "stopwatch" | "pomodoro";
 type PomoPhase = "work" | "break";
@@ -34,6 +35,7 @@ const Timer: React.FC = () => {
   const { mutate: resetTime, isPending: isResetTimePending } =
     useResetTime(todayDate);
   const { mutate: patchCycles } = usePatchPomoCycles();
+  const isDarkMode = useThemeStore((state) => state.isDarkMode);
 
   // ── Stopwatch ──
   const [mode, setMode] = useState<TimerMode>("stopwatch");
@@ -319,7 +321,7 @@ const Timer: React.FC = () => {
   return (
     <div className="flex flex-col h-full">
       {/* Mode tabs */}
-      <div className="flex border-b border-gray-100 shrink-0">
+      <div className="flex border-b border-gray-100 dark:border-gray-700/50 shrink-0">
         {(["stopwatch", "pomodoro"] as const).map((m) => (
           <button
             key={m}
@@ -327,7 +329,7 @@ const Timer: React.FC = () => {
             className={`flex-1 py-2 text-xs font-medium transition-colors ${
               mode === m
                 ? "text-dark border-b-2 border-[#8fb870]"
-                : "text-gray-400 hover:text-gray-600"
+                : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400"
             }`}
           >
             {m === "pomodoro" ? "🍅 포모도로" : "⏱ 스톱워치"}
@@ -338,7 +340,7 @@ const Timer: React.FC = () => {
       {/* Stopwatch */}
       {mode === "stopwatch" && (
         <div className="flex flex-col items-center justify-center gap-4 h-full px-4">
-          <span className="text-4xl font-light text-gray-800 tabular-nums">
+          <span className="text-4xl font-light text-gray-800 dark:text-gray-200 tabular-nums">
             {formatSeconds(elapsed)}
           </span>
           <div className="flex gap-3">
@@ -371,10 +373,10 @@ const Timer: React.FC = () => {
           </div>
           {goalInSeconds > 0 && (
             <div className="flex items-center gap-3 w-full">
-              <span className="text-xs text-gray-400 whitespace-nowrap">
+              <span className="text-xs text-gray-400 dark:text-gray-500 whitespace-nowrap">
                 목표
               </span>
-              <div className="flex-1 bg-gray-100 h-1.5 rounded-full overflow-hidden">
+              <div className="flex-1 bg-gray-100 dark:bg-gray-700 h-1.5 rounded-full overflow-hidden">
                 <div
                   className="h-1.5 rounded-full transition-all duration-300 ease-linear"
                   style={{
@@ -383,7 +385,7 @@ const Timer: React.FC = () => {
                   }}
                 />
               </div>
-              <span className="text-xs text-gray-400 tabular-nums">
+              <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums">
                 {Math.round(displayPercent)}%
               </span>
             </div>
@@ -402,7 +404,7 @@ const Timer: React.FC = () => {
                 cy="68"
                 r={circR}
                 fill="none"
-                stroke="#f0f0f0"
+                stroke={isDarkMode ? "#2d3144" : "#f0f0f0"}
                 strokeWidth="8"
               />
               <circle
@@ -421,7 +423,7 @@ const Timer: React.FC = () => {
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className="text-2xl font-light text-gray-800 tabular-nums">
+              <span className="text-2xl font-light text-gray-800 dark:text-gray-200 tabular-nums">
                 {fmtMS(pomoRemaining)}
               </span>
               <span
@@ -444,7 +446,7 @@ const Timer: React.FC = () => {
             </button>
             <button
               onClick={pomoReset}
-              className="w-10 h-10 rounded-full flex items-center justify-center border-2 border-gray-200 text-gray-400 hover:border-gray-300 hover:text-gray-600 transition-colors"
+              className="w-10 h-10 rounded-full flex items-center justify-center border-2 border-gray-200 dark:border-gray-700 text-gray-400 dark:text-gray-500 hover:border-gray-300 dark:hover:border-gray-600 hover:text-gray-600 dark:hover:text-gray-400 transition-colors"
             >
               <LuTimerReset size={15} />
             </button>
@@ -461,15 +463,15 @@ const Timer: React.FC = () => {
 
           {/* Stats */}
           <div className="text-center space-y-1">
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-gray-400 dark:text-gray-500">
               완료 사이클:{" "}
-              <span className="font-semibold text-gray-600">{pomoCycle}</span>
+              <span className="font-semibold text-gray-600 dark:text-gray-300">{pomoCycle}</span>
             </p>
             <button
               onClick={() => {
                 if (!pomoRunning) setShowPomoSettings(true);
               }}
-              className="text-xs text-gray-300 hover:text-gray-400 transition-colors underline-offset-2 hover:underline"
+              className="text-xs text-gray-300 dark:text-gray-600 hover:text-gray-400 dark:hover:text-gray-500 transition-colors underline-offset-2 hover:underline"
             >
               {workMins}분 집중 · {breakMins}분 휴식
             </button>

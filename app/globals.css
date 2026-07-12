@@ -20,6 +20,15 @@ html {
   color: #374151;
 }
 
+html.dark {
+  background: radial-gradient(ellipse at 12% 18%, #091a0f 0%, transparent 48%),
+              radial-gradient(ellipse at 88% 82%, #130c1e 0%, transparent 48%),
+              radial-gradient(ellipse at 55% 45%, #0f1823 0%, transparent 60%),
+              #0d1117;
+  color: #e5e7eb;
+  color-scheme: dark;
+}
+
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
@@ -47,6 +56,10 @@ input:-webkit-autofill:active {
   background: #9ca3af;
 }
 
+html.dark ::-webkit-scrollbar-track { background: #1a1d2e; }
+html.dark ::-webkit-scrollbar-thumb { background: #3a3d52; border-radius: 5px; }
+html.dark ::-webkit-scrollbar-thumb:hover { background: #555876; }
+
 /* Chrome, Safari, Edge, Opera */
 input.no-spin::-webkit-outer-spin-button,
 input.no-spin::-webkit-inner-spin-button {
@@ -58,6 +71,8 @@ input.no-spin::-webkit-inner-spin-button {
 input.no-spin[type="number"] {
   -moz-appearance: textfield;
 }
+
+@variant dark (&:where(.dark, .dark *));
 
 @theme {
   --color-primary: var(--color-primary);
@@ -73,6 +88,12 @@ input.no-spin[type="number"] {
     border-radius: 16px;
     border: 1px solid rgba(255, 255, 255, 0.9);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06), 0 8px 24px rgba(0, 0, 0, 0.08);
+  }
+
+  html.dark .win-card {
+    background: rgba(22, 24, 34, 0.88);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.5);
   }
 
   .mypage-button {

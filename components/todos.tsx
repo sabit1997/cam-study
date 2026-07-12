@@ -51,19 +51,19 @@ const Todos = ({ window }: { window: Window }) => {
   return (
     <div className="flex flex-col h-full">
       {/* Date + progress */}
-      <div className="px-3 pt-2.5 pb-2 border-b border-gray-100">
+      <div className="px-3 pt-2.5 pb-2 border-b border-gray-100 dark:border-gray-700/50">
         <div className="flex items-center justify-between mb-2">
           <input
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className="text-xs text-gray-500 bg-transparent border-none outline-none cursor-pointer"
+            className="text-xs text-gray-500 dark:text-gray-400 bg-transparent border-none outline-none cursor-pointer"
           />
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-gray-400 dark:text-gray-500">
             {doneCount} / {allTodos.length} 완료
           </span>
         </div>
-        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+        <div className="h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
           <div
             className="h-full rounded-full transition-all duration-500"
             style={{
@@ -75,7 +75,7 @@ const Todos = ({ window }: { window: Window }) => {
       </div>
 
       {/* Filter tabs */}
-      <div className="flex border-b border-gray-100 flex-shrink-0">
+      <div className="flex border-b border-gray-100 dark:border-gray-700/50 flex-shrink-0">
         {(["all", "active", "done"] as const).map((f) => (
           <button
             key={f}
@@ -83,7 +83,7 @@ const Todos = ({ window }: { window: Window }) => {
             className={`flex-1 text-xs py-1.5 font-medium transition-colors ${
               filter === f
                 ? "text-lime-700 border-b-2 border-lime-500"
-                : "text-gray-400 hover:text-gray-600"
+                : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400"
             }`}
           >
             {f === "all" ? "전체" : f === "active" ? "진행중" : "완료"}
@@ -94,7 +94,7 @@ const Todos = ({ window }: { window: Window }) => {
       {/* Items */}
       <div className="flex-1 overflow-y-auto px-3 py-2">
         {filtered.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-20 text-gray-300">
+          <div className="flex flex-col items-center justify-center h-20 text-gray-300 dark:text-gray-600">
             <FiCheckSquare size={22} className="mb-1" />
             <p className="text-xs">할 일 없음</p>
           </div>
@@ -102,7 +102,7 @@ const Todos = ({ window }: { window: Window }) => {
         {filtered.map((todo) => (
           <div
             key={todo.id}
-            className="flex items-center gap-2.5 py-2 group border-b border-gray-50 last:border-0"
+            className="flex items-center gap-2.5 py-2 group border-b border-gray-50 dark:border-gray-700/30 last:border-0"
           >
             <button
               onClick={() => handleToggle(todo.id, !!todo.done)}
@@ -118,14 +118,14 @@ const Todos = ({ window }: { window: Window }) => {
             </button>
             <span
               className={`flex-1 text-sm leading-tight truncate ${
-                todo.done ? "line-through text-gray-300" : "text-gray-700"
+                todo.done ? "line-through text-gray-300 dark:text-gray-600" : "text-gray-700 dark:text-gray-200"
               }`}
             >
               {todo.text}
             </span>
             <button
               onClick={() => handleDelete(todo.id)}
-              className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-400 transition-all flex-shrink-0"
+              className="opacity-0 group-hover:opacity-100 text-gray-300 dark:text-gray-600 hover:text-red-400 transition-all flex-shrink-0"
             >
               <FiTrash2 size={12} />
             </button>
@@ -134,14 +134,14 @@ const Todos = ({ window }: { window: Window }) => {
       </div>
 
       {/* Input */}
-      <div className="px-3 py-2.5 border-t border-gray-100 flex-shrink-0">
+      <div className="px-3 py-2.5 border-t border-gray-100 dark:border-gray-700/50 flex-shrink-0">
         <div className="flex gap-1.5">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
             placeholder="할 일을 추가하세요…"
-            className="flex-1 text-sm px-2.5 py-1.5 rounded-lg border border-gray-200 outline-none focus:border-lime-400 bg-gray-50 transition-colors"
+            className="flex-1 text-sm px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 outline-none focus:border-lime-400 bg-gray-50 dark:bg-gray-800 dark:text-gray-200 transition-colors"
           />
           <button
             onClick={handleAdd}
