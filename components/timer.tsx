@@ -95,21 +95,56 @@ const Timer: React.FC = () => {
     }
   }, [todayTimeRes, isTodayTimePending]);
 
+  const sendTime = useCallback(
+    (startAt: Date, endAt: Date, keepalive = false) => {
+      const data = {
+        startAt: startAt.toISOString(),
+        endAt: endAt.toISOString(),
+      };
+      if (
+        keepalive &&
+        navigator.sendBeacon(
+          "/api/timer",
+          new Blob([JSON.stringify(data)], { type: "application/json" })
+        )
+      ) {
+        return;
+      }
+      postTime(data);
+    },
+    [postTime]
+  );
+
+  const flushStopwatch = useCallback(
+    (keepalive = false) => {
+      const startAt = startAtRef.current;
+      if (!startAt) return;
+      const endAt = new Date();
+      const deltaSec = Math.floor((endAt.getTime() - startAt.getTime()) / 1000);
+      const corrected = baseTotalSecondsRef.current + deltaSec;
+      setElapsed(corrected);
+      sendTime(startAt, endAt, keepalive);
+      baseTotalSecondsRef.current = corrected;
+      startAtRef.current = null;
+    },
+    [sendTime]
+  );
+
+  const flushPomodoroWork = useCallback(
+    (keepalive = false) => {
+      const startAt = pomoWorkStartRef.current;
+      if (!startAt) return;
+      const endAt = new Date();
+      sendTime(startAt, endAt, keepalive);
+      pomoWorkStartRef.current = null;
+    },
+    [sendTime]
+  );
+
   useEffect(() => {
     const handleBeforeUnload = () => {
-      const now = new Date();
-      if (startAtRef.current) {
-        postTime({
-          startAt: startAtRef.current.toISOString(),
-          endAt: now.toISOString(),
-        });
-      }
-      if (pomoWorkStartRef.current) {
-        postTime({
-          startAt: pomoWorkStartRef.current.toISOString(),
-          endAt: now.toISOString(),
-        });
-      }
+      flushStopwatch(true);
+      flushPomodoroWork(true);
     };
     window.addEventListener("beforeunload", handleBeforeUnload);
     return () => {
@@ -117,8 +152,10 @@ const Timer: React.FC = () => {
       if (timerRef.current) clearInterval(timerRef.current);
       if (saveRef.current) clearInterval(saveRef.current);
       if (pomoIntervalRef.current) clearInterval(pomoIntervalRef.current);
+      flushStopwatch();
+      flushPomodoroWork();
     };
-  }, [postTime]);
+  }, [flushPomodoroWork, flushStopwatch]);
 
   // ── Stopwatch controls ──
   const startTimer = useCallback(() => {
@@ -148,14 +185,11 @@ const Timer: React.FC = () => {
       );
       const corrected = baseTotalSecondsRef.current + deltaSec;
       setElapsed(corrected);
-      postTime({
-        startAt: startAtRef.current.toISOString(),
-        endAt: now.toISOString(),
-      });
+      sendTime(startAtRef.current, now);
       baseTotalSecondsRef.current = corrected;
       startAtRef.current = now;
     }, 60000);
-  }, [postTime, isPostTimePending]);
+  }, [sendTime, isPostTimePending]);
 
   const stopTimer = useCallback(() => {
     if (timerRef.current) {
@@ -166,22 +200,9 @@ const Timer: React.FC = () => {
       clearInterval(saveRef.current);
       saveRef.current = null;
     }
-    if (startAtRef.current) {
-      const end = new Date();
-      const deltaSec = Math.floor(
-        (end.getTime() - startAtRef.current.getTime()) / 1000
-      );
-      const corrected = baseTotalSecondsRef.current + deltaSec;
-      setElapsed(corrected);
-      postTime({
-        startAt: startAtRef.current.toISOString(),
-        endAt: end.toISOString(),
-      });
-      baseTotalSecondsRef.current = corrected;
-    }
-    startAtRef.current = null;
+    flushStopwatch();
     isRunningRef.current = false;
-  }, [postTime]);
+  }, [flushStopwatch]);
 
   const resetTimer = () => {
     if (isResetTimePending) return;
@@ -214,10 +235,7 @@ const Timer: React.FC = () => {
         const nextPhase: PomoPhase = s.phase === "work" ? "break" : "work";
         if (s.phase === "work") {
           if (pomoWorkStartRef.current) {
-            postTime({
-              startAt: pomoWorkStartRef.current.toISOString(),
-              endAt: now.toISOString(),
-            });
+            sendTime(pomoWorkStartRef.current, now);
             pomoWorkStartRef.current = null;
           }
           s.cycle++;
@@ -238,36 +256,30 @@ const Timer: React.FC = () => {
       setPomoRemaining(s.remaining);
       setPomoCycle(s.cycle);
     }, 1000);
-  }, [workSecs, breakSecs, postTime, patchCycles]);
+  }, [workSecs, breakSecs, sendTime, patchCycles]);
 
   const pomoStop = useCallback(() => {
     if (pomoIntervalRef.current) {
       clearInterval(pomoIntervalRef.current);
       pomoIntervalRef.current = null;
     }
-    if (pomoStateRef.current.phase === "work" && pomoWorkStartRef.current) {
-      postTime({
-        startAt: pomoWorkStartRef.current.toISOString(),
-        endAt: new Date().toISOString(),
-      });
-      pomoWorkStartRef.current = null;
-    }
+    if (pomoStateRef.current.phase === "work") flushPomodoroWork();
     setPomoRunning(false);
-  }, [postTime]);
+  }, [flushPomodoroWork]);
 
   const pomoReset = useCallback(() => {
     if (pomoIntervalRef.current) {
       clearInterval(pomoIntervalRef.current);
       pomoIntervalRef.current = null;
     }
-    pomoWorkStartRef.current = null;
+    if (pomoStateRef.current.phase === "work") flushPomodoroWork();
     pomoStateRef.current = { phase: "work", remaining: workSecs, cycle: 0 };
     setPomoPhase("work");
     setPomoRemaining(workSecs);
     setPomoCycle(0);
     setPomoRunning(false);
     patchCycles(0);
-  }, [workSecs, patchCycles]);
+  }, [workSecs, patchCycles, flushPomodoroWork]);
 
   const skipBreak = useCallback(() => {
     if (pomoStateRef.current.phase !== "break") return;
@@ -288,13 +300,7 @@ const Timer: React.FC = () => {
       pomoIntervalRef.current = null;
     }
     // 설정 변경 직전까지 집중했던 시간 저장 (일시정지 없이 설정 창을 열 수는 없지만 방어적으로 처리)
-    if (pomoWorkStartRef.current) {
-      postTime({
-        startAt: pomoWorkStartRef.current.toISOString(),
-        endAt: new Date().toISOString(),
-      });
-      pomoWorkStartRef.current = null;
-    }
+    flushPomodoroWork();
     const newWorkSecs = w * 60;
     // 사이클은 하루 누적값이므로 설정 변경 시 초기화하지 않는다
     const currentCycle = pomoStateRef.current.cycle;

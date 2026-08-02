@@ -8,5 +8,5 @@
     "esModuleInterop": true
   },
   "include": ["src-electron/**/*"],
-  "exclude": ["node_modules", "dist", ".next"]
+  "exclude": ["node_modules", "dist", ".next", "src-electron/**/*.test.ts"]
 }

@@ -49,22 +49,22 @@ export default function UpdateNotifier() {
       }
     });
 
-    const offAvailable = window.electronAPI.on("update:available", (payload) => {
+    const offAvailable = window.electronAPI.onUpdateAvailable((payload) => {
       const p = payload as { version: string; releaseNotes: string | null };
       pendingVersion.current = p.version;
       setState({ phase: "available", version: p.version, releaseNotes: p.releaseNotes });
       setDismissed(isDismissedVersion(p.version));
     });
-    const offProgress = window.electronAPI.on("update:progress", (percent) => {
+    const offProgress = window.electronAPI.onUpdateProgress((percent) => {
       setState({ phase: "downloading", percent: percent as number });
     });
-    const offReady = window.electronAPI.on("update:downloaded", () => {
+    const offReady = window.electronAPI.onUpdateDownloaded(() => {
       // 다운로드 완료: dismissed 기록 지우고 항상 표시
       clearDismissedVersion();
       setState({ phase: "ready" });
       setDismissed(false);
     });
-    const offError = window.electronAPI.on("update:error", (message) => {
+    const offError = window.electronAPI.onUpdateError((message) => {
       setState({ phase: "error", message: message as string });
       setDismissed(false);
     });
@@ -173,4 +173,3 @@ export default function UpdateNotifier() {
     </div>
   );
 }
-

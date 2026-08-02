@@ -4,15 +4,15 @@ import path from "path";
 import type { AddressInfo } from "net";
 
 const BACKEND_URL = "https://api.oeyo-cam.site";
+const YOUTUBE_CHECK_URL = "https://cam-study.vercel.app/api/check-youtube";
 const YOUTUBE_ID_RE = /^[a-zA-Z0-9_-]{11}$/;
 
-// 실제 바인딩된 포트를 반환 (port 0 → OS가 빈 포트 자동 할당)
-export async function startExpressServer(staticDir: string): Promise<number> {
+export function createExpressApp(staticDir: string) {
   const app = express();
   app.use(express.json());
   app.use(express.static(staticDir));
 
-  // YouTube API 키 은닉 엔드포인트
+  // Vercel 함수가 YouTube API 키를 보관한다. 데스크톱 앱에는 키를 넣지 않는다.
   app.post("/api/check-youtube", async (req, res) => {
     const { videoId } = req.body as { videoId?: string };
 
@@ -21,27 +21,14 @@ export async function startExpressServer(staticDir: string): Promise<number> {
       return;
     }
 
-    const API_KEY = process.env.YOUTUBE_API_KEY ?? "";
-    if (!API_KEY) {
-      res.status(500).json({ error: "YouTube API 키가 설정되지 않았습니다." });
-      return;
-    }
-
-    const apiUrl = new URL("https://www.googleapis.com/youtube/v3/videos");
-    apiUrl.searchParams.set("id", videoId);
-    apiUrl.searchParams.set("key", API_KEY);
-    apiUrl.searchParams.set("part", "status,snippet");
-
     try {
-      const response = await fetch(apiUrl.toString());
-      const data = await response.json() as {
-        items?: Array<{ status: { embeddable: boolean }; snippet?: { title?: string } }>;
-      };
-      const item = data.items?.[0];
-      res.json({
-        isEmbeddable: item?.status.embeddable ?? false,
-        title: item?.snippet?.title ?? null,
+      const response = await fetch(YOUTUBE_CHECK_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ videoId }),
       });
+      const data = await response.json();
+      res.status(response.status).json(data);
     } catch {
       res.status(500).json({ error: "영상 정보를 가져오는 데 실패했습니다." });
     }
@@ -57,10 +44,17 @@ export async function startExpressServer(staticDir: string): Promise<number> {
     })
   );
 
-  // SPA 폴백
-  app.get("*", (_req, res) => {
+  // SPA 폴백. Express 5에서는 app.get("*")가 라우트 등록 시 예외를 던진다.
+  app.use((_req, res) => {
     res.sendFile(path.join(staticDir, "index.html"));
   });
+
+  return app;
+}
+
+// 실제 바인딩된 포트를 반환 (port 0 → OS가 빈 포트 자동 할당)
+export async function startExpressServer(staticDir: string): Promise<number> {
+  const app = createExpressApp(staticDir);
 
   return new Promise((resolve, reject) => {
     const server = app.listen(0, "127.0.0.1", () => {

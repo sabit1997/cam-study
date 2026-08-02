@@ -74,9 +74,8 @@ export default function WindowShare({ windowId, onAspectRatioDetected }: WindowS
       return;
     }
     setIsPickerLoading(true);
-    const stopWaitingForPicker = window.electronAPI?.on(
-      "screen-picker:open",
-      () => setIsPickerLoading(false)
+    const stopWaitingForPicker = window.electronAPI?.onScreenPickerOpen(() =>
+      setIsPickerLoading(false)
     );
     try {
       const s = await navigator.mediaDevices.getDisplayMedia({

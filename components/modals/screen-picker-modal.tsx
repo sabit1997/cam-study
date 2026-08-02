@@ -13,8 +13,6 @@ interface ScreenSource {
 
 type SourceTab = 'screen' | 'window';
 
-const OPEN_CHANNEL = 'screen-picker:open';
-const RESULT_CHANNEL = 'screen-picker:result';
 const ACCENT = '#8fb870';
 
 const ScreenPickerModal = () => {
@@ -26,7 +24,7 @@ const ScreenPickerModal = () => {
   useEffect(() => {
     if (!window.electronAPI) return;
 
-    return window.electronAPI.on(OPEN_CHANNEL, (data) => {
+    return window.electronAPI.onScreenPickerOpen((data) => {
       const list = data as ScreenSource[];
       const hasScreens = list.some((source) => source.isScreen);
       const tab: SourceTab = hasScreens ? 'screen' : 'window';
@@ -41,7 +39,7 @@ const ScreenPickerModal = () => {
   }, []);
 
   const respond = (id: string | null) => {
-    window.electronAPI?.send(RESULT_CHANNEL, id);
+    window.electronAPI?.submitScreenPickerResult(id);
     setSources(null);
     setSelectedId(null);
   };

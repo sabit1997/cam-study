@@ -6,7 +6,6 @@ import axios, {
   InternalAxiosRequestConfig,
 } from "axios";
 import { QueryClient } from "@tanstack/react-query";
-import AuthService from "./services/auth-services/service";
 import { useUserStore } from "@/stores/user-state";
 import { toast } from "sonner";
 
@@ -92,19 +91,11 @@ client.interceptors.response.use(
         processQueue(refreshError);
         isRefreshing = false;
 
-        try {
-          await AuthService.logout();
-          if (globalQueryClient) {
-            globalQueryClient.clear();
-          }
-          useUserStore.getState().logout();
-          window.location.href = "/sign-in";
-        } catch {
-          if (globalQueryClient) {
-            globalQueryClient.clear();
-          }
-          window.location.href = "/sign-in";
+        if (globalQueryClient) {
+          globalQueryClient.clear();
         }
+        useUserStore.getState().logout();
+        window.location.href = "/sign-in";
         return Promise.reject(refreshError);
       }
     }

@@ -5,6 +5,7 @@ import {
   dialog,
   ipcMain,
   session,
+  shell,
   Streams,
 } from "electron";
 import { autoUpdater } from "electron-updater";
@@ -21,8 +22,33 @@ if (process.platform === "darwin") {
 }
 
 const isDev = !app.isPackaged;
+const DEV_APP_URL = "http://localhost:3000";
 
 let mainWindow: BrowserWindow | null = null;
+let appUrl = isDev ? DEV_APP_URL : "";
+let autoUpdaterStarted = false;
+
+function isAppUrl(url: string): boolean {
+  if (!appUrl) return false;
+  try {
+    return new URL(url).origin === new URL(appUrl).origin;
+  } catch {
+    return false;
+  }
+}
+
+function openExternalUrl(url: string) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol === "https:") {
+      void shell.openExternal(parsed.toString()).catch((err) =>
+        console.error("외부 링크 열기 실패:", err)
+      );
+    }
+  } catch {
+    // 잘못된 URL은 무시한다.
+  }
+}
 
 // Electron은 getDisplayMedia에서 video가 요청됐는데 callback에 video 스트림을
 // 못 넘기면(사용자 취소, 소스 없음 등) 예외를 던진다. 이걸 취소하는 공식 API가
@@ -51,7 +77,8 @@ function normalizeReleaseNotes(notes: string | Array<{ note?: string | null }> |
 
 function setupAutoUpdater() {
   // 개발 환경에서는 업데이트 체크 생략
-  if (isDev) return;
+  if (isDev || autoUpdaterStarted) return;
+  autoUpdaterStarted = true;
 
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = false; // macOS Squirrel 충돌 방지 (installMacUpdate로 대체)
@@ -175,7 +202,9 @@ function installMacUpdate() {
   app.quit();
 }
 
-async function createWindow(port?: number) {
+async function createWindow() {
+  if (!appUrl) throw new Error("앱 URL이 초기화되지 않았습니다.");
+
   const win = new BrowserWindow({
     width: 1024,
     height: 768,
@@ -187,14 +216,22 @@ async function createWindow(port?: number) {
     },
   });
 
+  win.webContents.on("will-navigate", (event, url) => {
+    if (isAppUrl(url)) return;
+    event.preventDefault();
+    openExternalUrl(url);
+  });
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    openExternalUrl(url);
+    return { action: "deny" };
+  });
+
   win.on("closed", () => {
     mainWindow = null;
   });
   mainWindow = win;
 
-  const url = isDev ? "http://localhost:3000" : `http://localhost:${port}`;
-  await win.loadURL(url);
-  setupAutoUpdater();
+  await win.loadURL(appUrl);
 }
 
 app.whenReady().then(async () => {
@@ -211,7 +248,16 @@ app.whenReady().then(async () => {
   // Windows/구버전 macOS/Linux 등 미지원 환경에서는 이 핸들러가 그대로 실행되므로
   // 직접 화면/창 선택 UI(screen-picker 모달)를 렌더러에 띄워 사용자가 고르게 한다.
   session.defaultSession.setDisplayMediaRequestHandler(
-    (_request, callback) => {
+    (request, callback) => {
+      if (
+        !request.frame ||
+        !isAppUrl(request.securityOrigin) ||
+        !isAppUrl(request.frame.url)
+      ) {
+        safeDisplayMediaCallback(callback, {});
+        return;
+      }
+
       desktopCapturer
         .getSources({
           types: ["screen", "window"],
@@ -251,18 +297,27 @@ app.whenReady().then(async () => {
           // 제거하지 않으면 취소 → 재시도마다 리스너가 누적되어
           // 오래된 핸들러가 다음 요청의 결과를 가로채는 버그가 발생한다.
           ipcMain.removeAllListeners("screen-picker:result");
-          ipcMain.once(
-            "screen-picker:result",
-            (_event, selectedId: string | null) => {
-              const selected = selectedId
-                ? sources.find((source) => source.id === selectedId)
-                : undefined;
-              safeDisplayMediaCallback(
-                callback,
-                selected ? { video: selected } : {}
-              );
+          const handleScreenPickerResult = (
+            event: Electron.IpcMainEvent,
+            selectedId: string | null
+          ) => {
+            if (
+              event.sender !== mainWindow?.webContents ||
+              !event.senderFrame ||
+              !isAppUrl(event.senderFrame.url)
+            ) {
+              return;
             }
-          );
+            ipcMain.removeListener("screen-picker:result", handleScreenPickerResult);
+            const selected = selectedId
+              ? sources.find((source) => source.id === selectedId)
+              : undefined;
+            safeDisplayMediaCallback(
+              callback,
+              selected ? { video: selected } : {}
+            );
+          };
+          ipcMain.on("screen-picker:result", handleScreenPickerResult);
         })
         .catch((err) => {
           console.error("desktopCapturer.getSources 에러:", err);
@@ -272,8 +327,6 @@ app.whenReady().then(async () => {
     { useSystemPicker: true }
   );
 
-  let serverPort: number | undefined;
-
   if (!isDev) {
     const staticDir = path.join(
       process.resourcesPath,
@@ -282,7 +335,8 @@ app.whenReady().then(async () => {
     );
 
     try {
-      serverPort = await startExpressServer(staticDir);
+      const serverPort = await startExpressServer(staticDir);
+      appUrl = `http://localhost:${serverPort}`;
     } catch (err) {
       const msg = err instanceof Error ? `${err.message}\n\n${err.stack ?? ""}` : String(err);
       console.error("Express 서버 시작 실패:", msg);
@@ -295,14 +349,16 @@ app.whenReady().then(async () => {
     }
   }
 
-  createWindow(serverPort);
+  setupAutoUpdater();
+  void createWindow().catch((err) => console.error("창 생성 실패:", err));
 });
 
 app.on("activate", () => {
-  if (BrowserWindow.getAllWindows().length === 0) createWindow();
+  if (BrowserWindow.getAllWindows().length === 0) {
+    void createWindow().catch((err) => console.error("창 재생성 실패:", err));
+  }
 });
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
-
