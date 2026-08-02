@@ -1,20 +1,17 @@
-"use client";
-
 import { useWindowStore } from "@/stores/window-state";
 import { useQueryClient } from "@tanstack/react-query";
-import { usePathname, useRouter } from "next/navigation"; // useRouter 추가
+import { useLocation, useNavigate, Link } from "react-router-dom";
 import { MypageButton } from "./mypage-button";
 import { IoLogOutOutline, IoLibrary, IoTime } from "react-icons/io5";
 import { IoMdSettings } from "react-icons/io";
-import Link from "next/link";
 import { useLogout } from "@/apis/services/auth-services/mutation";
 import { useUserStore } from "@/stores/user-state";
 
 export const MyPageSidebar = () => {
   const setWindows = useWindowStore((state) => state.setWindows);
   const queryClient = useQueryClient();
-  const pathname = usePathname();
-  const router = useRouter();
+  const { pathname } = useLocation();
+  const navigate = useNavigate();
   const logoutUser = useUserStore((state) => state.logout);
 
   const { mutate: logout } = useLogout();
@@ -24,14 +21,14 @@ export const MyPageSidebar = () => {
       onSuccess: () => {
         queryClient.clear();
         setWindows([]);
-        router.push("/sign-in");
+        navigate("/sign-in");
         logoutUser();
       },
       onError: (error) => {
         console.error("로그아웃 실패:", error);
         queryClient.clear();
         setWindows([]);
-        router.push("/sign-in");
+        navigate("/sign-in");
       },
     });
   };
@@ -46,20 +43,20 @@ export const MyPageSidebar = () => {
       <>
         <Link
           className={`${isActive("/my-page/record")} mypage-button`}
-          href="/my-page/record"
+          to="/my-page/record"
         >
           <IoTime />
           시간 기록
         </Link>
         <Link
           className={`${isActive("/my-page/statistics")} mypage-button`}
-          href="/my-page/statistics"
+          to="/my-page/statistics"
         >
           <IoLibrary />
           시간 통계
         </Link>
         <Link
-          href="/my-page/theme-setting"
+          to="/my-page/theme-setting"
           className={`${isActive("/my-page/theme-setting")} mypage-button`}
         >
           <IoMdSettings />

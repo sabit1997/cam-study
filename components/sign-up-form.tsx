@@ -1,14 +1,13 @@
 "use client";
 
 import { useSignup } from "@/apis/services/auth-services/mutation";
-import { useRouter } from "next/navigation";
+import { useNavigate, Link } from "react-router-dom";
 import { useState } from "react";
-import Link from "next/link";
 import { FiUser, FiMail, FiLock, FiEye, FiEyeOff } from "react-icons/fi";
 import { useThemeStore } from "@/stores/theme-state";
 
 const SignUpForm = () => {
-  const router = useRouter();
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
@@ -47,7 +46,7 @@ const SignUpForm = () => {
       { email, password, username },
       {
         onSuccess: () => {
-          router.replace("/sign-in");
+          navigate("/sign-in", { replace: true });
         },
         onError: (err) => {
           if (err instanceof Error) {
@@ -190,7 +189,7 @@ const SignUpForm = () => {
           {/* Sign in link */}
           <p className="text-xs text-center text-gray-400 dark:text-gray-500">
             이미 계정이 있으신가요?{" "}
-            <Link href="/sign-in" className="text-lime-600 font-medium hover:underline">
+            <Link to="/sign-in" className="text-lime-600 font-medium hover:underline">
               로그인
             </Link>
           </p>

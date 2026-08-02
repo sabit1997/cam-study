@@ -10,8 +10,8 @@ const compat = new FlatCompat({
 });
 
 const eslintConfig = [
-  { ignores: ["dist-electron/**"] },
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
+  { ignores: ["dist-electron/**", "dist/**", ".next/**"] },
+  ...compat.extends("plugin:react/recommended", "plugin:@typescript-eslint/recommended"),
 ];
 
 export default eslintConfig;

@@ -1,6 +1,3 @@
-'use client';
-
-import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { FiCheck, FiMonitor } from 'react-icons/fi';
 import useClickOutside from '@/hooks/useClickOutside';
@@ -171,12 +168,10 @@ const ScreenPickerModal = () => {
                     }}
                   >
                     <div className="relative w-full aspect-video bg-gray-100 dark:bg-gray-700">
-                      <Image
+                      <img
                         src={source.thumbnail}
                         alt={source.name}
-                        fill
-                        unoptimized
-                        className="object-cover"
+                        className="object-cover w-full h-full"
                       />
                       {selected && (
                         <div

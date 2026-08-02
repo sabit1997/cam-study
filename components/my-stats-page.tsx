@@ -1,8 +1,5 @@
-"use client";
-
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
-import Link from "next/link";
+import { useNavigate, Link } from "react-router-dom";
 import {
   BarChart,
   Bar,
@@ -53,7 +50,7 @@ const COLOR_AMBER = "#e8c070";
 
 
 export default function MyStatsPage() {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { currentYear, currentMonth } = getCurrentMonthYear();
   const [year, setYear] = useState(currentYear);
   const [month, setMonth] = useState(currentMonth);
@@ -114,13 +111,13 @@ export default function MyStatsPage() {
         queryClient.clear();
         setWindows([]);
         logoutUser();
-        router.push("/sign-in");
+        navigate("/sign-in");
       },
       onError: () => {
         queryClient.clear();
         setWindows([]);
         logoutUser();
-        router.push("/sign-in");
+        navigate("/sign-in");
       },
     });
   };
@@ -195,7 +192,7 @@ export default function MyStatsPage() {
         }}
       >
         <Link
-          href="/"
+          to="/"
           style={{
             display: "flex",
             alignItems: "center",

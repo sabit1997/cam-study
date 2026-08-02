@@ -1,10 +1,7 @@
-"use client";
-
-import { useRouter } from "next/navigation";
+import { useNavigate, Link } from "react-router-dom";
 import { useState } from "react";
 import { useLogin } from "@/apis/services/auth-services/mutation";
 import { useUserStore } from "@/stores/user-state";
-import Link from "next/link";
 import { FiMail, FiLock, FiEye, FiEyeOff } from "react-icons/fi";
 import { useThemeStore } from "@/stores/theme-state";
 
@@ -24,7 +21,7 @@ function getLoginErrorMessage(error: unknown): string {
 }
 
 const SignInForm = () => {
-  const router = useRouter();
+  const navigate = useNavigate();
   const { mutate: signIn, isPending, isError, error, reset: resetMutation } = useLogin();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -52,8 +49,7 @@ const SignInForm = () => {
       {
         onSuccess: (data) => {
           loginUser(data);
-          router.replace("/");
-          router.refresh();
+          navigate("/", { replace: true });
         },
       }
     );
@@ -164,7 +160,7 @@ const SignInForm = () => {
           {/* Sign up link */}
           <p className="text-xs text-center text-gray-400 dark:text-gray-500">
             계정이 없으신가요?{" "}
-            <Link href="/sign-up" className="text-lime-600 font-medium hover:underline">
+            <Link to="/sign-up" className="text-lime-600 font-medium hover:underline">
               회원가입
             </Link>
           </p>

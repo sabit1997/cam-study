@@ -1,8 +1,6 @@
-"use client";
-
 import { useState } from "react";
 import { useThemeStore } from "@/stores/theme-state";
-import Link from "next/link";
+import { Link } from "react-router-dom";
 import {
   IoLogoYoutube,
   IoCameraOutline,
@@ -217,7 +215,7 @@ export default function WindowDock() {
           </div>
         )}
         <Link
-          href="/my-page/record"
+          to="/my-page/record"
           onMouseEnter={() => setHoveredIndex(DOCK_ITEMS.length)}
           onMouseLeave={() => setHoveredIndex(null)}
           style={{

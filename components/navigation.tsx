@@ -1,11 +1,8 @@
-"use client";
-
-import Link from "next/link";
+import { Link, useNavigate } from "react-router-dom";
 import { useUserStore } from "@/stores/user-state";
 import { useWindowStore } from "@/stores/window-state";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLogout } from "@/apis/services/auth-services/mutation";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { IoBarChartOutline, IoLogOutOutline, IoMoonOutline, IoSunnyOutline } from "react-icons/io5";
 import { useThemeStore } from "@/stores/theme-state";
@@ -17,7 +14,7 @@ const Navigation = () => {
   const toggleDarkMode = useThemeStore((state) => state.toggleDarkMode);
   const setWindows = useWindowStore((state) => state.setWindows);
   const queryClient = useQueryClient();
-  const router = useRouter();
+  const navigate = useNavigate();
   const { mutate: logoutMutate } = useLogout();
 
   const [mounted, setMounted] = useState(false);
@@ -47,13 +44,13 @@ const Navigation = () => {
         queryClient.clear();
         setWindows([]);
         logoutUser();
-        router.push("/sign-in");
+        navigate("/sign-in");
       },
       onError: () => {
         queryClient.clear();
         setWindows([]);
         logoutUser();
-        router.push("/sign-in");
+        navigate("/sign-in");
       },
     });
   };
@@ -104,7 +101,7 @@ const Navigation = () => {
       {isAuthenticated && (
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <Link
-            href="/my-page/record"
+            to="/my-page/record"
             style={{
               display: "flex",
               alignItems: "center",

@@ -1,6 +1,4 @@
-"use client";
-
-import { isServer, QueryClient } from "@tanstack/react-query";
+import { QueryClient } from "@tanstack/react-query";
 
 let browserQueryClient: QueryClient | undefined;
 
@@ -16,9 +14,6 @@ function makeQueryClient() {
 }
 
 export function getQueryClient() {
-  if (isServer) {
-    return makeQueryClient();
-  }
   if (!browserQueryClient) {
     browserQueryClient = makeQueryClient();
   }
