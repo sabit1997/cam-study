@@ -19,8 +19,8 @@ import React, {
 } from "react";
 import TooltipWrapper from "./tooltip-wrapper";
 import { useThemeStore } from "@/stores/theme-state";
-import useViewportSize from "@/hooks/useViewportSize";
 import { TypeList, WindowPatchDto } from "@/types/dto";
+import { clampWindowPosition } from "@/utils/workspace";
 
 // 창 타입별 컴포넌트를 lazy load — 초기 번들에 포함되지 않고 첫 사용 시 로드
 const CameraView = lazy(() => import("./camera-view"));
@@ -31,13 +31,10 @@ const Timer = lazy(() => import("./timer"));
 
 interface AddWindowProps {
   window: Window;
+  scale: number;
 }
 
 const TITLEBAR_H = 38;
-
-const REF_W = 1920;
-const NAV_H = 36; // navigation bar height px
-const DOCK_H = 80; // dock + padding + bottom offset px
 
 // Type-specific minimum sizes in pixels (generous enough to show all UI)
 const MIN_PX: Record<TypeList, { w: number; h: number }> = {
@@ -78,20 +75,6 @@ function clearWinTitle(id: number) {
   localStorage.setItem(WIN_TITLE_LS_KEY, JSON.stringify(map));
 }
 
-function clampPos(
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  vw: number,
-  vh: number
-) {
-  return {
-    x: Math.max(0, Math.min(x, Math.max(0, vw - w))),
-    y: Math.max(NAV_H, Math.min(y, Math.max(NAV_H, vh - DOCK_H - h))),
-  };
-}
-
 const iframePointerEvents = new WeakMap<HTMLIFrameElement, string>();
 
 function setIframesPointerEvents(value: "none" | "auto") {
@@ -108,7 +91,7 @@ function setIframesPointerEvents(value: "none" | "auto") {
   });
 }
 
-const AddWindow = ({ window }: AddWindowProps) => {
+const AddWindow = ({ window, scale }: AddWindowProps) => {
   const [isLocked, setIsLocked] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [editTitle, setEditTitle] = useState(false);
@@ -132,24 +115,18 @@ const AddWindow = ({ window }: AddWindowProps) => {
   const bringToFront = useWindowStore((s) => s.bringToFront);
   const updateWindowBounds = useWindowStore((s) => s.updateWindowBounds);
   const removeWindow = useWindowStore((s) => s.removeWindow);
+  const markWindowPending = useWindowStore((s) => s.markWindowPending);
+  const clearWindowPending = useWindowStore((s) => s.clearWindowPending);
   const currentZIndex = useWindowStore(
     (s) => s.windows.find((w) => w.id === window.id)?.zIndex ?? window.zIndex
   );
 
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
-  const { vw, vh } = useViewportSize();
   const { id, type, x, y, width, height } = window;
-  const scale = vw / REF_W;
-
-  // Server-derived pixel values
-  const pxX = x * scale;
-  const pxY = y * scale;
-  const pxW = width * scale;
-  const pxH = height * scale;
 
   // Local controlled state for Rnd — completely decoupled from Zustand during interaction
-  const [pos, setPos] = useState(() => clampPos(pxX, pxY, pxW, pxH, vw, vh));
-  const [sz, setSz] = useState({ w: pxW, h: pxH });
+  const [pos, setPos] = useState(() => clampWindowPosition(x, y, width, height));
+  const [sz, setSz] = useState({ w: width, h: height });
 
   // Prevent useEffect from overriding pos/sz during active drag or resize
   const dragging = useRef(false);
@@ -157,27 +134,14 @@ const AddWindow = ({ window }: AddWindowProps) => {
   const updateQueue = useRef(Promise.resolve());
 
   const queueWindowUpdate = useCallback(
-    (data: WindowPatchDto) => {
+    (data: WindowPatchDto, generation: number) => {
       updateQueue.current = updateQueue.current
-        .then(() => updateWindow({ id, data }))
+        .then(() => updateWindow({ id, data, generation }))
         .then(() => undefined)
         .catch(() => undefined);
     },
     [id, updateWindow]
   );
-
-  useEffect(() => {
-    const restoreIframeInteraction = () => {
-      dragging.current = false;
-      resizing.current = false;
-      setIframesPointerEvents("auto");
-    };
-    globalThis.window.addEventListener("blur", restoreIframeInteraction);
-    return () => {
-      globalThis.window.removeEventListener("blur", restoreIframeInteraction);
-      restoreIframeInteraction();
-    };
-  }, []);
 
   // 스트림 비율 감지 시 창 자동 리사이즈 (화면공유·카메라)
   // 매 렌더마다 최신 sz를 ref에 기록해 effect 내 stale closure 방지
@@ -195,24 +159,30 @@ const AddWindow = ({ window }: AddWindowProps) => {
     const w = szRef.current.w;
     const correctH = Math.round(w / contentRatio) + TITLEBAR_H;
     if (Math.abs(correctH - szRef.current.h) < 4) return; // 이미 거의 맞으면 생략
-    const clamped = clampPos(pos.x, pos.y, w, correctH, vw, vh);
+    const clamped = clampWindowPosition(pos.x, pos.y, w, correctH);
     setPos(clamped);
     setSz({ w, h: correctH });
-    const rx = Math.round(clamped.x / scale);
-    const ry = Math.round(clamped.y / scale);
-    const rw = Math.round(w / scale);
-    const rh = Math.round(correctH / scale);
+    const rx = Math.round(clamped.x);
+    const ry = Math.round(clamped.y);
+    const rw = Math.round(w);
+    const rh = Math.round(correctH);
     updateWindowBounds(id, rx, ry, rw, rh);
-    debouncedServerUpdate(rx, ry, rw, rh);
+    debouncedServerUpdate(
+      rx,
+      ry,
+      rw,
+      rh,
+      markWindowPending(id)
+    );
   }, [contentRatio]); // eslint-disable-line react-hooks/exhaustive-deps -- rnd 인스턴스 ref는 React 관리 밖이므로 제외 안전
 
-  // Sync from store/viewport only when not interacting (e.g. page load, viewport resize)
+  // Sync from the store only when not interacting.
   useEffect(() => {
     if (dragging.current || resizing.current) return;
-    const clamped = clampPos(pxX, pxY, pxW, pxH, vw, vh);
+    const clamped = clampWindowPosition(x, y, width, height);
     setPos(clamped);
-    setSz({ w: pxW, h: pxH });
-  }, [pxX, pxY, pxW, pxH, vw, vh]);
+    setSz({ w: width, h: height });
+  }, [x, y, width, height]);
 
   useEffect(() => {
     const saved = getWinTitles();
@@ -234,30 +204,51 @@ const AddWindow = ({ window }: AddWindowProps) => {
         prevHeightRef.current = sz.h;
         setSz((s) => ({ ...s, h: TITLEBAR_H }));
       } else {
-        setSz((s) => ({ ...s, h: prevHeightRef.current ?? pxH }));
+        setSz((s) => ({ ...s, h: prevHeightRef.current ?? height }));
       }
       return !prev;
     });
-  }, [sz.h, pxH]);
+  }, [sz.h, height]);
 
   const debouncedServerUpdate = useDebouncedCallback(
-    (rx: number, ry: number, rw: number, rh: number) => {
-      queueWindowUpdate({ x: rx, y: ry, width: rw, height: rh });
+    (rx: number, ry: number, rw: number, rh: number, generation: number) => {
+      queueWindowUpdate({ x: rx, y: ry, width: rw, height: rh }, generation);
     },
     500
   );
 
-  const debouncedZIndexUpdate = useDebouncedCallback(() => {
-    queueWindowUpdate({ zIndex: currentZIndex });
+  const debouncedZIndexUpdate = useDebouncedCallback((generation: number) => {
+    queueWindowUpdate({ zIndex: currentZIndex }, generation);
   }, 300);
+
+  useEffect(() => {
+    const restoreIframeInteraction = () => {
+      dragging.current = false;
+      resizing.current = false;
+      setIframesPointerEvents("auto");
+    };
+    globalThis.window.addEventListener("blur", restoreIframeInteraction);
+    return () => {
+      globalThis.window.removeEventListener("blur", restoreIframeInteraction);
+      debouncedServerUpdate.cancel();
+      debouncedZIndexUpdate.cancel();
+      restoreIframeInteraction();
+      clearWindowPending(id);
+    };
+  }, [
+    clearWindowPending,
+    debouncedServerUpdate,
+    debouncedZIndexUpdate,
+    id,
+  ]);
 
   // Focus: called ONLY from inner div onMouseDown.
   // Must NOT be called from onDragStart — calling it there triggers a Zustand update
   // mid-drag-setup which causes react-draggable to lose the drag.
   const handleFocus = useCallback(() => {
     bringToFront(id);
-    debouncedZIndexUpdate();
-  }, [bringToFront, id, debouncedZIndexUpdate]);
+    debouncedZIndexUpdate(markWindowPending(id));
+  }, [bringToFront, id, markWindowPending, debouncedZIndexUpdate]);
 
   const commitTitle = useCallback(() => {
     const trimmed = titleVal.trim() || TYPE_LABELS[type] || "WINDOW";
@@ -285,7 +276,12 @@ const AddWindow = ({ window }: AddWindowProps) => {
       : { lockAspectRatio: false as const };
 
   const windowContent: Partial<Record<Window["type"], React.ReactNode>> = {
-    camera: <CameraView onAspectRatioDetected={setContentRatio} />,
+    camera: (
+      <CameraView
+        windowId={window.id}
+        onAspectRatioDetected={setContentRatio}
+      />
+    ),
     youtube: <YouTubePlayer window={window} />,
     window: (
       <WindowShare
@@ -301,6 +297,7 @@ const AddWindow = ({ window }: AddWindowProps) => {
     <Rnd
       position={{ x: pos.x, y: pos.y }}
       size={{ width: sz.w, height: sz.h }}
+      scale={scale}
       minWidth={minW}
       minHeight={isMinimized ? TITLEBAR_H : minH}
       bounds="parent"
@@ -344,17 +341,17 @@ const AddWindow = ({ window }: AddWindowProps) => {
       onDragStop={(_e, d) => {
         dragging.current = false;
         setIframesPointerEvents("auto");
-        const clamped = clampPos(d.x, d.y, sz.w, sz.h, vw, vh);
+        const clamped = clampWindowPosition(d.x, d.y, sz.w, sz.h);
         // Update local state — React 18 batches this with react-draggable's own
         // setState({dragging:false}), so position prop is correct in the same render
         // that exits drag mode → no snapback.
         setPos(clamped);
-        const rx = Math.round(clamped.x / scale);
-        const ry = Math.round(clamped.y / scale);
-        const rw = Math.round(sz.w / scale);
-        const rh = Math.round(sz.h / scale);
+        const rx = Math.round(clamped.x);
+        const ry = Math.round(clamped.y);
+        const rw = Math.round(sz.w);
+        const rh = Math.round(sz.h);
         updateWindowBounds(id, rx, ry, rw, rh);
-        debouncedServerUpdate(rx, ry, rw, rh);
+        debouncedServerUpdate(rx, ry, rw, rh, markWindowPending(id));
       }}
       // ── Resize ────────────────────────────────────────────────────────────
       onResizeStart={() => {
@@ -376,15 +373,15 @@ const AddWindow = ({ window }: AddWindowProps) => {
             newH = Math.round(newW / contentRatio) + TITLEBAR_H;
           }
         }
-        const clamped = clampPos(position.x, position.y, newW, newH, vw, vh);
+        const clamped = clampWindowPosition(position.x, position.y, newW, newH);
         setPos(clamped);
         setSz({ w: newW, h: newH });
-        const rx = Math.round(clamped.x / scale);
-        const ry = Math.round(clamped.y / scale);
-        const rw = Math.round(newW / scale);
-        const rh = Math.round(newH / scale);
+        const rx = Math.round(clamped.x);
+        const ry = Math.round(clamped.y);
+        const rw = Math.round(newW);
+        const rh = Math.round(newH);
         updateWindowBounds(id, rx, ry, rw, rh);
-        debouncedServerUpdate(rx, ry, rw, rh);
+        debouncedServerUpdate(rx, ry, rw, rh, markWindowPending(id));
       }}
     >
       {/* Inner div: onMouseDown here (not on Rnd) so focus fires BEFORE react-draggable

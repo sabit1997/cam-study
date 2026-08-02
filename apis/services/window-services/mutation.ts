@@ -25,17 +25,51 @@ export const usePatchWindow = () => {
   const updateWindowType = useWindowStore((state) => state.updateWindowType);
 
   return useMutation({
-    mutationFn: ({ id, data }: { id: number; data: WindowPatchDto }) =>
+    mutationFn: ({ id, data }: { id: number; data: WindowPatchDto; generation?: number }) =>
       WindowService.patchWindow(id, data),
-    onSuccess: (newWindow, { id, data }) => {
+    onSuccess: async (newWindow, { id, data, generation }) => {
+      let state = useWindowStore.getState();
+      if (
+        generation !== undefined &&
+        state.pendingWindowUpdates[id] === generation
+      ) {
+        await queryClient.cancelQueries({ queryKey: WINDOW_QUERY_KEY });
+        state = useWindowStore.getState();
+      }
+      const localWindow = state.windows.find((window) => window.id === id);
+      const preserveLocalBounds =
+        generation !== undefined &&
+        state.pendingWindowUpdates[id] !== undefined &&
+        localWindow;
+
       queryClient.setQueryData<Window[]>(WINDOW_QUERY_KEY, (windows) =>
         windows?.map((window) =>
-          window.id === id ? { ...window, ...data } : window
+          window.id === id
+            ? {
+                ...window,
+                ...data,
+                ...(preserveLocalBounds
+                  ? {
+                      x: localWindow.x,
+                      y: localWindow.y,
+                      width: localWindow.width,
+                      height: localWindow.height,
+                      zIndex: localWindow.zIndex,
+                    }
+                  : {}),
+              }
+            : window
         )
       );
       updateWindowType(newWindow.id, newWindow.type);
+      if (generation !== undefined) {
+        state.clearWindowPending(id, generation);
+      }
     },
-    onError: () => {
+    onError: (_error, { id, generation }) => {
+      if (generation !== undefined) {
+        useWindowStore.getState().clearWindowPending(id, generation);
+      }
       return queryClient.invalidateQueries({ queryKey: WINDOW_QUERY_KEY });
     },
 

@@ -2,10 +2,15 @@
 import { Window } from "@/types/windows";
 import { create } from "zustand";
 
+let nextWindowUpdateGeneration = 0;
+
 interface WindowState {
   windows: Window[];
+  pendingWindowUpdates: Record<number, number>;
   setWindows: (windows: Window[]) => void;
   mergeWindows: (serverWindows: Window[]) => void;
+  markWindowPending: (id: number) => number;
+  clearWindowPending: (id: number, generation?: number) => void;
   updateWindowType: (id: number, type: Window["type"]) => void;
   removeWindow: (id: number) => void;
   bringToFront: (id: number) => void;
@@ -20,7 +25,8 @@ interface WindowState {
 
 export const useWindowStore = create<WindowState>()((set) => ({
   windows: [],
-  setWindows: (windows) => set(() => ({ windows })),
+  pendingWindowUpdates: {},
+  setWindows: (windows) => set(() => ({ windows, pendingWindowUpdates: {} })),
 
   mergeWindows: (serverWindows) =>
     set((state) => {
@@ -34,9 +40,43 @@ export const useWindowStore = create<WindowState>()((set) => ({
             nextZ += 1;
             return { ...sw, zIndex: nextZ };
           }
+          if (state.pendingWindowUpdates[sw.id] !== undefined) {
+            return {
+              ...sw,
+              x: lw.x,
+              y: lw.y,
+              width: lw.width,
+              height: lw.height,
+              zIndex: lw.zIndex,
+            };
+          }
           return sw;
         }),
       };
+    }),
+
+  markWindowPending: (id) => {
+    const generation = ++nextWindowUpdateGeneration;
+    set((state) => ({
+      pendingWindowUpdates: {
+        ...state.pendingWindowUpdates,
+        [id]: generation,
+      },
+    }));
+    return generation;
+  },
+
+  clearWindowPending: (id, generation) =>
+    set((state) => {
+      if (
+        generation !== undefined &&
+        state.pendingWindowUpdates[id] !== generation
+      ) {
+        return state;
+      }
+      const pendingWindowUpdates = { ...state.pendingWindowUpdates };
+      delete pendingWindowUpdates[id];
+      return { pendingWindowUpdates };
     }),
 
   updateWindowType: (id, type) =>
@@ -46,9 +86,14 @@ export const useWindowStore = create<WindowState>()((set) => ({
 
   // 낙관적 제거 — 서버 DELETE는 별도로 진행. 실패 시 refetch로 복원됨.
   removeWindow: (id) =>
-    set((state) => ({
-      windows: state.windows.filter((w) => w.id !== id),
-    })),
+    set((state) => {
+      const pendingWindowUpdates = { ...state.pendingWindowUpdates };
+      delete pendingWindowUpdates[id];
+      return {
+        windows: state.windows.filter((w) => w.id !== id),
+        pendingWindowUpdates,
+      };
+    }),
 
   bringToFront: (id) =>
     set((state) => {

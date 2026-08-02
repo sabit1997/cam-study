@@ -122,7 +122,7 @@ export default function WindowDock() {
         display: "flex",
         alignItems: "center",
         gap: 4,
-        zIndex: 1000,
+        zIndex: 2147483647,
       }}
     >
       {DOCK_ITEMS.map((item, index) => (

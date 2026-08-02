@@ -4,18 +4,22 @@ import { FiCamera, FiEye, FiEyeOff, FiX } from "react-icons/fi";
 import { toast } from "sonner";
 
 const CAM_DEVICE_LS_KEY = "cam-device-id";
+const CAM_STREAMING_LS_KEY = "cam-streaming";
 
 interface CameraViewProps {
+  windowId: number;
   onAspectRatioDetected?: (ratio: number) => void;
 }
 
-const CameraView = ({ onAspectRatioDetected }: CameraViewProps) => {
+const CameraView = ({ windowId, onAspectRatioDetected }: CameraViewProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const isMountedRef = useRef(true);
   const [deviceId, setDeviceId] = useState<string>("");
   const [isStreaming, setIsStreaming] = useState(false);
-  const [isBlur, setIsBlur] = useState(false);
+  const [isBlur, setIsBlur] = useState(
+    () => localStorage.getItem(`window-${windowId}-camera-blur`) === "true"
+  );
   const [blurAmount, setBlurAmount] = useState(4);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
 
@@ -23,6 +27,10 @@ const CameraView = ({ onAspectRatioDetected }: CameraViewProps) => {
     isMountedRef.current = true;
     return () => { isMountedRef.current = false; };
   }, []);
+
+  useEffect(() => {
+    localStorage.setItem(`window-${windowId}-camera-blur`, String(isBlur));
+  }, [isBlur, windowId]);
 
   // track.getSettings()가 0을 반환하는 환경의 fallback
   useEffect(() => {
@@ -54,21 +62,27 @@ const CameraView = ({ onAspectRatioDetected }: CameraViewProps) => {
       const videoDevices = all.filter((d) => d.kind === "videoinput");
       setDevices(videoDevices);
       const saved = localStorage.getItem(CAM_DEVICE_LS_KEY) ?? "";
-      if (saved && videoDevices.some((d) => d.deviceId === saved)) {
-        setDeviceId(saved);
-      } else if (videoDevices.length > 0) {
-        setDeviceId(videoDevices[0].deviceId);
+      const selectedDeviceId =
+        saved && videoDevices.some((d) => d.deviceId === saved)
+          ? saved
+          : videoDevices[0]?.deviceId;
+      if (selectedDeviceId) {
+        setDeviceId(selectedDeviceId);
+        if (localStorage.getItem(CAM_STREAMING_LS_KEY) === "true") {
+          void startStream(selectedDeviceId);
+        }
       }
     };
     loadDevices();
-    return () => stopStream();
-  }, []);
+    return () => stopStream(false);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- 기기 조회와 자동 복구는 마운트 시 한 번만 실행
 
-  const stopStream = () => {
+  const stopStream = (clearSavedState = true) => {
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
     setIsStreaming(false);
+    if (clearSavedState) localStorage.setItem(CAM_STREAMING_LS_KEY, "false");
   };
 
   const startStream = async (id?: string) => {
@@ -83,12 +97,17 @@ const CameraView = ({ onAspectRatioDetected }: CameraViewProps) => {
             }
           : { width: { ideal: 1280 }, height: { ideal: 720 } },
       });
+      if (!isMountedRef.current) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
       streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.play().catch(() => {});
       }
       setIsStreaming(true);
+      localStorage.setItem(CAM_STREAMING_LS_KEY, "true");
       const track = stream.getVideoTracks()[0];
       const settings = track?.getSettings();
       if (settings?.deviceId) {
@@ -152,7 +171,7 @@ const CameraView = ({ onAspectRatioDetected }: CameraViewProps) => {
                     ${isStreaming ? "opacity-0 hover:opacity-100" : "opacity-100"}`}
       >
         <button
-          onClick={isStreaming ? stopStream : () => startStream()}
+          onClick={isStreaming ? () => stopStream() : () => startStream()}
           className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full font-medium text-white transition-colors"
           style={{ background: isStreaming ? "#ff3b30" : "#8fb870" }}
         >

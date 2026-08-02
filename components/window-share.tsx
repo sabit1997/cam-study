@@ -20,7 +20,9 @@ export default function WindowShare({ windowId, onAspectRatioDetected }: WindowS
   const trackEndedHandlerRef = useRef<(() => void) | null>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [started, setStarted] = useState(false);
-  const [isBlur, setIsBlur] = useState(false);
+  const [isBlur, setIsBlur] = useState(
+    () => localStorage.getItem(`window-${windowId}-share-blur`) === "true"
+  );
   const [blurAmount, setBlurAmount] = useState(4);
   const [isPickerLoading, setIsPickerLoading] = useState(false);
 
@@ -60,6 +62,10 @@ export default function WindowShare({ windowId, onAspectRatioDetected }: WindowS
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Zustand setter 참조는 안정적이므로 의존성 배열 제외 안전
   }, [windowId]);
+
+  useEffect(() => {
+    localStorage.setItem(`window-${windowId}-share-blur`, String(isBlur));
+  }, [isBlur, windowId]);
 
   useEffect(() => {
     if (started && stream && videoRef.current) {

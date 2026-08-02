@@ -15,7 +15,9 @@ const serverWindow: Window = {
 };
 
 describe("window store", () => {
-  beforeEach(() => useWindowStore.getState().setWindows([]));
+  beforeEach(() =>
+    useWindowStore.setState({ windows: [], pendingWindowUpdates: {} })
+  );
 
   it("accepts the server state for an existing window", () => {
     useWindowStore.getState().setWindows([
@@ -41,5 +43,37 @@ describe("window store", () => {
       { id: 2, zIndex: 8 },
       { id: 3, zIndex: 12 },
     ]);
+  });
+
+  it("preserves local bounds only while the latest update is pending", () => {
+    const localWindow = { ...serverWindow, x: 999, zIndex: 7 };
+    useWindowStore.getState().setWindows([localWindow]);
+    const generation = useWindowStore.getState().markWindowPending(1);
+
+    useWindowStore.getState().mergeWindows([serverWindow]);
+    expect(useWindowStore.getState().windows[0]).toEqual(localWindow);
+
+    useWindowStore.getState().clearWindowPending(1, generation);
+    useWindowStore.getState().mergeWindows([serverWindow]);
+    expect(useWindowStore.getState().windows[0]).toEqual(serverWindow);
+  });
+
+  it("does not let an older request clear a newer pending update", () => {
+    const olderGeneration = useWindowStore.getState().markWindowPending(1);
+    const latestGeneration = useWindowStore.getState().markWindowPending(1);
+
+    useWindowStore.getState().clearWindowPending(1, olderGeneration);
+
+    expect(useWindowStore.getState().pendingWindowUpdates[1]).toBe(
+      latestGeneration
+    );
+  });
+
+  it("clears pending updates when the window list is reset", () => {
+    useWindowStore.getState().markWindowPending(1);
+
+    useWindowStore.getState().setWindows([]);
+
+    expect(useWindowStore.getState().pendingWindowUpdates).toEqual({});
   });
 });
