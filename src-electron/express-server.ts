@@ -35,12 +35,21 @@ export function createExpressApp(staticDir: string) {
   });
 
   // 나머지 /api/* → 백엔드 프록시 (Cookie 헤더 자동 포워딩)
+  // 패키징된 Electron은 http://localhost:<랜덤포트>에서 실행돼 클라이언트
+  // Origin이 백엔드 whitelist에 없어 403이 난다. proxyReq에서 Origin/Referer를
+  // 제거해 백엔드가 서버-투-서버 호출처럼 취급하도록 한다.
   app.use(
     "/api",
     createProxyMiddleware({
       target: BACKEND_URL,
       changeOrigin: true,
       pathRewrite: { "^/api": "" },
+      on: {
+        proxyReq: (proxyReq) => {
+          proxyReq.removeHeader("origin");
+          proxyReq.removeHeader("referer");
+        },
+      },
     })
   );
 
