@@ -7,6 +7,7 @@ import {
   clearStreamById,
 } from "@/utils/shareService";
 import { toast } from "sonner";
+import useBlurKeyboardControl from "@/hooks/useBlurKeyboardControl";
 
 interface WindowShareProps {
   windowId: number;
@@ -25,6 +26,8 @@ export default function WindowShare({ windowId, onAspectRatioDetected }: WindowS
   );
   const [blurAmount, setBlurAmount] = useState(4);
   const [isPickerLoading, setIsPickerLoading] = useState(false);
+
+  useBlurKeyboardControl(windowId, isBlur, setBlurAmount);
 
   // track.getSettings()로 스트림 비율 감지 후 부모에게 전달
   const reportAspectRatio = useCallback(

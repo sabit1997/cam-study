@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { FiCamera, FiEye, FiEyeOff, FiX } from "react-icons/fi";
 import { toast } from "sonner";
+import useBlurKeyboardControl from "@/hooks/useBlurKeyboardControl";
 
 const CAM_DEVICE_LS_KEY = "cam-device-id";
 const CAM_STREAMING_LS_KEY = "cam-streaming";
@@ -22,6 +23,8 @@ const CameraView = ({ windowId, onAspectRatioDetected }: CameraViewProps) => {
   );
   const [blurAmount, setBlurAmount] = useState(4);
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+
+  useBlurKeyboardControl(windowId, isBlur, setBlurAmount);
 
   useEffect(() => {
     isMountedRef.current = true;

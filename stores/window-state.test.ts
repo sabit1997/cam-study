@@ -16,7 +16,11 @@ const serverWindow: Window = {
 
 describe("window store", () => {
   beforeEach(() =>
-    useWindowStore.setState({ windows: [], pendingWindowUpdates: {} })
+    useWindowStore.setState({
+      windows: [],
+      focusedWindowId: null,
+      pendingWindowUpdates: {},
+    })
   );
 
   it("accepts the server state for an existing window", () => {
@@ -43,6 +47,15 @@ describe("window store", () => {
       { id: 2, zIndex: 8 },
       { id: 3, zIndex: 12 },
     ]);
+    expect(useWindowStore.getState().focusedWindowId).toBe(1);
+  });
+
+  it("tracks focus even when the clicked window is already on top", () => {
+    useWindowStore.getState().setWindows([serverWindow, { ...serverWindow, id: 2, zIndex: 2 }]);
+
+    useWindowStore.getState().bringToFront(2);
+
+    expect(useWindowStore.getState().focusedWindowId).toBe(2);
   });
 
   it("preserves local bounds only while the latest update is pending", () => {

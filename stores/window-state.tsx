@@ -4,8 +4,16 @@ import { create } from "zustand";
 
 let nextWindowUpdateGeneration = 0;
 
+function getTopWindowId(windows: Window[]) {
+  return windows.reduce<Window | undefined>(
+    (top, window) => (!top || window.zIndex > top.zIndex ? window : top),
+    undefined
+  )?.id ?? null;
+}
+
 interface WindowState {
   windows: Window[];
+  focusedWindowId: number | null;
   pendingWindowUpdates: Record<number, number>;
   setWindows: (windows: Window[]) => void;
   mergeWindows: (serverWindows: Window[]) => void;
@@ -25,15 +33,20 @@ interface WindowState {
 
 export const useWindowStore = create<WindowState>()((set) => ({
   windows: [],
+  focusedWindowId: null,
   pendingWindowUpdates: {},
-  setWindows: (windows) => set(() => ({ windows, pendingWindowUpdates: {} })),
+  setWindows: (windows) =>
+    set(() => ({
+      windows,
+      focusedWindowId: getTopWindowId(windows),
+      pendingWindowUpdates: {},
+    })),
 
   mergeWindows: (serverWindows) =>
     set((state) => {
       const maxLocalZ = state.windows.reduce((m, w) => Math.max(m, w.zIndex || 0), 0);
       let nextZ = maxLocalZ;
-      return {
-        windows: serverWindows.map((sw) => {
+      const windows = serverWindows.map((sw) => {
           const lw = state.windows.find((w) => w.id === sw.id);
           if (!lw) {
             // 새 창은 현재 로컬 최고 zIndex 위에 배치
@@ -51,7 +64,12 @@ export const useWindowStore = create<WindowState>()((set) => ({
             };
           }
           return sw;
-        }),
+        });
+      return {
+        windows,
+        focusedWindowId: windows.some((w) => w.id === state.focusedWindowId)
+          ? state.focusedWindowId
+          : getTopWindowId(windows),
       };
     }),
 
@@ -91,6 +109,10 @@ export const useWindowStore = create<WindowState>()((set) => ({
       delete pendingWindowUpdates[id];
       return {
         windows: state.windows.filter((w) => w.id !== id),
+        focusedWindowId:
+          state.focusedWindowId === id
+            ? getTopWindowId(state.windows.filter((w) => w.id !== id))
+            : state.focusedWindowId,
         pendingWindowUpdates,
       };
     }),
@@ -103,9 +125,10 @@ export const useWindowStore = create<WindowState>()((set) => ({
         (max, window) => Math.max(max, window.zIndex || 0),
         0
       );
-      if (target.zIndex === topZ) return state;
+      if (target.zIndex === topZ) return { focusedWindowId: id };
 
       return {
+        focusedWindowId: id,
         windows: state.windows.map((w) =>
           w.id === id ? { ...w, zIndex: topZ + 1 } : w
         ),
