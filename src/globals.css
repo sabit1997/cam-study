@@ -14,10 +14,14 @@
 html {
   font-size: var(--font-size);
   font-family: "Inter", sans-serif;
+  /* radial-gradient은 html 박스 크기를 기준으로 렌더링된다. 스크롤 가능한
+     페이지에서 html이 뷰포트보다 커지면 gradient가 늘어져 줄무늬처럼 보이므로
+     background-attachment: fixed로 뷰포트에 고정한다. */
   background: radial-gradient(ellipse at 12% 18%, #c8f0dc 0%, transparent 48%),
               radial-gradient(ellipse at 88% 82%, #fcd8ec 0%, transparent 48%),
               radial-gradient(ellipse at 55% 45%, #fff8e0 0%, transparent 60%),
               #fdfcf8;
+  background-attachment: fixed;
   color: #374151;
 }
 
@@ -26,6 +30,7 @@ html.dark {
               radial-gradient(ellipse at 88% 82%, #130c1e 0%, transparent 48%),
               radial-gradient(ellipse at 55% 45%, #0f1823 0%, transparent 60%),
               #0d1117;
+  background-attachment: fixed;
   color: #e5e7eb;
   color-scheme: dark;
 }

@@ -9,11 +9,11 @@ const YOUTUBE_ID_RE = /^[a-zA-Z0-9_-]{11}$/;
 
 export function createExpressApp(staticDir: string) {
   const app = express();
-  app.use(express.json());
   app.use(express.static(staticDir));
 
-  // Vercel 함수가 YouTube API 키를 보관한다. 데스크톱 앱에는 키를 넣지 않는다.
-  app.post("/api/check-youtube", async (req, res) => {
+  // express.json()을 전역으로 걸면 request 스트림이 소비되어 아래 프록시가
+  // 백엔드로 body를 못 넘긴다(→ 504). JSON 파싱이 실제로 필요한 라우트에만 적용.
+  app.post("/api/check-youtube", express.json(), async (req, res) => {
     const { videoId } = req.body as { videoId?: string };
 
     if (!videoId || !YOUTUBE_ID_RE.test(videoId)) {
