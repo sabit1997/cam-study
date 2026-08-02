@@ -7,6 +7,7 @@ interface WindowState {
   setWindows: (windows: Window[]) => void;
   mergeWindows: (serverWindows: Window[]) => void;
   updateWindowType: (id: number, type: Window["type"]) => void;
+  removeWindow: (id: number) => void;
   bringToFront: (id: number) => void;
   updateWindowBounds: (
     id: number,
@@ -41,6 +42,12 @@ export const useWindowStore = create<WindowState>()((set) => ({
   updateWindowType: (id, type) =>
     set((state) => ({
       windows: state.windows.map((w) => (w.id === id ? { ...w, type } : w)),
+    })),
+
+  // 낙관적 제거 — 서버 DELETE는 별도로 진행. 실패 시 refetch로 복원됨.
+  removeWindow: (id) =>
+    set((state) => ({
+      windows: state.windows.filter((w) => w.id !== id),
     })),
 
   bringToFront: (id) =>

@@ -2,7 +2,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { FiAlertCircle, FiSkipBack, FiSkipForward, FiX, FiPlus, FiChevronDown } from "react-icons/fi";
 import { IoLogoYoutube } from "react-icons/io5";
-import { toast } from "sonner";
 import YouTube, { YouTubeEvent } from "react-youtube";
 import { Window } from "@/types/windows";
 import { usePatchWindow } from "@/apis/services/window-services/mutation";
@@ -66,29 +65,34 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
       return;
     }
 
+    // 임베드 여부/제목은 부가 정보. check API가 장애여도(예: Vercel 500)
+    // 영상 자체는 추가한다 — 임베드 불가면 iframe이 자체적으로 안내 표시.
+    let title = `Video ${videos.length + 1}`;
     try {
       const res = await fetch("/api/check-youtube", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ videoId: id }),
       });
-      if (!res.ok) throw new Error();
-      const data = await res.json();
-      if (!data.isEmbeddable) {
-        setError("이 영상은 임베드가 불가합니다");
-        setChecking(false);
-        return;
+      if (res.ok) {
+        const data = await res.json();
+        if (data.isEmbeddable === false) {
+          setError("이 영상은 임베드가 불가합니다");
+          setChecking(false);
+          return;
+        }
+        if (data.title) title = data.title;
       }
-      const newVideo: YtVideo = { id, title: data.title || `Video ${videos.length + 1}` };
-      const next = [...videos, newVideo];
-      setVideos(next);
-      syncToServer(next);
-      setInputUrl("");
     } catch {
-      toast.error("영상 확인에 실패했습니다.");
-    } finally {
-      setChecking(false);
+      // 네트워크/서버 장애는 무시하고 fallback 제목으로 진행
     }
+
+    const newVideo: YtVideo = { id, title };
+    const next = [...videos, newVideo];
+    setVideos(next);
+    syncToServer(next);
+    setInputUrl("");
+    setChecking(false);
   };
 
   const removeVideo = (idx: number) => {

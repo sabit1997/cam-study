@@ -65,6 +65,11 @@ export const useDeleteWindow = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: WINDOW_QUERY_KEY });
     },
+    // 낙관적으로 로컬에서 이미 제거했는데 서버 삭제가 실패하면
+    // refetch로 서버 상태를 다시 가져와 자동 복원한다.
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: WINDOW_QUERY_KEY });
+    },
     meta: {
       SUCCESS_MESSAGE: "창이 삭제되었습니다.",
       ERROR_SOURCE: "[창 삭제 실패]",

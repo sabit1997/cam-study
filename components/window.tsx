@@ -115,6 +115,7 @@ const AddWindow = ({ window }: AddWindowProps) => {
   // Granular subscriptions — other windows' zIndex changes don't re-render this component
   const bringToFront = useWindowStore((s) => s.bringToFront);
   const updateWindowBounds = useWindowStore((s) => s.updateWindowBounds);
+  const removeWindow = useWindowStore((s) => s.removeWindow);
   const currentZIndex = useWindowStore(
     (s) => s.windows.find((w) => w.id === window.id)?.zIndex ?? window.zIndex
   );
@@ -181,8 +182,11 @@ const AddWindow = ({ window }: AddWindowProps) => {
   const handleClose = useCallback(() => {
     if (isDeletePending) return;
     clearWinTitle(id);
+    // 즉시 UI에서 제거해 클릭 반응성 확보. 서버 DELETE는 백그라운드로 처리하고
+    // 실패 시 mutation의 onError → invalidate로 refetch되어 자동 복원된다.
+    removeWindow(id);
     deleteWindow(id);
-  }, [isDeletePending, deleteWindow, id]);
+  }, [isDeletePending, deleteWindow, removeWindow, id]);
 
   const handleMinimize = useCallback(() => {
     setIsMinimized((prev) => {
