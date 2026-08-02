@@ -1,11 +1,13 @@
 import express from "express";
 import { createProxyMiddleware } from "http-proxy-middleware";
 import path from "path";
+import type { AddressInfo } from "net";
 
 const BACKEND_URL = "https://api.oeyo-cam.site";
 const YOUTUBE_ID_RE = /^[a-zA-Z0-9_-]{11}$/;
 
-export async function startExpressServer(staticDir: string, port: number): Promise<void> {
+// 실제 바인딩된 포트를 반환 (port 0 → OS가 빈 포트 자동 할당)
+export async function startExpressServer(staticDir: string): Promise<number> {
   const app = express();
   app.use(express.json());
   app.use(express.static(staticDir));
@@ -61,7 +63,9 @@ export async function startExpressServer(staticDir: string, port: number): Promi
   });
 
   return new Promise((resolve, reject) => {
-    const server = app.listen(port, "127.0.0.1", () => resolve());
+    const server = app.listen(0, "127.0.0.1", () => {
+      resolve((server.address() as AddressInfo).port);
+    });
     server.on("error", reject);
   });
 }

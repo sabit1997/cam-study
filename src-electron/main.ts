@@ -180,7 +180,7 @@ function installMacUpdate() {
   app.quit();
 }
 
-async function createWindow() {
+async function createWindow(port?: number) {
   const win = new BrowserWindow({
     width: 1024,
     height: 768,
@@ -197,7 +197,7 @@ async function createWindow() {
   });
   mainWindow = win;
 
-  const url = isDev ? "http://localhost:3000" : "http://localhost:3001";
+  const url = isDev ? "http://localhost:3000" : `http://localhost:${port}`;
   await win.loadURL(url);
   setupAutoUpdater();
 }
@@ -277,6 +277,8 @@ app.whenReady().then(async () => {
     { useSystemPicker: true }
   );
 
+  let serverPort: number | undefined;
+
   if (!isDev) {
     const staticDir = path.join(
       process.resourcesPath,
@@ -285,7 +287,7 @@ app.whenReady().then(async () => {
     );
 
     try {
-      await startExpressServer(staticDir, 3001);
+      serverPort = await startExpressServer(staticDir);
     } catch (err) {
       console.error("Express 서버 시작 실패:", err);
       dialog.showErrorBox(
@@ -297,7 +299,7 @@ app.whenReady().then(async () => {
     }
   }
 
-  createWindow();
+  createWindow(serverPort);
 });
 
 app.on("activate", () => {
