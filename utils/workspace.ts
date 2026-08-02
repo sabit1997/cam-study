@@ -1,11 +1,12 @@
 export const NAVIGATION_HEIGHT = 36;
-export const WORKSPACE_WIDTH = 1920;
-export const WORKSPACE_HEIGHT = 1080 - NAVIGATION_HEIGHT;
+export const REFERENCE_WIDTH = 1920;
+export const REFERENCE_HEIGHT = 1080;
 
-export function getWorkspaceScale(viewportWidth: number, viewportHeight: number) {
+export function getPositionScale(viewportWidth: number, viewportHeight: number) {
   return Math.min(
-    viewportWidth / WORKSPACE_WIDTH,
-    Math.max(0, viewportHeight - NAVIGATION_HEIGHT) / WORKSPACE_HEIGHT
+    viewportWidth / REFERENCE_WIDTH,
+    Math.max(0, viewportHeight - NAVIGATION_HEIGHT) /
+      (REFERENCE_HEIGHT - NAVIGATION_HEIGHT)
   );
 }
 
@@ -13,10 +14,15 @@ export function clampWindowPosition(
   x: number,
   y: number,
   width: number,
-  height: number
+  height: number,
+  viewportWidth: number,
+  viewportHeight: number
 ) {
   return {
-    x: Math.max(0, Math.min(x, Math.max(0, WORKSPACE_WIDTH - width))),
-    y: Math.max(0, Math.min(y, Math.max(0, WORKSPACE_HEIGHT - height))),
+    x: Math.max(0, Math.min(x, Math.max(0, viewportWidth - width))),
+    y: Math.max(
+      0,
+      Math.min(y, Math.max(0, viewportHeight - NAVIGATION_HEIGHT - height))
+    ),
   };
 }

@@ -20,7 +20,7 @@ if (process.platform === "darwin") {
 
 const isDev = !app.isPackaged;
 const DEV_APP_URL = "http://localhost:3000";
-const RELEASES_URL = "https://github.com/sabit1997/cam-study/releases/latest";
+const LOCAL_SESSION_COOKIE_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 
 let mainWindow: BrowserWindow | null = null;
 let appUrl = isDev ? DEV_APP_URL : "";
@@ -47,6 +47,29 @@ function openExternalUrl(url: string) {
   } catch {
     // 잘못된 URL은 무시한다.
   }
+}
+
+function persistLocalSessionCookies() {
+  session.defaultSession.cookies.on("changed", (_event, cookie, _cause, removed) => {
+    const domain = cookie.domain?.replace(/^\./, "");
+    if (removed || !cookie.session || (domain !== "localhost" && domain !== "127.0.0.1")) {
+      return;
+    }
+
+    void session.defaultSession.cookies
+      .set({
+        url: `${cookie.secure ? "https" : "http"}://${domain}${cookie.path ?? "/"}`,
+        name: cookie.name,
+        value: cookie.value,
+        domain: cookie.domain,
+        path: cookie.path,
+        secure: cookie.secure,
+        httpOnly: cookie.httpOnly,
+        sameSite: cookie.sameSite,
+        expirationDate: Math.floor(Date.now() / 1000) + LOCAL_SESSION_COOKIE_MAX_AGE_SECONDS,
+      })
+      .catch((err) => console.error("세션 쿠키 저장 실패:", err));
+  });
 }
 
 // Electron은 getDisplayMedia에서 video가 요청됐는데 callback에 video 스트림을
@@ -79,8 +102,8 @@ function setupAutoUpdater() {
   if (isDev || autoUpdaterStarted) return;
   autoUpdaterStarted = true;
 
-  autoUpdater.autoDownload = process.platform !== "darwin";
-  autoUpdater.autoInstallOnAppQuit = process.platform !== "darwin";
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
   autoUpdater.logger = { info: console.log, warn: console.warn, error: console.error, debug: console.debug }; // 상세 진단 로그
 
   autoUpdater.on("update-available", (info) => {
@@ -127,11 +150,7 @@ ipcMain.handle("update:check-state", () => {
 
 // 렌더러에서 "재시작 후 업데이트 설치" 요청 처리
 ipcMain.on("update:restart", () => {
-  if (process.platform === "darwin") {
-    openExternalUrl(RELEASES_URL);
-  } else {
-    autoUpdater.quitAndInstall(false, true);
-  }
+  autoUpdater.quitAndInstall(false, true);
 });
 
 async function createWindow() {
@@ -167,6 +186,7 @@ async function createWindow() {
 }
 
 app.whenReady().then(async () => {
+  persistLocalSessionCookies();
   session.defaultSession.webRequest.onBeforeSendHeaders(
     { urls: ["*://*.youtube.com/*", "*://*.youtube-nocookie.com/*"] },
     (details, callback) => {

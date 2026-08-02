@@ -22,7 +22,6 @@ function clearDismissedVersion() {
 }
 
 export default function UpdateNotifier() {
-  const isMac = window.electronAPI?.platform === "darwin";
   const [state, setState] = useState<UpdateState>({ phase: "idle" });
   const [dismissed, setDismissed] = useState(false);
   // available/downloading 단계에서 버전 추적 (dismiss 저장용)
@@ -99,18 +98,9 @@ export default function UpdateNotifier() {
             <div className="flex-1 leading-snug">
               <p className="font-semibold text-[#3d6b28] text-xs">새 버전 {state.version}</p>
               <p className="text-[11px] text-[#6a9f50]">
-                {isMac ? "다운로드 페이지에서 설치해 주세요" : "자동으로 다운로드됩니다"}
+                자동으로 다운로드됩니다
               </p>
             </div>
-            {isMac && (
-              <button
-                onClick={() => window.electronAPI?.restartAndUpdate()}
-                className="flex-shrink-0 text-xs font-semibold px-3 py-1.5 rounded-full text-white transition-opacity hover:opacity-80"
-                style={{ background: "#8fb870" }}
-              >
-                다운로드
-              </button>
-            )}
             <button onClick={dismissCurrent} className="text-[#a0c888] hover:text-[#6a9f50]">
               <LuX size={13} />
             </button>

@@ -19,8 +19,9 @@ import React, {
 } from "react";
 import TooltipWrapper from "./tooltip-wrapper";
 import { useThemeStore } from "@/stores/theme-state";
+import useViewportSize from "@/hooks/useViewportSize";
 import { TypeList, WindowPatchDto } from "@/types/dto";
-import { clampWindowPosition } from "@/utils/workspace";
+import { clampWindowPosition, getPositionScale } from "@/utils/workspace";
 
 // 창 타입별 컴포넌트를 lazy load — 초기 번들에 포함되지 않고 첫 사용 시 로드
 const CameraView = lazy(() => import("./camera-view"));
@@ -31,7 +32,6 @@ const Timer = lazy(() => import("./timer"));
 
 interface AddWindowProps {
   window: Window;
-  scale: number;
 }
 
 const TITLEBAR_H = 38;
@@ -91,7 +91,7 @@ function setIframesPointerEvents(value: "none" | "auto") {
   });
 }
 
-const AddWindow = ({ window, scale }: AddWindowProps) => {
+const AddWindow = ({ window }: AddWindowProps) => {
   const [isLocked, setIsLocked] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [editTitle, setEditTitle] = useState(false);
@@ -122,11 +122,19 @@ const AddWindow = ({ window, scale }: AddWindowProps) => {
   );
 
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
+  const { vw, vh } = useViewportSize();
   const { id, type, x, y, width, height } = window;
+  const scale = getPositionScale(vw, vh);
+  const pxX = x * scale;
+  const pxY = y * scale;
+  const pxW = Math.max(width * scale, MIN_PX[type]?.w ?? 240);
+  const pxH = Math.max(height * scale, MIN_PX[type]?.h ?? 135);
 
   // Local controlled state for Rnd — completely decoupled from Zustand during interaction
-  const [pos, setPos] = useState(() => clampWindowPosition(x, y, width, height));
-  const [sz, setSz] = useState({ w: width, h: height });
+  const [pos, setPos] = useState(() =>
+    clampWindowPosition(pxX, pxY, pxW, pxH, vw, vh)
+  );
+  const [sz, setSz] = useState({ w: pxW, h: pxH });
 
   // Prevent useEffect from overriding pos/sz during active drag or resize
   const dragging = useRef(false);
@@ -159,13 +167,13 @@ const AddWindow = ({ window, scale }: AddWindowProps) => {
     const w = szRef.current.w;
     const correctH = Math.round(w / contentRatio) + TITLEBAR_H;
     if (Math.abs(correctH - szRef.current.h) < 4) return; // 이미 거의 맞으면 생략
-    const clamped = clampWindowPosition(pos.x, pos.y, w, correctH);
+    const clamped = clampWindowPosition(pos.x, pos.y, w, correctH, vw, vh);
     setPos(clamped);
     setSz({ w, h: correctH });
-    const rx = Math.round(clamped.x);
-    const ry = Math.round(clamped.y);
-    const rw = Math.round(w);
-    const rh = Math.round(correctH);
+    const rx = Math.round(clamped.x / scale);
+    const ry = Math.round(clamped.y / scale);
+    const rw = Math.round(w / scale);
+    const rh = Math.round(correctH / scale);
     updateWindowBounds(id, rx, ry, rw, rh);
     debouncedServerUpdate(
       rx,
@@ -176,13 +184,13 @@ const AddWindow = ({ window, scale }: AddWindowProps) => {
     );
   }, [contentRatio]); // eslint-disable-line react-hooks/exhaustive-deps -- rnd 인스턴스 ref는 React 관리 밖이므로 제외 안전
 
-  // Sync from the store only when not interacting.
+  // Sync from the store/viewport only when not interacting.
   useEffect(() => {
     if (dragging.current || resizing.current) return;
-    const clamped = clampWindowPosition(x, y, width, height);
+    const clamped = clampWindowPosition(pxX, pxY, pxW, pxH, vw, vh);
     setPos(clamped);
-    setSz({ w: width, h: height });
-  }, [x, y, width, height]);
+    setSz({ w: pxW, h: pxH });
+  }, [pxX, pxY, pxW, pxH, vw, vh]);
 
   useEffect(() => {
     const saved = getWinTitles();
@@ -204,11 +212,11 @@ const AddWindow = ({ window, scale }: AddWindowProps) => {
         prevHeightRef.current = sz.h;
         setSz((s) => ({ ...s, h: TITLEBAR_H }));
       } else {
-        setSz((s) => ({ ...s, h: prevHeightRef.current ?? height }));
+        setSz((s) => ({ ...s, h: prevHeightRef.current ?? pxH }));
       }
       return !prev;
     });
-  }, [sz.h, height]);
+  }, [sz.h, pxH]);
 
   const debouncedServerUpdate = useDebouncedCallback(
     (rx: number, ry: number, rw: number, rh: number, generation: number) => {
@@ -297,7 +305,6 @@ const AddWindow = ({ window, scale }: AddWindowProps) => {
     <Rnd
       position={{ x: pos.x, y: pos.y }}
       size={{ width: sz.w, height: sz.h }}
-      scale={scale}
       minWidth={minW}
       minHeight={isMinimized ? TITLEBAR_H : minH}
       bounds="parent"
@@ -341,15 +348,15 @@ const AddWindow = ({ window, scale }: AddWindowProps) => {
       onDragStop={(_e, d) => {
         dragging.current = false;
         setIframesPointerEvents("auto");
-        const clamped = clampWindowPosition(d.x, d.y, sz.w, sz.h);
+        const clamped = clampWindowPosition(d.x, d.y, sz.w, sz.h, vw, vh);
         // Update local state — React 18 batches this with react-draggable's own
         // setState({dragging:false}), so position prop is correct in the same render
         // that exits drag mode → no snapback.
         setPos(clamped);
-        const rx = Math.round(clamped.x);
-        const ry = Math.round(clamped.y);
-        const rw = Math.round(sz.w);
-        const rh = Math.round(sz.h);
+        const rx = Math.round(clamped.x / scale);
+        const ry = Math.round(clamped.y / scale);
+        const rw = Math.round(sz.w / scale);
+        const rh = Math.round(sz.h / scale);
         updateWindowBounds(id, rx, ry, rw, rh);
         debouncedServerUpdate(rx, ry, rw, rh, markWindowPending(id));
       }}
@@ -373,13 +380,20 @@ const AddWindow = ({ window, scale }: AddWindowProps) => {
             newH = Math.round(newW / contentRatio) + TITLEBAR_H;
           }
         }
-        const clamped = clampWindowPosition(position.x, position.y, newW, newH);
+        const clamped = clampWindowPosition(
+          position.x,
+          position.y,
+          newW,
+          newH,
+          vw,
+          vh
+        );
         setPos(clamped);
         setSz({ w: newW, h: newH });
-        const rx = Math.round(clamped.x);
-        const ry = Math.round(clamped.y);
-        const rw = Math.round(newW);
-        const rh = Math.round(newH);
+        const rx = Math.round(clamped.x / scale);
+        const ry = Math.round(clamped.y / scale);
+        const rw = Math.round(newW / scale);
+        const rh = Math.round(newH / scale);
         updateWindowBounds(id, rx, ry, rw, rh);
         debouncedServerUpdate(rx, ry, rw, rh, markWindowPending(id));
       }}
