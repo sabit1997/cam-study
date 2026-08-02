@@ -9,6 +9,9 @@ import {
   Streams,
 } from "electron";
 import { autoUpdater } from "electron-updater";
+import { spawn } from "child_process";
+import fs from "fs";
+import os from "os";
 import path from "path";
 import { startExpressServer } from "./express-server";
 
@@ -103,7 +106,7 @@ function setupAutoUpdater() {
   autoUpdaterStarted = true;
 
   autoUpdater.autoDownload = true;
-  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.autoInstallOnAppQuit = process.platform !== "darwin";
   autoUpdater.logger = { info: console.log, warn: console.warn, error: console.error, debug: console.debug }; // 상세 진단 로그
 
   autoUpdater.on("update-available", (info) => {
@@ -150,8 +153,49 @@ ipcMain.handle("update:check-state", () => {
 
 // 렌더러에서 "재시작 후 업데이트 설치" 요청 처리
 ipcMain.on("update:restart", () => {
+  if (process.platform === "darwin") {
+    installMacUpdate();
+    return;
+  }
   autoUpdater.quitAndInstall(false, true);
 });
+
+function installMacUpdate() {
+  const helper = (autoUpdater as unknown as Record<string, unknown>).downloadedUpdateHelper as
+    | { file?: string | null; cacheDir?: string }
+    | null
+    | undefined;
+  const zipPath = helper?.file ?? path.join(helper?.cacheDir ?? os.tmpdir(), "update.zip");
+
+  if (!fs.existsSync(zipPath)) {
+    autoUpdater.quitAndInstall(false, true);
+    return;
+  }
+
+  const appBundlePath = process.execPath.replace(/\/Contents\/MacOS\/[^/]+$/, "");
+  const tempDir = path.join(os.tmpdir(), `cam-study-update-${Date.now()}`);
+  const scriptPath = path.join(os.tmpdir(), `cam-study-update-${Date.now()}.sh`);
+  const script = [
+    "#!/bin/bash",
+    "sleep 2",
+    `TEMP="${tempDir}"`,
+    `ZIP="${zipPath}"`,
+    `APP="${appBundlePath}"`,
+    "mkdir -p \"$TEMP\"",
+    "ditto -xk \"$ZIP\" \"$TEMP\" 2>/dev/null || unzip -q \"$ZIP\" -d \"$TEMP\"",
+    "NEW_APP=$(find \"$TEMP\" -maxdepth 1 -name \"*.app\" | head -1)",
+    "[ -z \"$NEW_APP\" ] && exit 1",
+    "rm -rf \"$APP\"",
+    "cp -R \"$NEW_APP\" \"$APP\"",
+    "rm -rf \"$TEMP\"",
+    "open \"$APP\"",
+  ].join("\n");
+
+  fs.writeFileSync(scriptPath, script, { mode: 0o755 });
+  const child = spawn("bash", [scriptPath], { detached: true, stdio: "ignore" });
+  child.unref();
+  app.quit();
+}
 
 async function createWindow() {
   if (!appUrl) throw new Error("앱 URL이 초기화되지 않았습니다.");
