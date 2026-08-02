@@ -284,10 +284,11 @@ app.whenReady().then(async () => {
     try {
       serverPort = await startExpressServer(staticDir);
     } catch (err) {
-      console.error("Express 서버 시작 실패:", err);
+      const msg = err instanceof Error ? `${err.message}\n\n${err.stack ?? ""}` : String(err);
+      console.error("Express 서버 시작 실패:", msg);
       dialog.showErrorBox(
         "서버 시작 실패",
-        "Express 서버가 시작되지 않았습니다.\n앱을 다시 시작해 주세요."
+        `staticDir: ${staticDir}\n\n${msg}`
       );
       app.quit();
       return;
