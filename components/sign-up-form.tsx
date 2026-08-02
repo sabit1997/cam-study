@@ -1,4 +1,3 @@
-"use client";
 
 import { useSignup } from "@/apis/services/auth-services/mutation";
 import { useNavigate, Link } from "react-router-dom";

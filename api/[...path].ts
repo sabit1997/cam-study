@@ -7,15 +7,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const apiPath = "/" + pathSegments.join("/");
   const search = req.url?.includes("?") ? req.url.slice(req.url.indexOf("?")) : "";
 
+  // hop-by-hop 헤더는 프록시가 직접 제어하므로 제외하고 나머지 전체 포워딩
+  const HOP_BY_HOP = new Set(["host", "connection", "transfer-encoding", "te", "trailer", "keep-alive", "proxy-authorization", "upgrade"]);
   const headersToForward = new Headers();
-  const cookie = req.headers.cookie;
-  if (cookie) headersToForward.set("Cookie", cookie);
-
-  const contentType = req.headers["content-type"];
-  if (contentType) headersToForward.set("Content-Type", contentType);
-
-  const xTimezone = req.headers["x-user-timezone"];
-  if (xTimezone) headersToForward.set("X-User-Timezone", xTimezone as string);
+  for (const [key, value] of Object.entries(req.headers)) {
+    if (!HOP_BY_HOP.has(key.toLowerCase()) && value !== undefined) {
+      headersToForward.set(key, Array.isArray(value) ? value.join(", ") : value);
+    }
+  }
 
   try {
     let body: BodyInit | undefined;
@@ -30,8 +29,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       cache: "no-store",
     });
 
-    const setCookie = upstream.headers.get("set-cookie");
-    if (setCookie) res.setHeader("Set-Cookie", setCookie);
+    const setCookies = upstream.headers.getSetCookie();
+    if (setCookies.length) res.setHeader("Set-Cookie", setCookies);
 
     const upstreamContentType = upstream.headers.get("content-type");
     if (upstreamContentType) res.setHeader("Content-Type", upstreamContentType);

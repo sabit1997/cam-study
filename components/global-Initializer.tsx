@@ -1,4 +1,3 @@
-"use client";
 
 import { useThemeStore } from "@/stores/theme-state";
 import { applyThemeColors } from "@/utils/set-theme-color";

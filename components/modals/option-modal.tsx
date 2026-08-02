@@ -1,4 +1,3 @@
-"use client";
 
 import { IoMdClose } from "react-icons/io";
 import { useState, useEffect } from "react";

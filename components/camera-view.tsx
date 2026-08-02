@@ -1,4 +1,3 @@
-"use client";
 
 import { useEffect, useRef, useState } from "react";
 import { FiCamera, FiEye, FiEyeOff, FiX } from "react-icons/fi";

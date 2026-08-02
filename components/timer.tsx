@@ -1,4 +1,3 @@
-"use client";
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { IoPlay, IoPauseSharp } from "react-icons/io5";

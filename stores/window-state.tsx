@@ -1,4 +1,3 @@
-"use client";
 
 import { Window } from "@/types/windows";
 import { create } from "zustand";
@@ -52,8 +51,9 @@ export const useWindowStore = create<WindowState>()((set) => ({
       const topZ = sorted[sorted.length - 1]?.zIndex ?? 0;
       if (sorted[sorted.length - 1]?.id === id) return state;
 
-      // zIndex가 windows.length + 1 초과 시 1부터 재정규화
-      const needsNormalize = topZ + 1 > state.windows.length * 2;
+      // 누적된 zIndex가 MAX_Z_SLACK 이상 벌어지면 1부터 재정규화
+      const MAX_Z_SLACK = state.windows.length + 4;
+      const needsNormalize = topZ + 1 > MAX_Z_SLACK;
       if (needsNormalize) {
         const reordered = sorted
           .filter((w) => w.id !== id)

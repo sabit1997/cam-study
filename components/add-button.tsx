@@ -1,4 +1,3 @@
-"use client";
 
 import { useCreateWindow } from "@/apis/services/window-services/mutation";
 import { useWindowStore } from "@/stores/window-state";

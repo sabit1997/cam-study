@@ -1,4 +1,3 @@
-"use client";
 
 import { useEffect, useState } from "react";
 import { NOTICE_VERSION } from "@/constants/NOTICE_VERSION";

@@ -1,4 +1,3 @@
-"use client";
 
 import { useRef, useState, useEffect, useCallback } from "react";
 import { FiMonitor, FiEye, FiEyeOff, FiX } from "react-icons/fi";
@@ -59,7 +58,7 @@ export default function WindowShare({ windowId, onAspectRatioDetected }: WindowS
     return () => {
       clearStreamById(windowId);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Zustand setter 참조는 안정적이므로 의존성 배열 제외 안전
   }, [windowId]);
 
   useEffect(() => {

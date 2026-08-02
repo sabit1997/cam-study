@@ -1,4 +1,3 @@
-"use client";
 
 import { FiLock, FiUnlock, FiCheck, FiEdit2 } from "react-icons/fi";
 
@@ -164,7 +163,7 @@ const AddWindow = ({ window }: AddWindowProps) => {
     const rh = Math.round(correctH / scale);
     updateWindowBounds(id, rx, ry, rw, rh);
     debouncedServerUpdate(rx, ry, rw, rh);
-  }, [contentRatio]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [contentRatio]); // eslint-disable-line react-hooks/exhaustive-deps -- rnd 인스턴스 ref는 React 관리 밖이므로 제외 안전
 
   // Sync from store/viewport only when not interacting (e.g. page load, viewport resize)
   useEffect(() => {

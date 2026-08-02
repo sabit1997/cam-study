@@ -1,4 +1,3 @@
-"use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { FiAlertCircle, FiSkipBack, FiSkipForward, FiX, FiPlus, FiChevronDown } from "react-icons/fi";
@@ -37,7 +36,7 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
       })
       .filter((v): v is YtVideo => v !== null);
     setVideos(loaded);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- 마운트 1회 실행 의도
 
   const syncToServer = useCallback(
     (list: YtVideo[]) => {

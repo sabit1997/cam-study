@@ -1,4 +1,3 @@
-"use client";
 
 import { useEffect, useRef, useState } from "react";
 import { LuDownload, LuRefreshCw, LuX } from "react-icons/lu";

@@ -1,9 +1,11 @@
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { ErrorBoundary } from "react-error-boundary";
 import { Toaster } from "sonner";
 import { getQueryClient } from "@/apis/query-client";
+import { setGlobalQueryClient } from "@/apis/request";
 import { useUserStore } from "@/stores/user-state";
 import Navigation from "@/components/navigation";
 import GlobalInitializer from "@/components/global-Initializer";
@@ -13,16 +15,17 @@ import ServiceWorkerRegister from "@/components/service-worker-register";
 import UpdateNotifier from "@/components/update-notifier";
 import ErrorFallback from "@/components/error-boundary";
 
-import HomePage from "@/pages/home";
-import SignInPage from "@/pages/sign-in";
-import SignUpPage from "@/pages/sign-up";
-import MyPage from "@/pages/my-page";
-import RecordPage from "@/pages/my-page/record";
-import StatisticsPage from "@/pages/my-page/statistics";
-import ThemeSettingPage from "@/pages/my-page/theme-setting";
-import DownloadPage from "@/pages/download";
+const HomePage = lazy(() => import("@/pages/home"));
+const SignInPage = lazy(() => import("@/pages/sign-in"));
+const SignUpPage = lazy(() => import("@/pages/sign-up"));
+const MyPage = lazy(() => import("@/pages/my-page"));
+const RecordPage = lazy(() => import("@/pages/my-page/record"));
+const StatisticsPage = lazy(() => import("@/pages/my-page/statistics"));
+const ThemeSettingPage = lazy(() => import("@/pages/my-page/theme-setting"));
+const DownloadPage = lazy(() => import("@/pages/download"));
 
 const queryClient = getQueryClient();
+setGlobalQueryClient(queryClient);
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useUserStore((s) => s.isAuthenticated);
@@ -50,6 +53,7 @@ function AppShell() {
       <ScreenPickerModal />
       <Navigation />
       <ErrorBoundary FallbackComponent={ErrorFallback}>
+        <Suspense fallback={null}>
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/sign-in" element={<RedirectIfAuth><SignInPage /></RedirectIfAuth>} />
@@ -61,6 +65,7 @@ function AppShell() {
           <Route path="/download" element={<DownloadPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </Suspense>
       </ErrorBoundary>
       <Toaster position="bottom-right" richColors />
       <UpdateNotifier />

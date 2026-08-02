@@ -121,11 +121,8 @@ function installMacUpdate() {
     helper?.file ??
     path.join(helper?.cacheDir ?? os.tmpdir(), "pending", "update.zip");
 
-  // 진단: 경로 정보 로그
-  console.log("[update] helper.file:", helper?.file);
-  console.log("[update] helper.cacheDir:", helper?.cacheDir);
-  console.log("[update] zipPath:", zipPath);
-  console.log("[update] zipExists:", fs.existsSync(zipPath));
+  const zipExists = fs.existsSync(zipPath);
+  console.error(`[update] zipPath: ${zipPath} (exists: ${zipExists})`);
 
   if (!fs.existsSync(zipPath)) {
     dialog.showErrorBox(
@@ -141,8 +138,6 @@ function installMacUpdate() {
   const scriptPath = path.join(os.tmpdir(), "cam-study-update.sh");
   const logPath = path.join(os.tmpdir(), "cam-study-update.log");
 
-  console.log("[update] appBundlePath:", appBundlePath);
-  console.log("[update] scriptPath:", scriptPath);
 
   // 앱이 완전히 종료된 뒤 실행되는 셸 스크립트
   const script = [

@@ -1,4 +1,3 @@
-"use client";
 
 import { useGetMonthTime } from "@/apis/services/timer-services/query";
 import { formatSeconds } from "@/utils/formatSeconds";

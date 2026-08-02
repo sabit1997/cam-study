@@ -1,4 +1,3 @@
-"use client";
 
 import { IoMdClose } from "react-icons/io";
 import useClickOutside from "@/hooks/useClickOutside";

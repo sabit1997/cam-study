@@ -1,4 +1,3 @@
-"use client";
 
 import { useGetTimerAnalytics } from "@/apis/services/timer-services/query";
 import { getCurrentMonthYear } from "@/utils/get-current-month-year";

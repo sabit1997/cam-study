@@ -1,4 +1,3 @@
-"use client";
 
 import { useGetTodos } from "@/apis/services/todo-services/query";
 import { Window } from "@/types/windows";

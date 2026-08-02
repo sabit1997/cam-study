@@ -1,4 +1,3 @@
-"use client";
 
 import { useAddTodo } from "@/apis/services/todo-services/mutation";
 import RectangleButton from "./rectangle-button";

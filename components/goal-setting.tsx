@@ -1,4 +1,3 @@
-"use client";
 
 import { useEffect, useState } from "react";
 import InputWithLabel from "./input-with-label";
