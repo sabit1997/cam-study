@@ -84,8 +84,8 @@ exports.default = async function ({ appOutDir, packager }) {
     console.log(`  • macOS 26 [2/2]: patched BRK#0 at 0x${DCHECK_OFFSET.toString(16)} in Electron Framework + ad-hoc re-signed`);
   } else {
     closeSync(fd);
-    console.warn(
-      `  • macOS 26 [2/2]: SKIP patch — unexpected bytes at 0x${DCHECK_OFFSET.toString(16)}: ` +
+    throw new Error(
+      `macOS 26 patch mismatch at 0x${DCHECK_OFFSET.toString(16)}: ` +
         `${hex(w0)} ${hex(w1)} ${hex(w2)} (expected BRK#0 + HLT#0 + BRK#1)`
     );
   }

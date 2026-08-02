@@ -74,11 +74,6 @@ export const BOUNDS_DEBOUNCE_MS = 500;
 - **현황**: `camera-view.tsx`, `window-share.tsx`에 각각 비슷한 비율 감지 로직 존재
 - **개선**: `hooks/useAspectRatio.ts` 공통 훅으로 추출
 
-### `localStorage` 접근 안전화
-
-- **현황**: 일부 컴포넌트에서 `utils/localStorage.ts` 유틸을 거치지 않고 `localStorage.getItem()` 직접 호출
-- **개선**: 전체 코드베이스에서 `utils/localStorage.ts`의 안전 래퍼만 사용하도록 통일 (SSR 환경 오류 방지)
-
 ### 에러 핸들링 패턴 통일
 
 - **현황**: 일부 에러는 axios interceptor에서 Toast, 일부는 컴포넌트 `onError` 콜백에서 Toast — 중복 Toast 가능성

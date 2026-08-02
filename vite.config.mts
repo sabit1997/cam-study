@@ -1,11 +1,13 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
-import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
-  plugins: [react(), tsconfigPaths()],
+  plugins: [react()],
   root: ".",
   publicDir: "public",
+  resolve: {
+    tsconfigPaths: true,
+  },
   // react-rnd 등 일부 패키지가 process.env.NODE_ENV를 참조함
   define: {
     "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV ?? "development"),

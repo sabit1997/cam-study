@@ -13,10 +13,8 @@ export const useAddTodo = () => {
   const queryClient = useQueryClient();
   return useMutation<Todos, Error, AddTodoVars>({
     mutationFn: ({ id, text }) => TodoService.addTodo({ id, text }),
-    onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({
-        queryKey: [...TODO_QUERY_KEY, "window", id],
-      });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: TODO_QUERY_KEY });
     },
     meta: {
       SUCCESS_MESSAGE: "투두가 추가되었습니다.",
@@ -30,10 +28,8 @@ export const useDoneTodo = () => {
   return useMutation<Todos, Error, DoneTodoVars>({
     mutationFn: ({ winId, todoId, done }) =>
       TodoService.doneTodo({ winId, todoId, done }),
-    onSuccess: (_, { winId }) => {
-      queryClient.invalidateQueries({
-        queryKey: [...TODO_QUERY_KEY, "window", winId],
-      });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: TODO_QUERY_KEY });
     },
     meta: {
       SUCCESS_MESSAGE: "투두 상태를 변경했습니다.",
@@ -47,10 +43,8 @@ export const useDeleteTodo = () => {
   return useMutation<void, Error, DeleteTodoVars>({
     mutationFn: ({ winId, todoId }) =>
       TodoService.deleteTodo({ winId, todoId }),
-    onSuccess: (_, { winId }) => {
-      queryClient.invalidateQueries({
-        queryKey: [...TODO_QUERY_KEY, "window", winId],
-      });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: TODO_QUERY_KEY });
     },
     meta: {
       SUCCESS_MESSAGE: "투두가 삭제되었습니다.",
@@ -64,10 +58,8 @@ export const useUpdateTodo = () => {
   return useMutation<Todos, Error, UpdateTodoVars>({
     mutationFn: ({ winId, todoId, text }) =>
       TodoService.updateTodo({ winId, todoId, text }),
-    onSuccess: (_, { winId }) => {
-      queryClient.invalidateQueries({
-        queryKey: [...TODO_QUERY_KEY, "window", winId],
-      });
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: TODO_QUERY_KEY });
     },
     meta: {
       SUCCESS_MESSAGE: "투두 내용을 수정했습니다.",
@@ -86,9 +78,7 @@ export const useUpdateTodoGlobal = () => {
     mutationFn: ({ todoId, text }) =>
       TodoService.updateTodoGlobal(todoId, text),
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [...TODO_QUERY_KEY, "global"],
-      });
+      queryClient.invalidateQueries({ queryKey: TODO_QUERY_KEY });
     },
     meta: {
       SUCCESS_MESSAGE: "투두 내용을 수정했습니다.",
@@ -107,9 +97,7 @@ export const useToggleDoneGlobal = () => {
     mutationFn: ({ todoId, done }) =>
       TodoService.toggleDoneGlobal(todoId, done),
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [...TODO_QUERY_KEY, "global"],
-      });
+      queryClient.invalidateQueries({ queryKey: TODO_QUERY_KEY });
     },
     meta: {
       SUCCESS_MESSAGE: "투두 상태를 변경했습니다.",
@@ -123,9 +111,7 @@ export const useDeleteTodoGlobal = () => {
   return useMutation<void, Error, number>({
     mutationFn: (todoId) => TodoService.deleteTodoGlobal(todoId),
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [...TODO_QUERY_KEY, "global"],
-      });
+      queryClient.invalidateQueries({ queryKey: TODO_QUERY_KEY });
     },
     meta: {
       SUCCESS_MESSAGE: "투두가 삭제되었습니다.",

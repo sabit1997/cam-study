@@ -60,14 +60,14 @@
 
 ### 🔄 자동 업데이트
 
-- 앱 실행 중 새 버전 감지 시 알림 배너 표시, 원클릭으로 업데이트 적용
+- 앱 실행 중 새 버전 감지 시 알림 배너 표시. Windows는 원클릭 적용, macOS는 안전한 수동 설치 페이지로 연결
 
 ## ⚙️ 기술 스택
 
 ### 주요 라이브러리 및 프레임워크
 
 - **Electron** `^43.0.0` (데스크탑 앱 런타임)
-- **Next.js** `15.3.8`
+- **Vite** `^8.2.0`
 - **React** `^19.0.0`
 - **TypeScript** `^5.8.3`
 - **Zustand** `^5.0.3`
@@ -78,7 +78,7 @@
 
 | 분류             | 패키지                                                                                                                   |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| 프레임워크/언어  | `next`, `react`, `react-dom`, `typescript`                                                                               |
+| 프레임워크/언어  | `vite`, `react`, `react-dom`, `typescript`                                                                               |
 | 상태/데이터 페칭 | `zustand`, `@tanstack/react-query`                                                                                       |
 | HTTP 통신        | `axios`, `qs`                                                                                                            |
 | 스타일링         | `tailwindcss`, `@tailwindcss/postcss`, `postcss`, `autoprefixer`                                                         |
@@ -98,10 +98,10 @@ npm install
 
 ### 개발 서버 실행
 
-웹 브라우저에서 확인 (HTTPS):
+웹 브라우저에서 확인:
 
 ```bash
-npm run dev:https
+npm run dev:web
 ```
 
 Electron 앱으로 실행:
@@ -122,17 +122,12 @@ npm run build:app
 
 ```
 📂
-├─ app
-│  ├─ (auth)              # 로그인 필요 페이지 (마이페이지, 통계 등)
-│  ├─ download            # 앱 다운로드 페이지
-│  ├─ globals.css
-│  ├─ layout.tsx
-│  ├─ page.tsx
-│  └─ providers.tsx
 ├─ apis                   # API 클라이언트 및 서비스
 ├─ components             # 공통 UI 컴포넌트
 ├─ constants              # 공통 상수
 ├─ hooks                  # 커스텀 훅
+├─ pages                  # React Router 페이지
+├─ src                    # 앱 진입점, 라우터, 전역 스타일
 ├─ src-electron           # Electron 메인/프리로드 스크립트
 │  ├─ main.ts
 │  └─ preload.ts
@@ -142,7 +137,7 @@ npm run build:app
 ├─ scripts                # 빌드 스크립트
 ├─ buildResources         # 앱 아이콘 등 빌드 리소스
 ├─ public
-├─ next.config.ts
+├─ vite.config.mts
 ├─ package.json
 └─ tsconfig.json
 ```

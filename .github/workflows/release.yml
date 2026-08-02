@@ -24,6 +24,9 @@ jobs:
       - name: 의존성 설치
         run: npm ci
 
+      - name: 코드 검사
+        run: npm run check
+
       - name: TypeScript 컴파일
         run: npm run build:ts
 
@@ -60,6 +63,9 @@ jobs:
 
       - name: 의존성 설치
         run: npm ci
+
+      - name: 코드 검사
+        run: npm run check
 
       - name: TypeScript 컴파일
         run: npm run build:ts

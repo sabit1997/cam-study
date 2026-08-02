@@ -5,6 +5,7 @@ export const AuthEndPoints = {
   signup: () => `/auth/signup`,
   login: () => `/auth/login`,
   logout: () => `/auth/logout`,
+  refresh: () => `/auth/refresh`,
 };
 
 export const WindowEndpoints = {

@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from "electron";
 
 contextBridge.exposeInMainWorld("electronAPI", {
+  platform: process.platform,
   submitScreenPickerResult: (selectedId: string | null) =>
     ipcRenderer.send("screen-picker:result", selectedId),
   onScreenPickerOpen: (fn: (sources: unknown) => void) => {

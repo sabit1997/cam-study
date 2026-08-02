@@ -1,6 +1,7 @@
 declare global {
   interface Window {
     electronAPI: {
+      platform: NodeJS.Platform;
       submitScreenPickerResult(selectedId: string | null): void;
       onScreenPickerOpen(fn: (sources: unknown) => void): () => void;
       onUpdateAvailable(fn: (update: unknown) => void): () => void;

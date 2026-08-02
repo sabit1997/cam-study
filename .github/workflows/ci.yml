@@ -23,16 +23,10 @@ jobs:
       - name: 의존성 설치
         run: npm ci
 
-      - name: 타입 체크
-        run: npm run type-check
+      - name: 코드 검사
+        run: npm run check
 
-      - name: 린트
-        run: npm run lint
-
-      - name: 유닛 테스트
-        run: npm test
-
-      - name: Next.js 빌드
+      - name: Vite 빌드
         run: npm run build:web
         env:
           NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL }}

@@ -37,4 +37,11 @@ export default class AuthService {
       method: AxiosMethod.POST,
     });
   };
+
+  public static readonly refresh = (): Promise<unknown> => {
+    return request({
+      url: AuthEndPoints.refresh(),
+      method: AxiosMethod.POST,
+    });
+  };
 }

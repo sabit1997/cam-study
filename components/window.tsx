@@ -20,7 +20,7 @@ import React, {
 import TooltipWrapper from "./tooltip-wrapper";
 import { useThemeStore } from "@/stores/theme-state";
 import useViewportSize from "@/hooks/useViewportSize";
-import { TypeList } from "@/types/dto";
+import { TypeList, WindowPatchDto } from "@/types/dto";
 
 // 창 타입별 컴포넌트를 lazy load — 초기 번들에 포함되지 않고 첫 사용 시 로드
 const CameraView = lazy(() => import("./camera-view"));
@@ -92,9 +92,19 @@ function clampPos(
   };
 }
 
+const iframePointerEvents = new WeakMap<HTMLIFrameElement, string>();
+
 function setIframesPointerEvents(value: "none" | "auto") {
   document.querySelectorAll("iframe").forEach((f) => {
-    (f as HTMLElement).style.pointerEvents = value;
+    if (value === "none") {
+      if (!iframePointerEvents.has(f)) {
+        iframePointerEvents.set(f, f.style.pointerEvents);
+      }
+      f.style.pointerEvents = "none";
+    } else {
+      f.style.pointerEvents = iframePointerEvents.get(f) ?? "";
+      iframePointerEvents.delete(f);
+    }
   });
 }
 
@@ -114,7 +124,7 @@ const AddWindow = ({ window }: AddWindowProps) => {
     return saved[window.id] ?? TYPE_LABELS[window.type] ?? "WINDOW";
   });
 
-  const { mutate: updateWindow, isPending: isUpdatePending } = usePatchWindow();
+  const { mutateAsync: updateWindow } = usePatchWindow();
   const { mutate: deleteWindow, isPending: isDeletePending } =
     useDeleteWindow();
 
@@ -144,6 +154,30 @@ const AddWindow = ({ window }: AddWindowProps) => {
   // Prevent useEffect from overriding pos/sz during active drag or resize
   const dragging = useRef(false);
   const resizing = useRef(false);
+  const updateQueue = useRef(Promise.resolve());
+
+  const queueWindowUpdate = useCallback(
+    (data: WindowPatchDto) => {
+      updateQueue.current = updateQueue.current
+        .then(() => updateWindow({ id, data }))
+        .then(() => undefined)
+        .catch(() => undefined);
+    },
+    [id, updateWindow]
+  );
+
+  useEffect(() => {
+    const restoreIframeInteraction = () => {
+      dragging.current = false;
+      resizing.current = false;
+      setIframesPointerEvents("auto");
+    };
+    globalThis.window.addEventListener("blur", restoreIframeInteraction);
+    return () => {
+      globalThis.window.removeEventListener("blur", restoreIframeInteraction);
+      restoreIframeInteraction();
+    };
+  }, []);
 
   // 스트림 비율 감지 시 창 자동 리사이즈 (화면공유·카메라)
   // 매 렌더마다 최신 sz를 ref에 기록해 effect 내 stale closure 방지
@@ -208,15 +242,13 @@ const AddWindow = ({ window }: AddWindowProps) => {
 
   const debouncedServerUpdate = useDebouncedCallback(
     (rx: number, ry: number, rw: number, rh: number) => {
-      if (isUpdatePending) return;
-      updateWindow({ id, data: { x: rx, y: ry, width: rw, height: rh } });
+      queueWindowUpdate({ x: rx, y: ry, width: rw, height: rh });
     },
     500
   );
 
   const debouncedZIndexUpdate = useDebouncedCallback(() => {
-    if (isUpdatePending) return;
-    updateWindow({ id, data: { zIndex: currentZIndex } });
+    queueWindowUpdate({ zIndex: currentZIndex });
   }, 300);
 
   // Focus: called ONLY from inner div onMouseDown.

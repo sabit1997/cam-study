@@ -65,8 +65,6 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
       return;
     }
 
-    // 임베드 여부/제목은 부가 정보. check API가 장애여도(예: Vercel 500)
-    // 영상 자체는 추가한다 — 임베드 불가면 iframe이 자체적으로 안내 표시.
     let title = `Video ${videos.length + 1}`;
     try {
       const res = await fetch("/api/check-youtube", {
@@ -74,17 +72,29 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ videoId: id }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.isEmbeddable === false) {
-          setError("이 영상은 임베드가 불가합니다");
-          setChecking(false);
-          return;
-        }
-        if (data.title) title = data.title;
+      if (!res.ok) throw new Error("YouTube check failed");
+
+      const data: unknown = await res.json();
+      if (
+        !data ||
+        typeof data !== "object" ||
+        !("isEmbeddable" in data) ||
+        typeof data.isEmbeddable !== "boolean"
+      ) {
+        throw new Error("Invalid YouTube check response");
+      }
+      if (!data.isEmbeddable) {
+        setError("이 영상은 임베드가 불가합니다");
+        setChecking(false);
+        return;
+      }
+      if ("title" in data && typeof data.title === "string" && data.title) {
+        title = data.title;
       }
     } catch {
-      // 네트워크/서버 장애는 무시하고 fallback 제목으로 진행
+      setError("영상 정보를 확인할 수 없습니다. 잠시 후 다시 시도해주세요");
+      setChecking(false);
+      return;
     }
 
     const newVideo: YtVideo = { id, title };

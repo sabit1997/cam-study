@@ -34,7 +34,7 @@ export const useWindowStore = create<WindowState>()((set) => ({
             nextZ += 1;
             return { ...sw, zIndex: nextZ };
           }
-          return { ...sw, x: lw.x, y: lw.y, width: lw.width, height: lw.height, zIndex: lw.zIndex };
+          return sw;
         }),
       };
     }),
@@ -52,22 +52,13 @@ export const useWindowStore = create<WindowState>()((set) => ({
 
   bringToFront: (id) =>
     set((state) => {
-      const sorted = [...state.windows].sort((a, b) => (a.zIndex || 0) - (b.zIndex || 0));
-      const target = sorted.find((w) => w.id === id);
+      const target = state.windows.find((w) => w.id === id);
       if (!target) return state;
-      const topZ = sorted[sorted.length - 1]?.zIndex ?? 0;
-      if (sorted[sorted.length - 1]?.id === id) return state;
-
-      // 누적된 zIndex가 MAX_Z_SLACK 이상 벌어지면 1부터 재정규화
-      const MAX_Z_SLACK = state.windows.length + 4;
-      const needsNormalize = topZ + 1 > MAX_Z_SLACK;
-      if (needsNormalize) {
-        const reordered = sorted
-          .filter((w) => w.id !== id)
-          .concat(target)
-          .map((w, i) => ({ ...w, zIndex: i + 1 }));
-        return { windows: reordered };
-      }
+      const topZ = state.windows.reduce(
+        (max, window) => Math.max(max, window.zIndex || 0),
+        0
+      );
+      if (target.zIndex === topZ) return state;
 
       return {
         windows: state.windows.map((w) =>

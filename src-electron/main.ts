@@ -10,9 +10,6 @@ import {
 } from "electron";
 import { autoUpdater } from "electron-updater";
 import path from "path";
-import os from "os";
-import fs from "fs";
-import { spawn } from "child_process";
 import { startExpressServer } from "./express-server";
 
 // macOS 26 (Tahoe) workaround: V8 JIT 완전 비활성화
@@ -23,10 +20,12 @@ if (process.platform === "darwin") {
 
 const isDev = !app.isPackaged;
 const DEV_APP_URL = "http://localhost:3000";
+const RELEASES_URL = "https://github.com/sabit1997/cam-study/releases/latest";
 
 let mainWindow: BrowserWindow | null = null;
 let appUrl = isDev ? DEV_APP_URL : "";
 let autoUpdaterStarted = false;
+let displayMediaRequestPending = false;
 
 function isAppUrl(url: string): boolean {
   if (!appUrl) return false;
@@ -80,8 +79,8 @@ function setupAutoUpdater() {
   if (isDev || autoUpdaterStarted) return;
   autoUpdaterStarted = true;
 
-  autoUpdater.autoDownload = true;
-  autoUpdater.autoInstallOnAppQuit = false; // macOS Squirrel 충돌 방지 (installMacUpdate로 대체)
+  autoUpdater.autoDownload = process.platform !== "darwin";
+  autoUpdater.autoInstallOnAppQuit = process.platform !== "darwin";
   autoUpdater.logger = { info: console.log, warn: console.warn, error: console.error, debug: console.debug }; // 상세 진단 로그
 
   autoUpdater.on("update-available", (info) => {
@@ -129,78 +128,11 @@ ipcMain.handle("update:check-state", () => {
 // 렌더러에서 "재시작 후 업데이트 설치" 요청 처리
 ipcMain.on("update:restart", () => {
   if (process.platform === "darwin") {
-    // Squirrel.Mac은 코드서명 없는 앱의 업데이트를 설치하지 못한다.
-    // ZIP을 직접 추출해 앱 번들을 교체하는 셸 스크립트로 우회한다.
-    installMacUpdate();
+    openExternalUrl(RELEASES_URL);
   } else {
     autoUpdater.quitAndInstall(false, true);
   }
 });
-
-function installMacUpdate() {
-  // electron-updater가 캐시한 ZIP 경로 취득
-  const helper = (autoUpdater as unknown as Record<string, unknown>).downloadedUpdateHelper as
-    | { file?: string | null; cacheDir?: string }
-    | null
-    | undefined;
-
-  const zipPath: string =
-    helper?.file ??
-    path.join(helper?.cacheDir ?? os.tmpdir(), "pending", "update.zip");
-
-  const zipExists = fs.existsSync(zipPath);
-  console.error(`[update] zipPath: ${zipPath} (exists: ${zipExists})`);
-
-  if (!fs.existsSync(zipPath)) {
-    dialog.showErrorBox(
-      "업데이트 파일 없음",
-      `다운로드된 업데이트 파일을 찾을 수 없습니다.\n경로: ${zipPath}\n\n수동으로 최신 버전을 다운로드해 주세요.`
-    );
-    return;
-  }
-
-  // process.execPath = /path/to/앱.app/Contents/MacOS/앱이름
-  const appBundlePath = process.execPath.replace(/\/Contents\/MacOS\/[^/]+$/, "");
-  const tempDir = path.join(os.tmpdir(), `cam-study-update-${Date.now()}`);
-  const scriptPath = path.join(os.tmpdir(), "cam-study-update.sh");
-  const logPath = path.join(os.tmpdir(), "cam-study-update.log");
-
-
-  // 앱이 완전히 종료된 뒤 실행되는 셸 스크립트
-  const script = [
-    "#!/bin/bash",
-    `exec > "${logPath}" 2>&1`,
-    "set -x",
-    "sleep 2",
-    `TEMP="${tempDir}"`,
-    `ZIP="${zipPath}"`,
-    `APP="${appBundlePath}"`,
-    `mkdir -p "$TEMP"`,
-    `ditto -xk "$ZIP" "$TEMP" || unzip -q "$ZIP" -d "$TEMP"`,
-    `NEW_APP=$(find "$TEMP" -maxdepth 1 -name "*.app" | head -1)`,
-    `echo "NEW_APP=$NEW_APP"`,
-    `[ -z "$NEW_APP" ] && echo "ERROR: .app not found in ZIP" && exit 1`,
-    `rm -rf "$APP"`,
-    `cp -R "$NEW_APP" "$APP"`,
-    `rm -rf "$TEMP"`,
-    `open "$APP"`,
-  ].join("\n");
-
-  try {
-    fs.writeFileSync(scriptPath, script, { mode: 0o755 });
-  } catch (err) {
-    dialog.showErrorBox("업데이트 오류", `스크립트 생성 실패: ${err}`);
-    return;
-  }
-
-  const child = spawn("bash", [scriptPath], {
-    detached: true,
-    stdio: "ignore",
-  });
-  child.unref();
-
-  app.quit();
-}
 
 async function createWindow() {
   if (!appUrl) throw new Error("앱 URL이 초기화되지 않았습니다.");
@@ -258,6 +190,31 @@ app.whenReady().then(async () => {
         return;
       }
 
+      if (displayMediaRequestPending) {
+        safeDisplayMediaCallback(callback, {});
+        return;
+      }
+      displayMediaRequestPending = true;
+
+      let requestFinished = false;
+      let pickerWebContents: Electron.WebContents | null = null;
+      let handleScreenPickerResult:
+        | ((event: Electron.IpcMainEvent, selectedId: string | null) => void)
+        | null = null;
+      const handlePickerDestroyed = () => finishRequest({});
+      const finishRequest = (streams: Streams) => {
+        if (requestFinished) return;
+        requestFinished = true;
+        displayMediaRequestPending = false;
+        if (handleScreenPickerResult) {
+          ipcMain.removeListener("screen-picker:result", handleScreenPickerResult);
+          handleScreenPickerResult = null;
+        }
+        pickerWebContents?.removeListener("destroyed", handlePickerDestroyed);
+        pickerWebContents = null;
+        safeDisplayMediaCallback(callback, streams);
+      };
+
       desktopCapturer
         .getSources({
           types: ["screen", "window"],
@@ -274,16 +231,17 @@ app.whenReady().then(async () => {
           );
 
           if (sources.length === 0) {
-            safeDisplayMediaCallback(callback, {});
+            finishRequest({});
             return;
           }
 
           if (!mainWindow) {
-            safeDisplayMediaCallback(callback, { video: sources[0] });
+            finishRequest({ video: sources[0] });
             return;
           }
 
-          mainWindow.webContents.send(
+          pickerWebContents = mainWindow.webContents;
+          pickerWebContents.send(
             "screen-picker:open",
             sources.map((source) => ({
               id: source.id,
@@ -292,12 +250,9 @@ app.whenReady().then(async () => {
               isScreen: source.id.startsWith("screen:"),
             }))
           );
+          pickerWebContents.once("destroyed", handlePickerDestroyed);
 
-          // 이전 공유 요청이 취소돼 남아있을 수 있는 리스너를 먼저 제거한 뒤 등록.
-          // 제거하지 않으면 취소 → 재시도마다 리스너가 누적되어
-          // 오래된 핸들러가 다음 요청의 결과를 가로채는 버그가 발생한다.
-          ipcMain.removeAllListeners("screen-picker:result");
-          const handleScreenPickerResult = (
+          handleScreenPickerResult = (
             event: Electron.IpcMainEvent,
             selectedId: string | null
           ) => {
@@ -308,20 +263,16 @@ app.whenReady().then(async () => {
             ) {
               return;
             }
-            ipcMain.removeListener("screen-picker:result", handleScreenPickerResult);
             const selected = selectedId
               ? sources.find((source) => source.id === selectedId)
               : undefined;
-            safeDisplayMediaCallback(
-              callback,
-              selected ? { video: selected } : {}
-            );
+            finishRequest(selected ? { video: selected } : {});
           };
           ipcMain.on("screen-picker:result", handleScreenPickerResult);
         })
         .catch((err) => {
           console.error("desktopCapturer.getSources 에러:", err);
-          safeDisplayMediaCallback(callback, {});
+          finishRequest({});
         });
     },
     { useSystemPicker: true }
