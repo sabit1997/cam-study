@@ -92,6 +92,12 @@ function clampPos(
   };
 }
 
+function setIframesPointerEvents(value: "none" | "auto") {
+  document.querySelectorAll("iframe").forEach((f) => {
+    (f as HTMLElement).style.pointerEvents = value;
+  });
+}
+
 const AddWindow = ({ window }: AddWindowProps) => {
   const [isLocked, setIsLocked] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
@@ -294,17 +300,18 @@ const AddWindow = ({ window }: AddWindowProps) => {
       // causes a re-render that interrupts react-draggable's drag initiation.
       onDragStart={() => {
         dragging.current = true;
+        // 드래그 중 마우스가 <iframe>(YouTube 등)에 진입하면 mouseup이 iframe
+        // 내부에서 소진돼 react-draggable의 document 리스너가 못 잡고 드래그가
+        // 영원히 stuck 됨. iframe pointer-events를 잠깐 끄면 마우스가 iframe을
+        // 통과해 부모 document로 이벤트가 전달된다. onDragStop에서 복원.
+        setIframesPointerEvents("none");
       }}
       // DO NOT update pos in onDrag — in react-rnd controlled mode, during active
       // drag react-draggable uses its internal state for rendering (ignores position
       // prop), so updating pos here just causes wasted re-renders with no effect.
       onDragStop={(_e, d) => {
         dragging.current = false;
-        // react-draggable sets pointer-events:none on all iframes during drag
-        // to keep mouse capture. Restore them now so YouTube controls work.
-        document.querySelectorAll("iframe").forEach((f) => {
-          (f as HTMLElement).style.pointerEvents = "auto";
-        });
+        setIframesPointerEvents("auto");
         const clamped = clampPos(d.x, d.y, sz.w, sz.h, vw, vh);
         // Update local state — React 18 batches this with react-draggable's own
         // setState({dragging:false}), so position prop is correct in the same render
@@ -320,12 +327,11 @@ const AddWindow = ({ window }: AddWindowProps) => {
       // ── Resize ────────────────────────────────────────────────────────────
       onResizeStart={() => {
         resizing.current = true;
+        setIframesPointerEvents("none");
       }}
       onResizeStop={(_e, dir, ref, _delta, position) => {
         resizing.current = false;
-        document.querySelectorAll("iframe").forEach((f) => {
-          (f as HTMLElement).style.pointerEvents = "auto";
-        });
+        setIframesPointerEvents("auto");
         let newW = ref.offsetWidth;
         let newH = ref.offsetHeight;
         // floating-point 오차 보정 — lockAspectRatioExtraHeight 공식이 정수로 딱 떨어지지 않을 수 있음
