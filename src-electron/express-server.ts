@@ -4,8 +4,13 @@ import path from "path";
 import type { AddressInfo } from "net";
 
 const BACKEND_URL = "https://api.oeyo-cam.site";
-const YOUTUBE_CHECK_URL = "https://cam-study.vercel.app/api/check-youtube";
 const YOUTUBE_ID_RE = /^[a-zA-Z0-9_-]{11}$/;
+// 빌드 시 esbuild --define으로 주입. 개발(Vite) 환경에서는 process.env로 폴백.
+declare const __YOUTUBE_API_KEY__: string | undefined;
+const YOUTUBE_API_KEY: string | undefined =
+  typeof __YOUTUBE_API_KEY__ !== "undefined"
+    ? __YOUTUBE_API_KEY__
+    : process.env.YOUTUBE_API_KEY;
 
 export function createExpressApp(staticDir: string) {
   const app = express();
@@ -21,14 +26,28 @@ export function createExpressApp(staticDir: string) {
       return;
     }
 
+    if (!YOUTUBE_API_KEY) {
+      res.status(500).json({ error: "YouTube API 키가 설정되지 않았습니다." });
+      return;
+    }
+
     try {
-      const response = await fetch(YOUTUBE_CHECK_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ videoId }),
-      });
-      const data = await response.json();
-      res.status(response.status).json(data);
+      const apiUrl = new URL("https://www.googleapis.com/youtube/v3/videos");
+      apiUrl.searchParams.set("id", videoId);
+      apiUrl.searchParams.set("key", YOUTUBE_API_KEY);
+      apiUrl.searchParams.set("part", "status,snippet");
+
+      const response = await fetch(apiUrl.toString());
+      const data = await response.json() as {
+        items?: Array<{ status: { embeddable: boolean }; snippet?: { title?: string } }>;
+      };
+
+      const item = data.items?.[0];
+      if (item) {
+        res.json({ isEmbeddable: item.status.embeddable, title: item.snippet?.title ?? null });
+      } else {
+        res.json({ isEmbeddable: false, title: null });
+      }
     } catch {
       res.status(500).json({ error: "영상 정보를 가져오는 데 실패했습니다." });
     }

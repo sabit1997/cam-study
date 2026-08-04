@@ -1,13 +1,13 @@
 {
   "name": "cam-study",
-  "version": "1.1.13",
+  "version": "1.1.14",
   "private": true,
   "description": "외요의 캠스터디 데스크탑 앱",
   "author": "OEYO <yejiii1997@gmail.com>",
   "main": "dist-electron/main.js",
   "scripts": {
     "dev:web": "vite",
-    "build:ts": "esbuild src-electron/main.ts src-electron/preload.ts --bundle --platform=node --target=node20 --format=cjs --external:electron --external:fsevents --outdir=dist-electron",
+    "build:ts": "node scripts/build-electron.js",
     "dev:electron": "wait-on http://localhost:3000 && electron .",
     "dev": "npm run build:ts && concurrently -k \"npm run dev:web\" \"npm run dev:electron\"",
     "build:web": "vite build",

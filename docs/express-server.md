@@ -8,7 +8,7 @@
 Electron renderer
   └─ http://localhost:<랜덤 포트>
        ├─ 정적 파일 / SPA 화면 → dist/
-       ├─ /api/check-youtube → Vercel 검증 API
+       ├─ /api/check-youtube → YouTube Data API v3 (직접 호출)
        └─ /api/* → https://api.oeyo-cam.site
 ```
 
@@ -28,9 +28,11 @@ Electron renderer
 
 렌더러의 Axios 요청은 같은 로컬 Origin의 `/api/*`로 보낸다. Express 프록시는 Cookie 헤더를 백엔드로 전달하므로, 로그인·토큰 갱신·사용자별 데이터 요청이 기존 웹 API와 같은 방식으로 동작한다.
 
-### 4. YouTube 검증 요청을 별도 처리
+### 4. YouTube 영상 검증 요청을 별도 처리
 
-`/api/check-youtube`만은 Vercel API로 직접 전달하고, 요청 본문을 검증한다. 나머지 프록시 요청 전에 전역 `express.json()`을 적용하면 요청 스트림이 먼저 소비되어 백엔드에 본문이 전달되지 않으므로, JSON 파싱은 이 경로에만 적용한다.
+`/api/check-youtube`는 YouTube Data API v3를 Express 서버에서 직접 호출한다. API 키(`YOUTUBE_API_KEY`)는 빌드 시 esbuild `--define`으로 번들에 주입되므로, 배포 후에도 외부 서버 의존 없이 동작한다. 나머지 프록시 요청 전에 전역 `express.json()`을 적용하면 요청 스트림이 먼저 소비되어 백엔드에 본문이 전달되지 않으므로, JSON 파싱은 이 경로에만 적용한다.
+
+자세한 내용은 [youtube-api-key.md](./youtube-api-key.md)를 참고한다.
 
 ## 관련 파일
 
@@ -38,6 +40,7 @@ Electron renderer
 | --- | --- |
 | `src-electron/express-server.ts` | 정적 파일, SPA 폴백, API 프록시 |
 | `src-electron/main.ts` | Express 시작 후 BrowserWindow에 로컬 URL 로드 |
+| `scripts/build-electron.js` | esbuild 번들 + API 키 주입 |
 | `apis/request.ts` | 렌더러에서 `/api`를 기준으로 Axios 요청 |
 
 ## 주의점
