@@ -24,22 +24,24 @@ export default defineConfig(({ mode }) => {
       {
         name: "check-youtube",
         configureServer(server) {
-          server.middlewares.use("/api/check-youtube", async (req: IncomingMessage, res: ServerResponse) => {
-            if (req.method !== "POST") {
-              res.writeHead(405).end(JSON.stringify({ error: "Method not allowed" }));
+          server.middlewares.use(async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
+            if (req.url !== "/api/check-youtube" || req.method !== "POST") {
+              next();
               return;
             }
+            const send = (status: number, body: object) => {
+              res.writeHead(status, { "Content-Type": "application/json" });
+              res.end(JSON.stringify(body));
+            };
             if (!youtubeApiKey) {
-              res.writeHead(500, { "Content-Type": "application/json" });
-              res.end(JSON.stringify({ error: "YouTube API 키가 설정되지 않았습니다." }));
+              send(500, { error: "YouTube API 키가 설정되지 않았습니다." });
               return;
             }
             try {
               const body = await readBody(req);
               const { videoId } = JSON.parse(body) as { videoId?: string };
               if (!videoId || !YOUTUBE_ID_RE.test(videoId)) {
-                res.writeHead(400, { "Content-Type": "application/json" });
-                res.end(JSON.stringify({ error: "유효하지 않은 YouTube 영상 ID입니다." }));
+                send(400, { error: "유효하지 않은 YouTube 영상 ID입니다." });
                 return;
               }
               const apiUrl = new URL("https://www.googleapis.com/youtube/v3/videos");
@@ -52,15 +54,14 @@ export default defineConfig(({ mode }) => {
                 items?: Array<{ status: { embeddable: boolean }; snippet?: { title?: string } }>;
               };
               const item = data.items?.[0];
-              res.writeHead(200, { "Content-Type": "application/json" });
               if (item) {
-                res.end(JSON.stringify({ isEmbeddable: item.status.embeddable, title: item.snippet?.title ?? null }));
+                send(200, { isEmbeddable: item.status.embeddable, title: item.snippet?.title ?? null });
               } else {
-                res.end(JSON.stringify({ isEmbeddable: false, title: null }));
+                send(200, { isEmbeddable: false, title: null });
               }
-            } catch {
-              res.writeHead(500, { "Content-Type": "application/json" });
-              res.end(JSON.stringify({ error: "영상 정보를 가져오는 데 실패했습니다." }));
+            } catch (err) {
+              console.error("[check-youtube]", err);
+              send(500, { error: "영상 정보를 가져오는 데 실패했습니다." });
             }
           });
         },
