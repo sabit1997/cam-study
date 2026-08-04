@@ -1,5 +1,6 @@
 import express from "express";
 import { createProxyMiddleware } from "http-proxy-middleware";
+import axios from "axios";
 import path from "path";
 import type { AddressInfo } from "net";
 
@@ -32,15 +33,11 @@ export function createExpressApp(staticDir: string) {
     }
 
     try {
-      const apiUrl = new URL("https://www.googleapis.com/youtube/v3/videos");
-      apiUrl.searchParams.set("id", videoId);
-      apiUrl.searchParams.set("key", YOUTUBE_API_KEY);
-      apiUrl.searchParams.set("part", "status,snippet");
-
-      const response = await fetch(apiUrl.toString());
-      const data = await response.json() as {
+      const { data } = await axios.get<{
         items?: Array<{ status: { embeddable: boolean }; snippet?: { title?: string } }>;
-      };
+      }>("https://www.googleapis.com/youtube/v3/videos", {
+        params: { id: videoId, key: YOUTUBE_API_KEY, part: "status,snippet" },
+      });
 
       const item = data.items?.[0];
       if (item) {
@@ -48,7 +45,8 @@ export function createExpressApp(staticDir: string) {
       } else {
         res.json({ isEmbeddable: false, title: null });
       }
-    } catch {
+    } catch (err) {
+      console.error("[check-youtube]", err);
       res.status(500).json({ error: "영상 정보를 가져오는 데 실패했습니다." });
     }
   });
