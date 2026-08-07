@@ -72,30 +72,25 @@ const YouTubePlayer = ({ window }: YouTubePlayerProps) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ videoId: id }),
       });
-      if (!res.ok) throw new Error("YouTube check failed");
-
-      const data: unknown = await res.json();
-      if (
-        !data ||
-        typeof data !== "object" ||
-        !("isEmbeddable" in data) ||
-        typeof data.isEmbeddable !== "boolean"
-      ) {
-        throw new Error("Invalid YouTube check response");
+      if (res.ok) {
+        const data: unknown = await res.json();
+        if (
+          data &&
+          typeof data === "object" &&
+          "isEmbeddable" in data &&
+          typeof data.isEmbeddable === "boolean"
+        ) {
+          if (!data.isEmbeddable) {
+            setError("이 영상은 임베드가 불가합니다");
+            setChecking(false);
+            return;
+          }
+          if ("title" in data && typeof data.title === "string" && data.title) {
+            title = data.title;
+          }
+        }
       }
-      if (!data.isEmbeddable) {
-        setError("이 영상은 임베드가 불가합니다");
-        setChecking(false);
-        return;
-      }
-      if ("title" in data && typeof data.title === "string" && data.title) {
-        title = data.title;
-      }
-    } catch {
-      setError("영상 정보를 확인할 수 없습니다. 잠시 후 다시 시도해주세요");
-      setChecking(false);
-      return;
-    }
+    } catch { /* 검증 API 장애는 영상 추가를 막지 않는다. */ }
 
     const newVideo: YtVideo = { id, title };
     const next = [...videos, newVideo];
