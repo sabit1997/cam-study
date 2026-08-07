@@ -2,41 +2,16 @@ import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 const YOUTUBE_ID_RE = /^[a-zA-Z0-9_-]{11}$/;
 
-// Vercel Node 런타임은 Content-Type이 application/json일 때 req.body를 자동 파싱하지만,
-// 이 프로젝트 배포에서 undefined로 넘어와 destructuring 크래시(FUNCTION_INVOCATION_FAILED)가
-// 나던 이력이 있음. 자동 파싱·문자열 body·raw stream 모든 경로를 커버한다.
-async function readJsonBody(req: VercelRequest): Promise<Record<string, unknown>> {
-  if (req.body && typeof req.body === "object") {
-    return req.body as Record<string, unknown>;
-  }
-  if (typeof req.body === "string" && req.body.length > 0) {
-    try { return JSON.parse(req.body) as Record<string, unknown>; } catch { return {}; }
-  }
-  return await new Promise((resolve) => {
-    const chunks: Buffer[] = [];
-    req.on("data", (chunk: Buffer) => chunks.push(chunk));
-    req.on("end", () => {
-      if (chunks.length === 0) return resolve({});
-      try {
-        resolve(JSON.parse(Buffer.concat(chunks).toString("utf8")) as Record<string, unknown>);
-      } catch {
-        resolve({});
-      }
-    });
-    req.on("error", () => resolve({}));
-  });
-}
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // 어떤 예외도 응답 없이 던지지 않도록 최상위 try-catch로 감싼다.
   try {
     if (req.method !== "POST") {
       res.status(405).json({ error: "Method not allowed" });
       return;
     }
 
-    const body = await readJsonBody(req);
-    const videoId = typeof body.videoId === "string" ? body.videoId : undefined;
+    // Vercel Node 함수는 application/json 요청을 req.body로 자동 파싱한다.
+    const body = req.body as { videoId?: unknown } | null | undefined;
+    const videoId = typeof body?.videoId === "string" ? body.videoId : undefined;
 
     if (!videoId || !YOUTUBE_ID_RE.test(videoId)) {
       res.status(400).json({ error: "유효하지 않은 YouTube 영상 ID입니다." });
