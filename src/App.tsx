@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Profiler, Suspense, useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
@@ -14,6 +14,7 @@ import ServiceWorkerRegister from "@/components/service-worker-register";
 import UpdateNotifier from "@/components/update-notifier";
 import ErrorFallback from "@/components/error-boundary";
 import AuthService from "@/apis/services/auth-services/service";
+import { onRenderProbe } from "@/src/dev/perfProbe";
 
 const HomePage = lazy(() => import("@/pages/home"));
 const SignInPage = lazy(() => import("@/pages/sign-in"));
@@ -110,7 +111,7 @@ function AppShell() {
 }
 
 export default function App() {
-  return (
+  const content = (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
         <AppShell />
@@ -118,4 +119,8 @@ export default function App() {
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   );
+
+  if (!import.meta.env.DEV) return content;
+
+  return <Profiler id="App" onRender={onRenderProbe}>{content}</Profiler>;
 }
