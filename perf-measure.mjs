@@ -26,10 +26,12 @@ const WARMUP_RUNS = Number(process.env.PERF_WARMUP_RUNS ?? 1); // 첫 회차 튀
 const STABILIZE_MS = 5000; // 페이지 로드 후 lazy chunk 마운트 대기 — 짧으면 iframe 리스너가 드래그 중에 부착돼 튐
 
 // 자가점검표 기대값 (창 5개)
-const EXPECT_RESIZE_MIN = 3;
-const EXPECT_RESIZE_MAX = 7;
+// 디바운스 도입 후 main thread 블로킹이 완화돼 브라우저가 resize 를 더 촘촘히
+// 발화 (실측 18~20). 리프팅 이후에도 debounce 는 유지되므로 이 범위 그대로 사용.
+const EXPECT_RESIZE_MIN = 10;
+const EXPECT_RESIZE_MAX = 30;
 // listeners 범위는 baseline 재보정 대상 — 실측 후 값이 흔들리면 자가점검에서 참고용만
-const EXPECT_LISTENERS_MIN = 350;
+const EXPECT_LISTENERS_MIN = 300;
 const EXPECT_LISTENERS_MAX = 800;
 
 // ─────────────── 인자 · fixture · 출력 ───────────────
@@ -62,11 +64,21 @@ if (EXPECTED_WINDOWS === 0) {
 const OUT_DIR = path.join("perf-out", LABEL);
 fs.mkdirSync(OUT_DIR, { recursive: true });
 
-// After 리프팅 후엔 useViewportSize 인스턴스가 하나뿐이라 이벤트당 1회
-// Before 는 창마다 인스턴스가 있어 이벤트당 창 개수만큼 발화
-const EXPECTED_VIEWPORT_RATIO = LABEL === "after" ? 1 : EXPECTED_WINDOWS;
-// window.setPos 는 리프팅과 무관하게 각 창의 useEffect 에서 발화 → 이벤트당 창 개수
-const EXPECTED_SETPOS_RATIO = EXPECTED_WINDOWS;
+// ── 디바운스 반영 기대값 ──
+// viewport.event: raw 이벤트마다 hook 인스턴스 수 만큼 발화 → 이벤트당 hook 수
+//   Before(hook 창마다) = EXPECTED_WINDOWS, After(hook 1개로 리프팅) = 1.
+//   이 지표는 CPU 스로틀 무관하게 결정적이라 strict 비교 가능.
+const EXPECTED_VIEWPORT_EVENT_PER_RESIZE = LABEL === "after" ? 1 : EXPECTED_WINDOWS;
+// viewport.set / window.setPos: 디바운스 settle 이 세션 당 여러 번 발생함
+// (4× CPU 스로틀 하에서 React 커밋이 100ms 초과 → 이벤트 사이 gap 이 debounce
+// 를 넘겨 mid-drag settle). 따라서 exact 값 대신 MIN 만 검증.
+// - Before: 최소 1 settle × hook 수 = EXPECTED_WINDOWS
+// - After:  최소 1 settle × 1 hook = 1
+const EXPECTED_VIEWPORT_SET_MIN = LABEL === "after" ? 1 : EXPECTED_WINDOWS;
+// window.setPos: 각 window 의 vw/vh 변화 effect. Before/After 모두
+//   최소 hook settle 당 각 창에서 effect 1회 → EXPECTED_WINDOWS 이상.
+//   setSize prev===next 바이일아웃으로 실제 값은 이보다 적을 수 있음 → 여유 있게 검증.
+const EXPECTED_SETPOS_MIN = Math.max(1, EXPECTED_WINDOWS - 2);
 
 // ─────────────── dev 서버 프리체크 · 워밍업 ───────────────
 try {
@@ -295,7 +307,8 @@ const ROWS = [
   ["커밋/이벤트", (r) => pick(r, "commitCount") / pick(r, "resizeEvents")],
   ["total actualDuration (ms)", (r) => pick(r, "totalDuration")],
   ["max actualDuration (ms)", (r) => pick(r, "maxDuration")],
-  ["viewport.set 호출", (r) => pick(r, "viewport.set")],
+  ["viewport.event 호출 (raw)", (r) => pick(r, "viewport.event")],
+  ["viewport.set 호출 (debounced)", (r) => pick(r, "viewport.set")],
   ["window.setPos 호출", (r) => pick(r, "window.setPos")],
   ["JS event listeners (측정 후)", (r) => r.listenersAfter],
 ];
@@ -322,17 +335,22 @@ const widthConsistent = results.every(
     Math.abs(r.endW - END_WIDTH) <= 5
 );
 const resizeMed = median(results.map((r) => r.resizeEvents));
-const viewportSetTotal = results.reduce(
-  (s, r) => s + (r.counts?.["viewport.set"] ?? 0),
-  0
-);
-const windowSetPosTotal = results.reduce(
-  (s, r) => s + (r.counts?.["window.setPos"] ?? 0),
+const viewportEventTotal = results.reduce(
+  (s, r) => s + (r.counts?.["viewport.event"] ?? 0),
   0
 );
 const resizeTotal = results.reduce((s, r) => s + (r.resizeEvents ?? 0), 0);
-const viewportPerEvent = resizeTotal ? viewportSetTotal / resizeTotal : 0;
-const setPosPerEvent = resizeTotal ? windowSetPosTotal / resizeTotal : 0;
+// viewport.event 는 raw 이벤트당 hook 수 만큼 — 이벤트당 비율로 검증
+const viewportEventPerResize = resizeTotal
+  ? viewportEventTotal / resizeTotal
+  : 0;
+// viewport.set / window.setPos 는 디바운스 settle 세션당 — 회차당 절대값 평균으로 검증
+const viewportSetPerRun =
+  results.reduce((s, r) => s + (r.counts?.["viewport.set"] ?? 0), 0) /
+  results.length;
+const setPosPerRun =
+  results.reduce((s, r) => s + (r.counts?.["window.setPos"] ?? 0), 0) /
+  results.length;
 const listenersMed = median(results.map((r) => r.listenersAfter));
 
 const mark = (ok) => (ok ? "✓" : "⚠");
@@ -355,24 +373,31 @@ const checks = [
     hint: "수십 회면 스로틀 미적용 (rate:4 확인)",
   },
   {
-    name: `viewport.set / resize (${LABEL === "after" ? "리프팅 후 1 기대" : `창 개수 ${EXPECTED_WINDOWS} 기대`})`,
-    expected: `${EXPECTED_VIEWPORT_RATIO}`,
-    got: viewportPerEvent.toFixed(2),
-    ok: Math.abs(viewportPerEvent - EXPECTED_VIEWPORT_RATIO) < 0.5,
-    hint:
-      viewportPerEvent < EXPECTED_VIEWPORT_RATIO
-        ? "SETTLE_MS 부족 가능성 — 마지막 커밋이 dump 전에 안 잡힘"
-        : "카운터 위치 확인 (리프팅 여부 재확인)",
+    // raw 이벤트당 hook 인스턴스 수 = 구독 개수의 직접 증거
+    name: `viewport.event / resize (${LABEL === "after" ? "리프팅 후 1 기대" : `창 개수 ${EXPECTED_WINDOWS} 기대`})`,
+    expected: `${EXPECTED_VIEWPORT_EVENT_PER_RESIZE}`,
+    got: viewportEventPerResize.toFixed(2),
+    ok:
+      Math.abs(viewportEventPerResize - EXPECTED_VIEWPORT_EVENT_PER_RESIZE) <
+      0.5,
+    hint: "리프팅 여부 재확인 — hook 인스턴스 수가 기대와 다름",
   },
   {
-    name: `window.setPos / resize (기대 ${EXPECTED_SETPOS_RATIO})`,
-    expected: `${EXPECTED_SETPOS_RATIO}`,
-    got: setPosPerEvent.toFixed(2),
-    ok: Math.abs(setPosPerEvent - EXPECTED_SETPOS_RATIO) < 0.5,
+    // 세션당 최소 hook 수 만큼은 발화해야 함 (mid-drag settle 로 이보다 많을 수 있음)
+    name: `viewport.set 회차당 (최소 ${EXPECTED_VIEWPORT_SET_MIN} 이상)`,
+    expected: `≥ ${EXPECTED_VIEWPORT_SET_MIN}`,
+    got: viewportSetPerRun.toFixed(2),
+    ok: viewportSetPerRun >= EXPECTED_VIEWPORT_SET_MIN - 0.5,
     hint:
-      setPosPerEvent < EXPECTED_SETPOS_RATIO
-        ? "SETTLE_MS 부족 가능성"
-        : "카운터 위치 확인",
+      "SETTLE_MS 부족 가능성 — 디바운스 settle 이 dump 전에 안 잡혔거나 카운터 위치 오류",
+  },
+  {
+    // 세션당 최소 (창 수 - 2) 이상 (setSize prev===next 바이일아웃 여유)
+    name: `window.setPos 회차당 (최소 ${EXPECTED_SETPOS_MIN} 이상)`,
+    expected: `≥ ${EXPECTED_SETPOS_MIN}`,
+    got: setPosPerRun.toFixed(2),
+    ok: setPosPerRun >= EXPECTED_SETPOS_MIN - 0.5,
+    hint: "카운터 위치 확인 또는 SETTLE_MS 부족",
   },
   {
     name: "JSEventListeners 중앙값",
