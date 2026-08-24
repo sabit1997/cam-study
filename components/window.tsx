@@ -19,7 +19,6 @@ import React, {
 } from "react";
 import TooltipWrapper from "./tooltip-wrapper";
 import { useThemeStore } from "@/stores/theme-state";
-import useViewportSize from "@/hooks/useViewportSize";
 import { TypeList, WindowPatchDto } from "@/types/dto";
 import { clampWindowPosition, getPositionScale } from "@/utils/workspace";
 
@@ -32,6 +31,9 @@ const Timer = lazy(() => import("./timer"));
 
 interface AddWindowProps {
   window: Window;
+  // WindowZone 에서 리프팅된 뷰포트 크기. 창마다 훅을 두는 대신 상위에서 한 번만 구독.
+  vw: number;
+  vh: number;
 }
 
 const TITLEBAR_H = 38;
@@ -91,7 +93,7 @@ function setIframesPointerEvents(value: "none" | "auto") {
   });
 }
 
-const AddWindow = ({ window }: AddWindowProps) => {
+const AddWindow = ({ window, vw, vh }: AddWindowProps) => {
   const [isLocked, setIsLocked] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [editTitle, setEditTitle] = useState(false);
@@ -122,7 +124,6 @@ const AddWindow = ({ window }: AddWindowProps) => {
   );
 
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
-  const { vw, vh } = useViewportSize();
   const { id, type, x, y, width, height } = window;
   const scale = getPositionScale(vw, vh);
   const pxX = x * scale;
