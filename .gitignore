@@ -47,3 +47,8 @@ CLAUDE.md
 
 #omx
 /.omx
+perf-auth.json
+perf-out/
+window-fixture.json
+
+/docs
