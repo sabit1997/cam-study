@@ -1,5 +1,11 @@
-import { lazy, Suspense, useEffect, useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from "react-router-dom";
+import { lazy, Profiler, Suspense, useEffect, useState } from "react";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { ErrorBoundary } from "react-error-boundary";
@@ -14,6 +20,7 @@ import ServiceWorkerRegister from "@/components/service-worker-register";
 import UpdateNotifier from "@/components/update-notifier";
 import ErrorFallback from "@/components/error-boundary";
 import AuthService from "@/apis/services/auth-services/service";
+import { onRenderProbe } from "@/dev/perfProbe";
 
 const HomePage = lazy(() => import("@/pages/home"));
 const SignInPage = lazy(() => import("@/pages/sign-in"));
@@ -89,17 +96,66 @@ function AppShell() {
         <Navigation />
         <ErrorBoundary FallbackComponent={ErrorFallback}>
           <Suspense fallback={null}>
-          <Routes>
-            <Route path="/" element={<RequireAuth><HomePage /></RequireAuth>} />
-            <Route path="/sign-in" element={<RedirectIfAuth><SignInPage /></RedirectIfAuth>} />
-            <Route path="/sign-up" element={<RedirectIfAuth><SignUpPage /></RedirectIfAuth>} />
-            <Route path="/my-page" element={<RequireAuth><Navigate to="/my-page/record" replace /></RequireAuth>} />
-            <Route path="/my-page/record" element={<RequireAuth><RecordPage /></RequireAuth>} />
-            <Route path="/my-page/statistics" element={<RequireAuth><StatisticsPage /></RequireAuth>} />
-            <Route path="/my-page/theme-setting" element={<RequireAuth><ThemeSettingPage /></RequireAuth>} />
-            <Route path="/download" element={<DownloadPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+            <Routes>
+              <Route
+                path="/"
+                element={
+                  <RequireAuth>
+                    <HomePage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/sign-in"
+                element={
+                  <RedirectIfAuth>
+                    <SignInPage />
+                  </RedirectIfAuth>
+                }
+              />
+              <Route
+                path="/sign-up"
+                element={
+                  <RedirectIfAuth>
+                    <SignUpPage />
+                  </RedirectIfAuth>
+                }
+              />
+              <Route
+                path="/my-page"
+                element={
+                  <RequireAuth>
+                    <Navigate to="/my-page/record" replace />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/my-page/record"
+                element={
+                  <RequireAuth>
+                    <RecordPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/my-page/statistics"
+                element={
+                  <RequireAuth>
+                    <StatisticsPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/my-page/theme-setting"
+                element={
+                  <RequireAuth>
+                    <ThemeSettingPage />
+                  </RequireAuth>
+                }
+              />
+              <Route path="/download" element={<DownloadPage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
           </Suspense>
         </ErrorBoundary>
       </AuthBootstrap>
@@ -112,9 +168,11 @@ function AppShell() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <AppShell />
-      </BrowserRouter>
+      <Profiler id="App" onRender={onRenderProbe}>
+        <BrowserRouter>
+          <AppShell />
+        </BrowserRouter>
+      </Profiler>
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   );
