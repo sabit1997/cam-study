@@ -166,13 +166,21 @@ function AppShell() {
 }
 
 export default function App() {
+  const router = (
+    <BrowserRouter>
+      <AppShell />
+    </BrowserRouter>
+  );
   return (
     <QueryClientProvider client={queryClient}>
-      <Profiler id="App" onRender={onRenderProbe}>
-        <BrowserRouter>
-          <AppShell />
-        </BrowserRouter>
-      </Profiler>
+      {/* Profiler 는 dev 에서만 — prod 에 남기면 onRenderProbe 의 buckets 가 무한 누적 */}
+      {import.meta.env.DEV ? (
+        <Profiler id="App" onRender={onRenderProbe}>
+          {router}
+        </Profiler>
+      ) : (
+        router
+      )}
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
   );
