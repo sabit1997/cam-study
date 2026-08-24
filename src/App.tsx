@@ -1,42 +1,187 @@
-import { useEffect, useState } from "react";
+import { lazy, Profiler, Suspense, useEffect, useState } from "react";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+import { ErrorBoundary } from "react-error-boundary";
+import { Toaster } from "sonner";
+import { getQueryClient } from "@/apis/query-client";
+import { setGlobalQueryClient } from "@/apis/request";
+import { useUserStore } from "@/stores/user-state";
+import Navigation from "@/components/navigation";
+import GlobalInitializer from "@/components/global-Initializer";
+import ScreenPickerModal from "@/components/modals/screen-picker-modal";
+import ServiceWorkerRegister from "@/components/service-worker-register";
+import UpdateNotifier from "@/components/update-notifier";
+import ErrorFallback from "@/components/error-boundary";
+import AuthService from "@/apis/services/auth-services/service";
+import { onRenderProbe } from "@/dev/perfProbe";
 
-type ViewportSize = { width: number; height: number };
+const HomePage = lazy(() => import("@/pages/home"));
+const SignInPage = lazy(() => import("@/pages/sign-in"));
+const SignUpPage = lazy(() => import("@/pages/sign-up"));
+const RecordPage = lazy(() => import("@/pages/my-page/record"));
+const StatisticsPage = lazy(() => import("@/pages/my-page/statistics"));
+const ThemeSettingPage = lazy(() => import("@/pages/my-page/theme-setting"));
+const DownloadPage = lazy(() => import("@/pages/download"));
 
-const useViewportSize = (delay = 100) => {
-  const [size, setSize] = useState<ViewportSize>(() => ({
-    width: typeof window !== "undefined" ? window.innerWidth : 1920,
-    height: typeof window !== "undefined" ? window.innerHeight : 1080,
-  }));
+const queryClient = getQueryClient();
+setGlobalQueryClient(queryClient);
+
+function AuthBootstrap({ children }: { children: React.ReactNode }) {
+  const isAuthenticated = useUserStore((s) => s.isAuthenticated);
+  const logout = useUserStore((s) => s.logout);
+  const [wasAuthenticated] = useState(isAuthenticated);
+  const [isReady, setIsReady] = useState(!wasAuthenticated);
 
   useEffect(() => {
-    let timer: ReturnType<typeof setTimeout> | undefined;
+    if (!wasAuthenticated) return;
 
-    const handleResize = () => {
-      // 구독 개수의 직접 증거 — 창 5개면 resize 1회에 5번 찍힌다
-      window.__perf?.count("viewport.event");
+    let active = true;
+    AuthService.refresh()
+      .catch(() => {
+        if (!active) return;
+        queryClient.clear();
+        logout();
+      })
+      .finally(() => {
+        if (active) setIsReady(true);
+      });
 
-      clearTimeout(timer); // ① 이전 예약 취소
-      timer = setTimeout(() => {
-        // ② 디바운스 만료 후 1회만 실행
-        window.__perf?.count("viewport.set");
-
-        const next = { width: window.innerWidth, height: window.innerHeight };
-        setSize((prev) =>
-          // ③ 값이 같으면 이전 참조를 그대로 반환 → 리렌더 없음
-          prev.width === next.width && prev.height === next.height ? prev : next
-        );
-      }, delay);
-    };
-
-    window.addEventListener("resize", handleResize);
     return () => {
-      // ④ 정리 — 타이머와 리스너를 모두 해제
-      clearTimeout(timer);
-      window.removeEventListener("resize", handleResize);
+      active = false;
     };
-  }, [delay]);
+  }, [logout, wasAuthenticated]);
 
-  return { vw: size.width, vh: size.height };
-};
+  if (!isReady) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-gray-200 border-t-gray-400 animate-spin" />
+      </div>
+    );
+  }
 
-export default useViewportSize;
+  return <>{children}</>;
+}
+
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const isAuthenticated = useUserStore((s) => s.isAuthenticated);
+  const location = useLocation();
+  if (!isAuthenticated) {
+    return <Navigate to="/sign-in" state={{ from: location }} replace />;
+  }
+  return <>{children}</>;
+}
+
+function RedirectIfAuth({ children }: { children: React.ReactNode }) {
+  const isAuthenticated = useUserStore((s) => s.isAuthenticated);
+  if (isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+  return <>{children}</>;
+}
+
+function AppShell() {
+  return (
+    <>
+      <GlobalInitializer />
+      <ServiceWorkerRegister />
+      <AuthBootstrap>
+        <ScreenPickerModal />
+        <Navigation />
+        <ErrorBoundary FallbackComponent={ErrorFallback}>
+          <Suspense fallback={null}>
+            <Routes>
+              <Route
+                path="/"
+                element={
+                  <RequireAuth>
+                    <HomePage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/sign-in"
+                element={
+                  <RedirectIfAuth>
+                    <SignInPage />
+                  </RedirectIfAuth>
+                }
+              />
+              <Route
+                path="/sign-up"
+                element={
+                  <RedirectIfAuth>
+                    <SignUpPage />
+                  </RedirectIfAuth>
+                }
+              />
+              <Route
+                path="/my-page"
+                element={
+                  <RequireAuth>
+                    <Navigate to="/my-page/record" replace />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/my-page/record"
+                element={
+                  <RequireAuth>
+                    <RecordPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/my-page/statistics"
+                element={
+                  <RequireAuth>
+                    <StatisticsPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/my-page/theme-setting"
+                element={
+                  <RequireAuth>
+                    <ThemeSettingPage />
+                  </RequireAuth>
+                }
+              />
+              <Route path="/download" element={<DownloadPage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
+        </ErrorBoundary>
+      </AuthBootstrap>
+      <Toaster position="bottom-right" richColors />
+      <UpdateNotifier />
+    </>
+  );
+}
+
+export default function App() {
+  const router = (
+    <BrowserRouter>
+      <AppShell />
+    </BrowserRouter>
+  );
+  return (
+    <QueryClientProvider client={queryClient}>
+      {/* Profiler 는 dev 에서만 — prod 에 남기면 onRenderProbe 의 buckets 가 무한 누적 */}
+      {import.meta.env.DEV ? (
+        <Profiler id="App" onRender={onRenderProbe}>
+          {router}
+        </Profiler>
+      ) : (
+        router
+      )}
+      <ReactQueryDevtools initialIsOpen={false} />
+    </QueryClientProvider>
+  );
+}
