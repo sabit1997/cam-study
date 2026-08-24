@@ -21,7 +21,7 @@ const STEP_DELAY = 16; // 스텝 간 대기 (≈60fps)
 const SETTLE_MS = 1000; // 드래그 종료 후 대기 (디바운스 100ms + 4× 스로틀 커밋 여유)
 const NET_DELAY = 40; // fixture 응답 지연 (실측치로 교체 예정)
 const THROTTLE = 4; // CPU 스로틀 배수
-const RUNS = 3;
+const RUNS = Number(process.env.PERF_RUNS) || 3;
 const WARMUP_RUNS = Number(process.env.PERF_WARMUP_RUNS ?? 1); // 첫 회차 튀는 문제 완화용
 const STABILIZE_MS = 5000; // 페이지 로드 후 lazy chunk 마운트 대기 — 짧으면 iframe 리스너가 드래그 중에 부착돼 튐
 
@@ -30,9 +30,9 @@ const STABILIZE_MS = 5000; // 페이지 로드 후 lazy chunk 마운트 대기 �
 // 발화 (실측 18~20). 리프팅 이후에도 debounce 는 유지되므로 이 범위 그대로 사용.
 const EXPECT_RESIZE_MIN = 10;
 const EXPECT_RESIZE_MAX = 30;
-// listeners 범위는 baseline 재보정 대상 — 실측 후 값이 흔들리면 자가점검에서 참고용만
-const EXPECT_LISTENERS_MIN = 300;
-const EXPECT_LISTENERS_MAX = 800;
+// listeners 는 primary 지표에서 제외 (10회 실측: max-min 55.2%, IQR 3.9% — outlier
+// 2/10 이 판정을 오도. 리프팅 기대 감소량 4개는 어느 잡음 기준으로도 신호 미만).
+// 대신 리스너 안정성 섹션에서 정보성으로만 표기.
 
 // ─────────────── 인자 · fixture · 출력 ───────────────
 const LABEL = process.argv[2];
@@ -269,6 +269,14 @@ const median = (a) => {
   const s = [...a].filter((x) => typeof x === "number").sort((x, y) => x - y);
   return s.length ? s[Math.floor(s.length / 2)] : null;
 };
+// 사분위수 (Q1, Q3) → IQR = Q3 - Q1 : max-min 보다 outlier 에 강함
+const iqr = (a) => {
+  const s = [...a].filter((x) => typeof x === "number").sort((x, y) => x - y);
+  if (s.length < 4) return null;
+  const q1 = s[Math.floor(s.length * 0.25)];
+  const q3 = s[Math.floor(s.length * 0.75)];
+  return q3 - q1;
+};
 const noise = (a) => {
   const s = a.filter((x) => typeof x === "number");
   return s.length ? Math.max(...s) - Math.min(...s) : null;
@@ -327,6 +335,23 @@ for (const [name, get] of ROWS) {
   )} | ${fmt(noise(vals))} |\n`;
 }
 
+// ── 리스너 안정성 상세 (판정 근거) ──
+{
+  const vals = results.map((r) => r.listenersAfter).filter((v) => v != null);
+  const med = median(vals);
+  const rng = noise(vals);
+  const iq = iqr(vals);
+  const pct = (v) => (v != null && med ? ((v / med) * 100).toFixed(1) + "%" : "—");
+  md += `\n## 리스너 (참고 · 판정 제외)\n\n`;
+  md += `- 회차 수: ${vals.length}\n`;
+  md += `- 값 (정렬): ${[...vals].sort((x, y) => x - y).join(", ")}\n`;
+  md += `- 중앙값: ${fmt(med)}\n`;
+  md += `- 노이즈 폭 (max-min): ${fmt(rng)} (${pct(rng)} of median)\n`;
+  md += `- IQR (Q3-Q1): ${fmt(iq)} (${pct(iq)} of median)\n`;
+  md += `- **판정 제외 이유**: 리프팅 기대 감소량 (5→1 hook, 리스너 4개) 이 잡음 아래.\n`;
+  md += `  GC/iframe 청소 타이밍이 회차마다 달라 outlier 발생. 대신 \`viewport.event / resize\` (5→1) 를 primary 물증으로 사용.\n`;
+}
+
 // ─────────────── 자가점검표 ───────────────
 // 창 프레임(스크롤바 등)으로 innerWidth 가 몇 px 어긋날 수 있어 5px 허용
 const widthConsistent = results.every(
@@ -351,7 +376,6 @@ const viewportSetPerRun =
 const setPosPerRun =
   results.reduce((s, r) => s + (r.counts?.["window.setPos"] ?? 0), 0) /
   results.length;
-const listenersMed = median(results.map((r) => r.listenersAfter));
 
 const mark = (ok) => (ok ? "✓" : "⚠");
 const checks = [
@@ -399,16 +423,8 @@ const checks = [
     ok: setPosPerRun >= EXPECTED_SETPOS_MIN - 0.5,
     hint: "카운터 위치 확인 또는 SETTLE_MS 부족",
   },
-  {
-    name: "JSEventListeners 중앙값",
-    expected: `${EXPECT_LISTENERS_MIN}~${EXPECT_LISTENERS_MAX}`,
-    got: fmt(listenersMed),
-    ok:
-      listenersMed != null &&
-      listenersMed >= EXPECT_LISTENERS_MIN &&
-      listenersMed <= EXPECT_LISTENERS_MAX,
-    hint: "범위 밖이면 창 구성 또는 측정 환경 변경 여부 확인",
-  },
+  // JSEventListeners 는 판정에서 제외 — 위 "리스너 안정성" 섹션에 정보성으로만 표기.
+  // 리프팅 기대 감소량(4)이 잡음 아래이고 GC/iframe 타이밍 비결정성이 판정을 오도.
 ];
 
 md += `\n## 자가 점검\n\n`;
