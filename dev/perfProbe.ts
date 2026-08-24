@@ -28,6 +28,8 @@ declare global {
       count: (k: string) => void;
     };
   }
+  // globalThis.__perf 접근용 — window prop 이 글로벌 window 를 shadow 하는 곳에서 사용
+  var __perf: Window["__perf"];
 }
 
 export function onRenderProbe(id: string, phase: string, actual: number) {

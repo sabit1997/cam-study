@@ -10,6 +10,7 @@ const useViewportSize = () => {
 
   useEffect(() => {
     const update = () => {
+      window.__perf?.count("viewport.set");
       setVw(window.innerWidth);
       setVh(window.innerHeight);
     };

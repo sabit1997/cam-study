@@ -188,6 +188,8 @@ const AddWindow = ({ window }: AddWindowProps) => {
   useEffect(() => {
     if (dragging.current || resizing.current) return;
     const clamped = clampWindowPosition(pxX, pxY, pxW, pxH, vw, vh);
+    // window prop 이 글로벌 window 를 shadow 하므로 globalThis 사용
+    globalThis.__perf?.count("window.setPos");
     setPos(clamped);
     setSz({ w: pxW, h: pxH });
   }, [pxX, pxY, pxW, pxH, vw, vh]);
@@ -401,6 +403,7 @@ const AddWindow = ({ window }: AddWindowProps) => {
       {/* Inner div: onMouseDown here (not on Rnd) so focus fires BEFORE react-draggable
           captures the event. This lets the bringToFront re-render settle before drag starts. */}
       <div
+        data-window-id={id}
         className="w-full h-full flex flex-col overflow-hidden"
         onMouseDown={handleFocus}
         style={{

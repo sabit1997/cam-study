@@ -17,7 +17,10 @@
     "lint": "eslint src components apis stores hooks utils",
     "test": "vitest run",
     "check": "npm run type-check && npm run type-check:electron && npm run lint && npm test",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "perf:auth": "node perf-auth-setup.mjs",
+    "perf:before": "node perf-measure.mjs before",
+    "perf:after": "node perf-measure.mjs after"
   },
   "dependencies": {
     "@radix-ui/react-tooltip": "^1.2.7",
