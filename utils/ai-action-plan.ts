@@ -16,7 +16,17 @@ export type PlannedStep =
   | { kind: "createWindow"; widget: AiWidget; ref?: string; url?: string[] }
   | { kind: "addTodo"; ref?: string; text: string }
   | { kind: "startPomodoro"; workMins: number; breakMins: number }
-  | { kind: "startStopwatch" };
+  | { kind: "startStopwatch" }
+  // 기록 질의: 러너가 조회 함수를 호출해 답변 마크다운을 만든다.
+  // 이 단계들은 UI 리소스(창·할일)를 만들지 않고 팔레트 인라인 답변으로 흘러들어간다.
+  | { kind: "queryTotal"; from: string; to: string }
+  | { kind: "queryByCategory"; from: string; to: string }
+  | {
+      kind: "queryDistractPattern";
+      from: string;
+      to: string;
+      groupBy: "day" | "weekday" | "hour";
+    };
 
 /**
  * 유튜브 창이 실제로 저장하는 형식(components/youtube-player.tsx)과 맞춘다.
@@ -89,6 +99,27 @@ export const planAiActions = (
 
       case "START_STOPWATCH":
         steps.push({ kind: "startStopwatch" });
+        break;
+
+      case "GET_TOTAL":
+        steps.push({ kind: "queryTotal", from: action.from, to: action.to });
+        break;
+
+      case "GET_BY_CATEGORY":
+        steps.push({
+          kind: "queryByCategory",
+          from: action.from,
+          to: action.to,
+        });
+        break;
+
+      case "GET_DISTRACT_PATTERN":
+        steps.push({
+          kind: "queryDistractPattern",
+          from: action.from,
+          to: action.to,
+          groupBy: action.groupBy,
+        });
         break;
     }
   }
