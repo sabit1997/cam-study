@@ -92,7 +92,8 @@
       "dist/**/*"
     ],
     "asarUnpack": [
-      "dist/**/*"
+      "dist/**/*",
+      "node_modules/get-windows/**/*"
     ],
     "directories": {
       "buildResources": "buildResources"
