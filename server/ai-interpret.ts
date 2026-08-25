@@ -3,6 +3,11 @@ import { z } from "zod";
 import { aiActionSchema, type AiAction } from "../types/ai-actions";
 import { toGeminiJsonSchema } from "./gemini-schema";
 import { SYSTEM_PROMPT } from "./ai-prompt";
+import {
+  parseGeminiQuotaError,
+  quotaMessage,
+  type QuotaExhaustionKind,
+} from "./gemini-quota";
 
 /**
  * 자연어 명령 → 액션 배열.
@@ -74,7 +79,21 @@ const RESPONSE_JSON_SCHEMA = toGeminiJsonSchema(responseSchema);
 
 export type InterpretResult =
   | { ok: true; actions: AiAction[] }
-  | { ok: false; status: number; error: string };
+  | {
+      ok: false;
+      status: number;
+      error: string;
+      /**
+       * 429일 때 어떤 종류의 소진인지 클라이언트가 구분해 안내할 수 있도록 넘긴다.
+       * daily: Gemini 무료 티어 일일 한도 소진 (내일까지 대기)
+       * minute: 분당 한도 초과 (수십 초 대기하면 됨)
+       * server: 우리 서버 IP 레이트리밋
+       * 429 아닐 때는 undefined.
+       */
+      reason?: QuotaExhaustionKind;
+      /** minute·server의 재시도 대기 시간(초). daily는 매우 큰 값이 오므로 클라이언트가 무시할 수 있다. */
+      retryAfterSec?: number;
+    };
 
 /** 테스트에서 갈아끼울 수 있도록, 실제로 필요한 부분만 좁게 정의한다 */
 export interface GenerateResult {
@@ -165,12 +184,18 @@ export const interpret = async (
     response = await callWithRetry(generateContent, request);
   } catch (error) {
     if (error instanceof ApiError) {
-      // 429는 그대로 넘긴다. 무료 티어는 분당 요청 수 제한이 낮아서 실제로 자주 만난다.
+      // 429는 분당(RPM) 소진과 일일(RPD) 소진 둘 다 이 코드로 온다. 응답의 quotaId를
+      // 파싱해 구분하고, daily일 때는 "내일 다시"라는 정확한 안내로 넘긴다.
       if (error.status === 429) {
+        const info = parseGeminiQuotaError(error);
         return {
           ok: false,
           status: 429,
-          error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요.",
+          error: quotaMessage(info),
+          reason: info.kind,
+          ...(info.retryAfterSec !== undefined
+            ? { retryAfterSec: info.retryAfterSec }
+            : {}),
         };
       }
       if (error.status === 401 || error.status === 403) {

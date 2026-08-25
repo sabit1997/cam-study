@@ -1,4 +1,9 @@
 import { ApiError, GoogleGenAI } from "@google/genai";
+import {
+  parseGeminiQuotaError,
+  quotaMessage,
+  type QuotaExhaustionKind,
+} from "./gemini-quota";
 
 /**
  * Gemini 그라운딩 검색으로 유튜브 강의 후보를 뽑는다.
@@ -44,7 +49,14 @@ export interface SearchRequest {
 
 export type SearchResult =
   | { ok: true; candidates: SearchCandidate[] }
-  | { ok: false; status: number; error: string };
+  | {
+      ok: false;
+      status: number;
+      error: string;
+      /** 429일 때 소진 종류. ai-interpret.ts InterpretResult와 같은 스키마. */
+      reason?: QuotaExhaustionKind;
+      retryAfterSec?: number;
+    };
 
 /** 테스트에서 갈아끼우기 위한 좁은 인터페이스. server/ai-interpret.ts와 같은 패턴. */
 export interface SearchGenerateResult {
@@ -153,7 +165,16 @@ export const searchYoutube = async (
   } catch (error) {
     if (error instanceof ApiError) {
       if (error.status === 429) {
-        return { ok: false, status: 429, error: "요청이 너무 많습니다. 잠시 후 다시 시도해주세요." };
+        const info = parseGeminiQuotaError(error);
+        return {
+          ok: false,
+          status: 429,
+          error: quotaMessage(info),
+          reason: info.kind,
+          ...(info.retryAfterSec !== undefined
+            ? { retryAfterSec: info.retryAfterSec }
+            : {}),
+        };
       }
       if (error.status === 401 || error.status === 403) {
         return { ok: false, status: 500, error: "AI API 키가 올바르지 않습니다." };
