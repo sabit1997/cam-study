@@ -64,6 +64,25 @@ export const aiActionSchema = z.discriminatedUnion("type", [
   z.strictObject({
     type: z.literal("START_STOPWATCH"),
   }),
+  // 기록 질의 액션. LLM은 조회 함수를 부르지 못하고, 이 액션 JSON만 반환한다.
+  // 실제 조회는 클라이언트의 러너가 utils/ai-record-query를 통해 수행한다.
+  // 날짜는 YYYY-MM-DD 문자열. 상대 표현("지난주 화요일")의 해석은 LLM 담당.
+  z.strictObject({
+    type: z.literal("GET_TOTAL"),
+    from: z.string(),
+    to: z.string(),
+  }),
+  z.strictObject({
+    type: z.literal("GET_BY_CATEGORY"),
+    from: z.string(),
+    to: z.string(),
+  }),
+  z.strictObject({
+    type: z.literal("GET_DISTRACT_PATTERN"),
+    from: z.string(),
+    to: z.string(),
+    groupBy: z.enum(["day", "weekday", "hour"]),
+  }),
 ]);
 
 /** 액션은 항상 배치(배열) 단위로 만들어지고, 검증되고, 실행된다. */

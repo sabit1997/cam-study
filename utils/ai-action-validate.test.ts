@@ -172,4 +172,66 @@ describe("ref 없는 PLAY_YOUTUBE도 창을 만든다 — 창 한도에 함께 �
     ];
     expect(validateAiActions(batch).ok).toBe(true);
   });
+
+  describe("기록 질의 액션", () => {
+    // 미래 날짜 케이스를 안정적으로 검사하기 위해 "먼 과거"를 기준으로 잡는다.
+    const past = "2020-01-01";
+    const pastEnd = "2020-01-31";
+
+    it("GET_TOTAL: 정상 범위 통과", () => {
+      const result = validateAiActions([
+        { type: "GET_TOTAL", from: past, to: pastEnd },
+      ]);
+      expect(result.ok).toBe(true);
+    });
+
+    it("GET_BY_CATEGORY: 정상 범위 통과", () => {
+      expect(
+        ok([{ type: "GET_BY_CATEGORY", from: past, to: pastEnd }])
+      ).toBe(true);
+    });
+
+    it("GET_DISTRACT_PATTERN: groupBy가 세 값 중 하나여야 한다", () => {
+      expect(
+        ok([{ type: "GET_DISTRACT_PATTERN", from: past, to: pastEnd, groupBy: "day" }])
+      ).toBe(true);
+      expect(
+        ok([{ type: "GET_DISTRACT_PATTERN", from: past, to: pastEnd, groupBy: "invalid" }])
+      ).toBe(false);
+    });
+
+    it("YYYY-MM-DD가 아닌 날짜는 거절", () => {
+      expect(ok([{ type: "GET_TOTAL", from: "2020/01/01", to: pastEnd }])).toBe(false);
+      expect(ok([{ type: "GET_TOTAL", from: "2020-1-1", to: pastEnd }])).toBe(false);
+    });
+
+    it("실제로 존재하지 않는 날짜는 거절 (2월 30일 등)", () => {
+      expect(ok([{ type: "GET_TOTAL", from: "2020-02-30", to: pastEnd }])).toBe(false);
+    });
+
+    it("from > to는 거절", () => {
+      expect(ok([{ type: "GET_TOTAL", from: pastEnd, to: past }])).toBe(false);
+    });
+
+    it("365일 초과 범위는 거절", () => {
+      expect(ok([{ type: "GET_TOTAL", from: "2019-01-01", to: "2020-06-30" }])).toBe(false);
+    });
+
+    it("미래 날짜는 거절", () => {
+      expect(ok([{ type: "GET_TOTAL", from: "2999-01-01", to: "2999-01-31" }])).toBe(false);
+    });
+
+    it("기록 질의는 창·할일 한도에서 제외된다", () => {
+      // 창 4개(한도) + 기록 질의 여러 개가 한 배치에 있어도 통과
+      const batch = [
+        { type: "CREATE_WINDOW", widget: "todo" },
+        { type: "CREATE_WINDOW", widget: "timer" },
+        { type: "CREATE_WINDOW", widget: "youtube" },
+        { type: "CREATE_WINDOW", widget: "window" },
+        { type: "GET_TOTAL", from: past, to: pastEnd },
+        { type: "GET_BY_CATEGORY", from: past, to: pastEnd },
+      ];
+      expect(ok(batch)).toBe(true);
+    });
+  });
 });

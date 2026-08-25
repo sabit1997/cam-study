@@ -30,6 +30,41 @@ const REF_TARGET_WIDGET: Record<"ADD_TODO" | "PLAY_YOUTUBE", AiWidget> = {
   PLAY_YOUTUBE: "youtube",
 };
 
+/** 기록 질의의 최대 조회 범위(일). 그 이상은 데이터가 없거나 UI가 감당하기 어렵다. */
+const MAX_QUERY_RANGE_DAYS = 365;
+
+/** ISO YYYY-MM-DD 형식 검사. 실제 존재하는 날짜인지도 확인(예: 2026-02-30 방지). */
+const isValidISODate = (s: string): boolean => {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const date = new Date(`${s}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return false;
+  // 예: "2026-02-30"은 Date가 3월로 넘겨버리지만 원본 문자열과 다시 만들어 비교하면 걸린다.
+  return date.toISOString().slice(0, 10) === s;
+};
+
+const checkQueryRange = (from: string, to: string, at: string): string[] => {
+  const reasons: string[] = [];
+  if (!isValidISODate(from)) reasons.push(`${at}: 시작 날짜가 YYYY-MM-DD 형식이 아닙니다.`);
+  if (!isValidISODate(to)) reasons.push(`${at}: 종료 날짜가 YYYY-MM-DD 형식이 아닙니다.`);
+  if (reasons.length > 0) return reasons;
+
+  const fromMs = Date.parse(`${from}T00:00:00Z`);
+  const toMs = Date.parse(`${to}T00:00:00Z`);
+  if (fromMs > toMs) {
+    reasons.push(`${at}: 시작 날짜가 종료 날짜보다 뒤에 있습니다.`);
+  }
+  const rangeDays = Math.round((toMs - fromMs) / (24 * 60 * 60 * 1000));
+  if (rangeDays > MAX_QUERY_RANGE_DAYS) {
+    reasons.push(`${at}: 조회 범위는 ${MAX_QUERY_RANGE_DAYS}일을 넘을 수 없습니다.`);
+  }
+  // 오늘 자정(UTC) 기준으로 미래는 데이터가 없다.
+  const todayEndMs = Date.parse(new Date().toISOString().slice(0, 10) + "T00:00:00Z") + 24 * 60 * 60 * 1000;
+  if (fromMs >= todayEndMs) {
+    reasons.push(`${at}: 미래 날짜는 조회할 수 없습니다.`);
+  }
+  return reasons;
+};
+
 const checkBusinessRules = (actions: AiAction[]): string[] => {
   const reasons: string[] = [];
 
@@ -99,6 +134,18 @@ const checkBusinessRules = (actions: AiAction[]): string[] => {
 
       case "START_STOPWATCH":
         break;
+
+      // 기록 질의 액션들은 창·할일 한도와 무관하다 — 서버 조회만 하고 UI 리소스를 만들지 않는다.
+      case "GET_TOTAL":
+      case "GET_BY_CATEGORY": {
+        reasons.push(...checkQueryRange(action.from, action.to, at));
+        break;
+      }
+      case "GET_DISTRACT_PATTERN": {
+        reasons.push(...checkQueryRange(action.from, action.to, at));
+        // groupBy는 스키마에서 이미 enum 검사 완료.
+        break;
+      }
     }
   });
 

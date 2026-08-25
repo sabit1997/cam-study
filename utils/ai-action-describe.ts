@@ -69,6 +69,28 @@ const label = (action: AiAction): { icon: string; text: string } => {
 
     case "START_STOPWATCH":
       return { icon: "⏱", text: "스톱워치 시작" };
+
+    case "GET_TOTAL":
+      return {
+        icon: "📊",
+        text: `${action.from}부터 ${action.to}까지 총 공부시간 조회`,
+      };
+
+    case "GET_BY_CATEGORY":
+      return {
+        icon: "📊",
+        text: `${action.from}부터 ${action.to}까지 카테고리별 시간 조회`,
+      };
+
+    case "GET_DISTRACT_PATTERN": {
+      const groupLabel = { day: "일별", weekday: "요일별", hour: "시간대별" }[
+        action.groupBy
+      ];
+      return {
+        icon: "📊",
+        text: `${action.from}부터 ${action.to}까지 딴짓 패턴(${groupLabel}) 조회`,
+      };
+    }
   }
 };
 
