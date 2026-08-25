@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "@google/genai";
-import { DEFAULT_MODEL, MAX_INPUT_LENGTH, interpret, type GenerateResult } from "./ai-interpret";
+import {
+  DEFAULT_MODEL,
+  MAX_INPUT_LENGTH,
+  interpret,
+  isPurpose,
+  type GenerateResult,
+} from "./ai-interpret";
 
 const replying = (text: string, extra: Partial<GenerateResult> = {}) =>
   vi.fn().mockResolvedValue({ text, ...extra } satisfies GenerateResult);
@@ -56,6 +62,67 @@ describe("interpret", () => {
     const generateContent = replying(JSON.stringify({ actions: [] }));
     await interpret("x", { generateContent, model: "gemini-3-pro" });
     expect(generateContent.mock.calls[0][0].model).toBe("gemini-3-pro");
+  });
+
+  describe("purpose별 thinkingLevel 분기", () => {
+    it("purpose를 안 주면 기본 command로 MINIMAL을 쓴다", async () => {
+      const generateContent = replying(JSON.stringify({ actions: [] }));
+      await interpret("x", { generateContent });
+      expect(generateContent.mock.calls[0][0].config.thinkingConfig).toEqual({
+        thinkingLevel: "MINIMAL",
+      });
+    });
+
+    it("record-query는 MINIMAL — 짧은 구조 변환이라 깊게 생각시킬 이유가 없다", async () => {
+      const generateContent = replying(JSON.stringify({ actions: [] }));
+      await interpret("x", { generateContent, purpose: "record-query" });
+      expect(generateContent.mock.calls[0][0].config.thinkingConfig).toEqual({
+        thinkingLevel: "MINIMAL",
+      });
+    });
+
+    it("label-suggest도 MINIMAL — 앱 이름 분류는 단순 태스크다", async () => {
+      const generateContent = replying(JSON.stringify({ actions: [] }));
+      await interpret("x", { generateContent, purpose: "label-suggest" });
+      expect(generateContent.mock.calls[0][0].config.thinkingConfig).toEqual({
+        thinkingLevel: "MINIMAL",
+      });
+    });
+
+    it("youtube-search는 MEDIUM — 다단계 도구 사용이라 MINIMAL은 조기 종료 위험이 있다", async () => {
+      const generateContent = replying(JSON.stringify({ actions: [] }));
+      await interpret("x", { generateContent, purpose: "youtube-search" });
+      expect(generateContent.mock.calls[0][0].config.thinkingConfig).toEqual({
+        thinkingLevel: "MEDIUM",
+      });
+    });
+
+    it("video-analyze는 MEDIUM — 영상 파싱은 목차와 근거를 함께 뽑아야 한다", async () => {
+      const generateContent = replying(JSON.stringify({ actions: [] }));
+      await interpret("x", { generateContent, purpose: "video-analyze" });
+      expect(generateContent.mock.calls[0][0].config.thinkingConfig).toEqual({
+        thinkingLevel: "MEDIUM",
+      });
+    });
+  });
+
+  describe("isPurpose", () => {
+    it("정의된 값만 true", () => {
+      expect(isPurpose("command")).toBe(true);
+      expect(isPurpose("record-query")).toBe(true);
+      expect(isPurpose("label-suggest")).toBe(true);
+      expect(isPurpose("youtube-search")).toBe(true);
+      expect(isPurpose("video-analyze")).toBe(true);
+    });
+
+    it("그 밖의 값은 false — API 어댑터에서 화이트리스트 필터로 쓴다", () => {
+      expect(isPurpose("")).toBe(false);
+      expect(isPurpose("COMMAND")).toBe(false);
+      expect(isPurpose("admin")).toBe(false);
+      expect(isPurpose(null)).toBe(false);
+      expect(isPurpose(undefined)).toBe(false);
+      expect(isPurpose(42)).toBe(false);
+    });
   });
 
   describe("입력 가드", () => {
