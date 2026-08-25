@@ -149,6 +149,19 @@ export function createExpressApp(staticDir: string) {
       if (typeof ct === "string") res.setHeader("Content-Type", ct);
       res.setHeader("Cache-Control", "no-cache, no-transform");
       res.setHeader("X-Accel-Buffering", "no");
+      // Node http는 첫 write()까지 헤더 전송을 보류한다. 그러면 upstream의 첫 chunk가
+      // 도착할 때까지 브라우저가 응답 시작을 인지 못해 SSE의 이점이 사라진다.
+      // pipe 직전에 명시적으로 flush.
+      res.flushHeaders();
+
+      // 렌더러가 fetch abort로 연결을 끊으면 upstream Gemini 스트림도 곧바로 종료해야
+      // quota가 헛되이 소비되지 않는다. res 또는 원 요청이 닫히면 upstream을 destroy.
+      const cleanup = () => {
+        upstream.data.destroy();
+      };
+      res.on("close", cleanup);
+      req.on("close", cleanup);
+
       upstream.data.pipe(res);
     } catch (err) {
       console.error("[onboarding-chat]", err);
