@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
+import type { AppLabel, AppPreset, SessionSummary } from "../types/tracking";
 
 contextBridge.exposeInMainWorld("electronAPI", {
   platform: process.platform,
@@ -36,4 +37,24 @@ contextBridge.exposeInMainWorld("electronAPI", {
   restartAndUpdate: () => ipcRenderer.send("update:restart"),
   // 마운트 시 놓친 업데이트 상태를 main 프로세스에 조회
   checkUpdateState: () => ipcRenderer.invoke("update:check-state"),
+
+  /**
+   * 딴짓 감지 트래커.
+   *
+   * 렌더러가 타이머 시작 시 startSession을, 정지 시 stopSession을 부른다.
+   * 세션 요약은 pull 방식으로만 온다 — 실시간 알림은 원칙적으로 보내지 않는다(설계 문서 §2.2).
+   */
+  tracker: {
+    startSession: (): void => ipcRenderer.send("tracker:start"),
+    stopSession: (): Promise<SessionSummary | null> =>
+      ipcRenderer.invoke("tracker:stop"),
+    getLabels: (): Promise<{
+      presets: AppPreset[];
+      overrides: Record<string, AppLabel>;
+    }> => ipcRenderer.invoke("tracker:get-labels"),
+    setLabel: (appName: string, label: AppLabel): Promise<void> =>
+      ipcRenderer.invoke("tracker:set-label", appName, label),
+    removeLabel: (appName: string): Promise<void> =>
+      ipcRenderer.invoke("tracker:remove-label", appName),
+  },
 });

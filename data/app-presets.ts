@@ -1,4 +1,4 @@
-import type { AppPreset } from "@/types/tracking";
+import type { AppPreset } from "../types/tracking";
 
 /**
  * 앱 라벨 프리셋 — 로컬 저장 + 앱 내장(설계 문서 §2.3).
