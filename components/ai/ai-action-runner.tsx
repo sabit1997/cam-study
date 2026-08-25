@@ -7,6 +7,14 @@ import { validateAiActions } from "@/utils/ai-action-validate";
 import { planAiActions, type PlannedStep } from "@/utils/ai-action-plan";
 import { buildWindowPayload } from "@/utils/window-payload";
 import { extractYouTubeId } from "@/utils/extractYouTubeId";
+import {
+  formatCategoryAnswer,
+  formatDistractPatternAnswer,
+  formatTotalAnswer,
+  getByCategory,
+  getDistractPattern,
+  getTotal,
+} from "@/utils/ai-record-query";
 
 /**
  * 액션 배치를 실제로 실행하는 유일한 지점.
@@ -23,6 +31,11 @@ export interface AiRunResult {
   /** 사람이 읽을 수 있는 실행 결과 요약 */
   summary: string;
   reasons?: string[];
+  /**
+   * 기록 질의 액션이 만든 답변 마크다운. 팔레트가 인라인 답변 카드로 보여준다.
+   * 여러 조회가 한 배치에 있어도 순서대로 이어붙인다.
+   */
+  answer?: string;
 }
 
 export type AiRun = (input: unknown) => Promise<AiRunResult>;
@@ -71,6 +84,7 @@ export default function AiActionRunner() {
       const failed: string[] = [];
       let createdWindows = 0;
       let addedTodos = 0;
+      const answers: string[] = [];
 
       /** 지금 화면에서 가장 앞에 있는(= 사용자가 방금 보고 있던) 해당 종류의 창 */
       const topmostWindowId = (type: "todo"): number | null => {
@@ -135,6 +149,35 @@ export default function AiActionRunner() {
               // 성공으로 세면 "포모도로 시작"이라고 승인받고 아무 일도 하지 않은 뒤
               // 성공 토스트까지 띄우게 된다 — 승인 절차가 있으나 마나가 된다.
               throw new Error("타이머 제어는 아직 지원하지 않습니다.");
+
+            case "queryTotal": {
+              const result = await getTotal(step.from, step.to);
+              answers.push(formatTotalAnswer(step.from, step.to, result));
+              break;
+            }
+
+            case "queryByCategory": {
+              const result = await getByCategory(step.from, step.to);
+              answers.push(formatCategoryAnswer(step.from, step.to, result));
+              break;
+            }
+
+            case "queryDistractPattern": {
+              const result = await getDistractPattern(
+                step.from,
+                step.to,
+                step.groupBy
+              );
+              answers.push(
+                formatDistractPatternAnswer(
+                  step.from,
+                  step.to,
+                  step.groupBy,
+                  result
+                )
+              );
+              break;
+            }
           }
         } catch (error) {
           console.error(`[AiActionRunner] ${at} 실패`, error);
@@ -150,16 +193,22 @@ export default function AiActionRunner() {
       const done = [
         createdWindows > 0 ? `창 ${createdWindows}개` : null,
         addedTodos > 0 ? `할 일 ${addedTodos}개` : null,
+        answers.length > 0 ? `조회 ${answers.length}건` : null,
       ].filter(Boolean);
 
       const summary = done.length > 0 ? `${done.join(", ")} 처리했습니다.` : "변경된 것이 없습니다.";
+      const answer = answers.length > 0 ? answers.join("\n\n---\n\n") : undefined;
 
       if (failed.length > 0) {
         toast.error(`${summary} 일부는 실패했습니다.`);
-        return { ok: false, summary, reasons: failed };
+        return { ok: false, summary, reasons: failed, answer };
+      }
+      // 조회만 있었으면 UI가 살짝 변한 게 없어 토스트 없이 답변만 보여준다.
+      if (createdWindows === 0 && addedTodos === 0 && answers.length > 0) {
+        return { ok: true, summary, answer };
       }
       toast.success(summary);
-      return { ok: true, summary };
+      return { ok: true, summary, answer };
     },
     [addTodo, bringToFront, createWindow]
   );

@@ -104,10 +104,15 @@ export const getByCategory = async (
  * 카테고리와 같은 이유로 tracker 데이터가 있어야 의미 있는 결과가 나온다.
  */
 export const getDistractPattern = async (
-  _from: string,
-  _to: string,
-  _groupBy: "day" | "weekday" | "hour"
+  from: string,
+  to: string,
+  groupBy: "day" | "weekday" | "hour"
 ): Promise<DistractPatternResult> => {
+  // 아직 tracker IPC가 노출되지 않아 인자만 받고 안내로 답한다.
+  // 브랜치 2와 병합된 뒤 여기서 window.electronAPI?.tracker?.getSessions로 실제 데이터를 뽑는다.
+  void from;
+  void to;
+  void groupBy;
   return {
     buckets: [],
     incomplete:

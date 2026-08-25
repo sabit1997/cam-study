@@ -10,6 +10,7 @@ import { apiErrorMessage } from "@/utils/api-error";
 import { consume as consumeQuota, getRemaining as getQuotaRemaining } from "@/utils/ai-quota";
 import { getFallbackActions } from "@/utils/ai-fallback";
 import { runAiActions } from "./ai-action-runner";
+import AiAnswerPanel from "./ai-answer-panel";
 import type { AiAction } from "@/types/ai-actions";
 
 /**
@@ -32,7 +33,9 @@ type Phase =
   | { status: "interpreting" }
   | { status: "review"; actions: AiAction[]; source?: "server" | "fallback" }
   | { status: "rejected"; reasons: string[] }
-  | { status: "running" };
+  | { status: "running" }
+  // 조회 액션 실행 결과. 답변 마크다운을 인라인 카드로 보여준다.
+  | { status: "answered"; answer: string };
 
 export default function CommandPalette() {
   const { isOpen, close } = useCommandPalette();
@@ -208,6 +211,12 @@ export default function CommandPalette() {
     // 실행 자체는 이미 일어났고, 성공·실패는 실행기가 토스트로 알린다.
     if (generation !== requestId.current) return;
     if (result.ok) {
+      // 조회 액션이 만든 답변이 있으면 팔레트를 닫지 않고 인라인으로 보여준다.
+      // 답변이 없다면 성공 토스트는 이미 러너가 띄웠으므로 팔레트만 닫는다.
+      if (result.answer) {
+        setPhase({ status: "answered", answer: result.answer });
+        return;
+      }
       handleClose();
       return;
     }
@@ -374,6 +383,7 @@ export default function CommandPalette() {
           {phase.status === "review" && `${descriptions.length}개의 변경을 검토하세요.`}
           {phase.status === "running" && "실행 중입니다."}
           {phase.status === "rejected" && phase.reasons.join(" ")}
+          {phase.status === "answered" && "답변이 준비됐어요."}
         </div>
 
         {phase.status === "input" && suggestions.length > 0 && (
@@ -482,6 +492,14 @@ export default function CommandPalette() {
               </button>
             </div>
           </div>
+        )}
+
+        {phase.status === "answered" && (
+          <AiAnswerPanel
+            markdown={phase.answer}
+            onClose={handleClose}
+            isDarkMode={isDarkMode}
+          />
         )}
       </div>
     </div>,
