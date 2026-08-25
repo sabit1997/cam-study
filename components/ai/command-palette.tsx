@@ -7,6 +7,8 @@ import { validateAiActions } from "@/utils/ai-action-validate";
 import { describeAiActions } from "@/utils/ai-action-describe";
 import { filterSuggestions } from "@/utils/command-suggestions";
 import { apiErrorMessage } from "@/utils/api-error";
+import { consume as consumeQuota, getRemaining as getQuotaRemaining } from "@/utils/ai-quota";
+import { getFallbackActions } from "@/utils/ai-fallback";
 import { runAiActions } from "./ai-action-runner";
 import type { AiAction } from "@/types/ai-actions";
 
@@ -28,7 +30,7 @@ const FOCUSABLE = "button:not([disabled]), input:not([disabled]), [href]";
 type Phase =
   | { status: "input" }
   | { status: "interpreting" }
-  | { status: "review"; actions: AiAction[] }
+  | { status: "review"; actions: AiAction[]; source?: "server" | "fallback" }
   | { status: "rejected"; reasons: string[] }
   | { status: "running" };
 
@@ -40,6 +42,15 @@ export default function CommandPalette() {
   const [query, setQuery] = useState("");
   const [phase, setPhase] = useState<Phase>({ status: "input" });
   const [activeIndex, setActiveIndex] = useState(0);
+  const [quotaRemaining, setQuotaRemaining] = useState<number>(() =>
+    getQuotaRemaining()
+  );
+
+  // 팔레트를 열 때 localStorage에서 남은 몫을 다시 읽는다.
+  // 사용자가 다른 탭·데스크탑에서 소비했을 수 있고, 자정이 지났을 수도 있다.
+  useEffect(() => {
+    if (isOpen) setQuotaRemaining(getQuotaRemaining());
+  }, [isOpen]);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -89,12 +100,58 @@ export default function CommandPalette() {
     previouslyFocused.current = null;
   }, [isOpen]);
 
+  /**
+   * 이미 fallback 액션이 준비돼 있으면 검증을 태워 review로 넘긴다.
+   * 서버 응답과 fallback을 같은 경로로 태워 미리보기·승인·실행이 어긋나지 않게 한다.
+   */
+  const showFallback = useCallback(
+    (generation: number, actions: AiAction[]) => {
+      if (generation !== requestId.current) return;
+      const validation = validateAiActions(actions);
+      if (!validation.ok || validation.actions.length === 0) {
+        setPhase({
+          status: "rejected",
+          reasons: ["오프라인 데모 응답이 준비되어 있지 않아요."],
+        });
+        return;
+      }
+      setPhase({
+        status: "review",
+        actions: validation.actions,
+        source: "fallback",
+      });
+    },
+    []
+  );
+
   const submit = useCallback(
     async (text: string) => {
       const trimmed = text.trim();
       if (!trimmed) return;
 
       const generation = ++requestId.current;
+
+      // 요청을 보내기 전에 남은 몫을 먼저 예약한다. 부족하면 서버까지 가지 않는다.
+      // 서버 IP 레이트리밋은 실질 방어선으로 남기고, 사용자에게는 이 층에서 사전 안내를 준다.
+      const reservation = consumeQuota("command");
+      setQuotaRemaining(reservation.remaining);
+      if (!reservation.ok) {
+        // 예산이 소진돼도 예시 문장이라면 오프라인 데모 응답으로 살려낸다.
+        // 데모의 얼굴이 되는 다섯 개는 429에서도 동작해야 한다.
+        const fallback = getFallbackActions(trimmed);
+        if (fallback) {
+          showFallback(generation, fallback);
+          return;
+        }
+        setPhase({
+          status: "rejected",
+          reasons: [
+            "오늘의 AI 호출 몫을 다 썼어요. 자정에 다시 채워집니다.",
+          ],
+        });
+        return;
+      }
+
       setPhase({ status: "interpreting" });
       try {
         const { actions } = await interpretCommand(trimmed);
@@ -115,9 +172,22 @@ export default function CommandPalette() {
           });
           return;
         }
-        setPhase({ status: "review", actions: validation.actions });
+        setPhase({ status: "review", actions: validation.actions, source: "server" });
       } catch (error) {
         if (generation !== requestId.current) return;
+        // 429(서버 레이트리밋)에 걸렸어도 예시 문장이면 fallback으로 넘긴다.
+        // apis/request.ts는 { response: { status } } 평면 객체로 reject한다.
+        const status =
+          typeof error === "object" && error !== null && "response" in error
+            ? (error as { response?: { status?: number } }).response?.status
+            : undefined;
+        if (status === 429) {
+          const fallback = getFallbackActions(trimmed);
+          if (fallback) {
+            showFallback(generation, fallback);
+            return;
+          }
+        }
         // apis/request.ts는 Error가 아닌 평면 객체를 reject한다.
         // instanceof Error로 분기하면 서버가 만든 429·503 안내가 전부 버려진다.
         setPhase({
@@ -126,7 +196,7 @@ export default function CommandPalette() {
         });
       }
     },
-    [interpretCommand]
+    [interpretCommand, showFallback]
   );
 
   const confirm = useCallback(async () => {
@@ -241,36 +311,61 @@ export default function CommandPalette() {
           color: textColor,
         }}
       >
-        <input
-          ref={inputRef}
-          type="text"
-          role="combobox"
-          aria-expanded={suggestions.length > 0}
-          aria-controls={LISTBOX_ID}
-          aria-autocomplete="list"
-          aria-activedescendant={
-            phase.status === "input" && suggestions.length > 0
-              ? `${LISTBOX_ID}-${activeIndex}`
-              : undefined
-          }
-          value={query}
-          disabled={isBusy}
-          onChange={(event) => {
-            setQuery(event.target.value);
-            setActiveIndex(0);
-            if (phase.status !== "input") setPhase({ status: "input" });
-          }}
-          placeholder="하고 싶은 것을 문장으로 적어보세요"
-          style={{
-            width: "100%",
-            padding: "18px 20px",
-            fontSize: 17,
-            border: "none",
-            outline: "none",
-            background: "transparent",
-            color: textColor,
-          }}
-        />
+        <div style={{ position: "relative" }}>
+          <input
+            ref={inputRef}
+            type="text"
+            role="combobox"
+            aria-expanded={suggestions.length > 0}
+            aria-controls={LISTBOX_ID}
+            aria-autocomplete="list"
+            aria-activedescendant={
+              phase.status === "input" && suggestions.length > 0
+                ? `${LISTBOX_ID}-${activeIndex}`
+                : undefined
+            }
+            value={query}
+            disabled={isBusy}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setActiveIndex(0);
+              if (phase.status !== "input") setPhase({ status: "input" });
+            }}
+            placeholder="하고 싶은 것을 문장으로 적어보세요"
+            style={{
+              width: "100%",
+              padding: "18px 92px 18px 20px", // 우측 여유는 뱃지 자리
+              fontSize: 17,
+              border: "none",
+              outline: "none",
+              background: "transparent",
+              color: textColor,
+              boxSizing: "border-box",
+            }}
+          />
+          {/* 남은 AI 호출 뱃지 — 무료 티어 할당량을 사용자에게 미리 알려준다.
+              스크린 리더에는 aria-label 하나로만 읽히도록 시각 요소는 aria-hidden. */}
+          <span
+            aria-label={`남은 AI 호출 ${quotaRemaining}회`}
+            style={{
+              position: "absolute",
+              right: 18,
+              top: "50%",
+              transform: "translateY(-50%)",
+              padding: "3px 9px",
+              borderRadius: 999,
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: 0.2,
+              background: quotaRemaining > 0 ? `${ACCENT}22` : "rgba(217,83,79,0.15)",
+              color: quotaRemaining > 0 ? ACCENT : "#d9534f",
+              whiteSpace: "nowrap",
+              pointerEvents: "none",
+            }}
+          >
+            <span aria-hidden="true">남은 AI · {quotaRemaining}</span>
+          </span>
+        </div>
 
         {/* 상태 변화는 완료된 문장 단위로 한 번만 알린다.
             토큰이 올 때마다 알리면 스크린 리더가 처음부터 다시 읽어 아무것도 알아들을 수 없다. */}
@@ -331,9 +426,35 @@ export default function CommandPalette() {
 
         {phase.status === "review" && (
           <div style={{ ...PANEL, borderTop: border }}>
-            <p style={{ margin: "0 0 10px", fontSize: 13, color: mutedColor }}>
-              이렇게 바뀝니다
-            </p>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                margin: "0 0 10px",
+              }}
+            >
+              <p style={{ margin: 0, fontSize: 13, color: mutedColor }}>
+                이렇게 바뀝니다
+              </p>
+              {phase.source === "fallback" && (
+                // 서버 429·quota 소진으로 사전 녹화 응답이 쓰였음을 사용자에게 밝힌다.
+                // 승인 UI는 정상 흐름과 완전히 같으므로 배지가 유일한 구분이다.
+                <span
+                  aria-label="오프라인 데모 응답"
+                  style={{
+                    padding: "2px 8px",
+                    borderRadius: 999,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    background: "rgba(232,160,48,0.15)",
+                    color: "#c98a2b",
+                  }}
+                >
+                  오프라인 데모 응답
+                </span>
+              )}
+            </div>
             <ul style={{ listStyle: "none", margin: "0 0 16px", padding: 0 }}>
               {descriptions.map((item, index) => (
                 <li

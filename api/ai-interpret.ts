@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { interpret } from "../server/ai-interpret";
+import { interpret, isPurpose } from "../server/ai-interpret";
 import { createRateLimiter } from "../server/rate-limit";
 
 /**
@@ -115,8 +115,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const body = req.body as { text?: unknown } | null | undefined;
-    const result = await interpret(body?.text);
+    const body = req.body as
+      | { text?: unknown; purpose?: unknown }
+      | null
+      | undefined;
+    // purpose는 화이트리스트만 허용. 알 수 없는 값이 오면 조용히 기본값으로 떨어뜨린다.
+    // 잘못된 문자열로 429를 던져 사용자에게 노출할 이유가 없다.
+    const purpose = isPurpose(body?.purpose) ? body.purpose : undefined;
+    const result = await interpret(body?.text, purpose ? { purpose } : {});
 
     if (!result.ok) {
       res.status(result.status).json({ error: result.error });

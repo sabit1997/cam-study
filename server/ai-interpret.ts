@@ -33,10 +33,32 @@ import { SYSTEM_PROMPT } from "./ai-prompt";
 export const DEFAULT_MODEL = "gemini-3.5-flash-lite";
 
 /**
- * 깊게 생각시킬 이유가 없다. 팔레트는 사용자가 기다리는 UI라 지연이 곧 체감 품질이다.
- * (thinkingBudget: 0은 400으로 거부된다. 끄는 게 아니라 낮추는 것만 가능하다.)
+ * 호출 목적. thinkingLevel과 클라이언트 quota 가중치 분기에 쓰인다.
+ *
+ * - command / record-query / label-suggest : 짧은 구조 변환. MINIMAL로 지연을 낮춘다.
+ * - youtube-search / video-analyze : 다단계 도구 사용 · 영상 파싱. MINIMAL은 조기 종료 위험이 있어 MEDIUM.
  */
-const THINKING_LEVEL = "MINIMAL";
+export const PURPOSES = [
+  "command",
+  "record-query",
+  "label-suggest",
+  "youtube-search",
+  "video-analyze",
+] as const;
+export type Purpose = (typeof PURPOSES)[number];
+
+const THINKING_BY_PURPOSE: Record<Purpose, "MINIMAL" | "LOW" | "MEDIUM"> = {
+  command: "MINIMAL",
+  "record-query": "MINIMAL",
+  "label-suggest": "MINIMAL",
+  "youtube-search": "MEDIUM",
+  "video-analyze": "MEDIUM",
+};
+
+export const DEFAULT_PURPOSE: Purpose = "command";
+
+export const isPurpose = (value: unknown): value is Purpose =>
+  typeof value === "string" && (PURPOSES as readonly string[]).includes(value);
 
 /** 503(일시적 과부하)은 재시도하면 대개 통과한다. 429(할당량)는 재시도하면 더 나빠지므로 하지 않는다. */
 const RETRY_ON_503 = 1;
@@ -70,6 +92,8 @@ export interface InterpretOptions {
   generateContent?: GenerateContent;
   apiKey?: string;
   model?: string;
+  /** 호출 목적. thinkingLevel이 이 값으로 분기된다. 기본값은 "command". */
+  purpose?: Purpose;
 }
 
 let cachedClient: GoogleGenAI | null = null;
@@ -115,6 +139,9 @@ export const interpret = async (
   const generateContent =
     options.generateContent ?? defaultGenerateContent(options.apiKey);
 
+  const purpose = options.purpose ?? DEFAULT_PURPOSE;
+  const thinkingLevel = THINKING_BY_PURPOSE[purpose];
+
   const request = {
     model: options.model ?? process.env.GEMINI_MODEL ?? DEFAULT_MODEL,
     contents: text,
@@ -122,7 +149,7 @@ export const interpret = async (
       systemInstruction: SYSTEM_PROMPT,
       responseMimeType: "application/json",
       responseJsonSchema: RESPONSE_JSON_SCHEMA,
-      thinkingConfig: { thinkingLevel: THINKING_LEVEL },
+      thinkingConfig: { thinkingLevel },
     },
   };
 
