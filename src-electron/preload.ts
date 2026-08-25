@@ -9,6 +9,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     ipcRenderer.on("screen-picker:open", listener);
     return () => ipcRenderer.removeListener("screen-picker:open", listener);
   },
+  onCommandPaletteOpen: (fn: () => void) => {
+    const listener = () => fn();
+    ipcRenderer.on("palette:open", listener);
+    return () => ipcRenderer.removeListener("palette:open", listener);
+  },
   onUpdateAvailable: (fn: (update: unknown) => void) => {
     const listener = (_: Electron.IpcRendererEvent, update: unknown) => fn(update);
     ipcRenderer.on("update:available", listener);

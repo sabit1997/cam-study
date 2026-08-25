@@ -8,13 +8,13 @@
   "scripts": {
     "dev:web": "vite",
     "build:ts": "node scripts/build-electron.js",
-    "dev:electron": "wait-on http://localhost:3000 && electron .",
-    "dev": "npm run build:ts && concurrently -k \"npm run dev:web\" \"npm run dev:electron\"",
+    "dev:electron": "wait-on http://localhost:3000 && node scripts/dev-electron.js",
+    "dev": "npm run build:ts && concurrently --kill-others-on-fail \"npm run dev:web\" \"npm run dev:electron\"",
     "build:web": "vite build",
     "build:app": "npm run build:ts && npm run build:web && electron-builder",
     "type-check": "tsc --noEmit",
     "type-check:electron": "tsc -p tsconfig.electron.json --noEmit",
-    "lint": "eslint src components apis stores hooks utils",
+    "lint": "eslint src components apis stores hooks utils types server api",
     "test": "vitest run",
     "check": "npm run type-check && npm run type-check:electron && npm run lint && npm test",
     "preview": "vite preview",
@@ -23,6 +23,7 @@
     "perf:after": "node perf-measure.mjs after"
   },
   "dependencies": {
+    "@google/genai": "^2.18.0",
     "@radix-ui/react-tooltip": "^1.2.7",
     "@tanstack/react-query": "^5.74.3",
     "@uiw/react-color": "^2.5.4",
@@ -41,6 +42,7 @@
     "recharts": "^3.9.1",
     "sonner": "^2.0.7",
     "use-debounce": "^10.0.4",
+    "zod": "^4.4.3",
     "zustand": "^5.0.3"
   },
   "devDependencies": {

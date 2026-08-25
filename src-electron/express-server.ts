@@ -13,6 +13,12 @@ const YOUTUBE_API_KEY: string | undefined =
     ? __YOUTUBE_API_KEY__
     : process.env.YOUTUBE_API_KEY;
 
+// AI 해석은 데스크탑에서 직접 하지 않고 웹 배포본의 엔드포인트로 넘긴다.
+// Anthropic API 키를 배포 바이너리에 넣지 않기 위해서다(누구나 꺼내볼 수 있다).
+declare const __AI_PROXY_URL__: string | undefined;
+const AI_PROXY_URL: string =
+  (typeof __AI_PROXY_URL__ !== "undefined" ? __AI_PROXY_URL__ : process.env.AI_PROXY_URL) ?? "";
+
 export function createExpressApp(staticDir: string) {
   const app = express();
   app.use(express.static(staticDir));
@@ -48,6 +54,39 @@ export function createExpressApp(staticDir: string) {
     } catch (err) {
       console.error("[check-youtube]", err);
       res.status(500).json({ error: "영상 정보를 가져오는 데 실패했습니다." });
+    }
+  });
+
+  // AI 해석 → 웹 배포본으로 프록시. 반드시 아래의 포괄 /api 프록시보다 위에 있어야 한다.
+  app.post("/api/ai-interpret", express.json(), async (req, res) => {
+    if (!AI_PROXY_URL) {
+      res.status(500).json({
+        error: "AI 엔드포인트가 설정되지 않았습니다. 빌드 시 AI_PROXY_URL이 필요합니다.",
+      });
+      return;
+    }
+
+    try {
+      const upstream = await axios.post(
+        `${AI_PROXY_URL.replace(/\/$/, "")}/api/ai-interpret`,
+        req.body,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            // 상류(api/ai-interpret.ts)는 세션 쿠키가 있는 요청만 받는다.
+            // 렌더러가 보낸 쿠키를 그대로 넘겨야 그 게이트를 통과한다.
+            // Origin은 붙이지 않는다 — 상류는 Origin 없는 서버-투-서버 호출을 허용한다.
+            ...(req.headers.cookie ? { Cookie: req.headers.cookie } : {}),
+          },
+          validateStatus: () => true,
+        }
+      );
+      // 상태 코드를 그대로 넘긴다. 429(레이트 리밋)나 422(거부)를 200으로 만들면
+      // 클라이언트가 실패를 성공으로 오해한다.
+      res.status(upstream.status).json(upstream.data);
+    } catch (err) {
+      console.error("[ai-interpret]", err);
+      res.status(502).json({ error: "AI 요청을 전달하지 못했습니다." });
     }
   });
 

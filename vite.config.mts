@@ -17,6 +17,7 @@ export default defineConfig(({ mode }) => {
   // loadEnv에 세 번째 인자 ""를 주면 VITE_ 접두사 없는 변수도 모두 로드한다
   const env = loadEnv(mode, process.cwd(), "");
   const youtubeApiKey = env.YOUTUBE_API_KEY ?? "";
+  const geminiApiKey = env.GEMINI_API_KEY ?? "";
 
   return {
     plugins: [
@@ -62,6 +63,47 @@ export default defineConfig(({ mode }) => {
             } catch (err) {
               console.error("[check-youtube]", err);
               send(500, { error: "영상 정보를 가져오는 데 실패했습니다." });
+            }
+          });
+        },
+      },
+      {
+        // 개발 환경(Vite) 어댑터. 배포 환경 어댑터는 api/ai-interpret.ts(웹)와
+        // src-electron/express-server.ts(데스크탑 프록시)에 있다.
+        // 해석 로직 자체는 server/ai-interpret.ts 한 곳에만 있다.
+        name: "ai-interpret",
+        configureServer(server) {
+          server.middlewares.use(async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
+            if (req.url !== "/api/ai-interpret" || req.method !== "POST") {
+              next();
+              return;
+            }
+            const send = (status: number, body: object) => {
+              res.writeHead(status, { "Content-Type": "application/json" });
+              res.end(JSON.stringify(body));
+            };
+            if (!geminiApiKey) {
+              send(500, { error: "GEMINI_API_KEY가 설정되지 않았습니다. .env를 확인하세요." });
+              return;
+            }
+            try {
+              const body = await readBody(req);
+              const { text } = JSON.parse(body) as { text?: unknown };
+              // Vite의 모듈 파이프라인으로 로드한다. 설정 파일에서 직접 import하면
+              // 설정 로더가 TS/ESM을 CJS로 취급해 경고가 나고, 앞으로는 아예 깨진다.
+              // 이렇게 하면 server/ 코드를 고쳐도 개발 서버를 재시작할 필요가 없다.
+              const { interpret } = (await server.ssrLoadModule(
+                "/server/ai-interpret.ts"
+              )) as typeof import("./server/ai-interpret");
+              const result = await interpret(text, { apiKey: geminiApiKey });
+              if (!result.ok) {
+                send(result.status, { error: result.error });
+                return;
+              }
+              send(200, { actions: result.actions });
+            } catch (err) {
+              console.error("[ai-interpret]", err);
+              send(500, { error: "AI 요청 처리에 실패했습니다." });
             }
           });
         },
