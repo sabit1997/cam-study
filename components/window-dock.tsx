@@ -13,20 +13,13 @@ import { useCreateWindow } from "@/apis/services/window-services/mutation";
 import { useWindowStore } from "@/stores/window-state";
 import { toast } from "sonner";
 import { TypeList } from "@/types/dto";
-
-const CASCADE_MAX = 12;
-const STEP_X = 48;
-const STEP_Y = 28;
-const BASE_X = 100;
-const BASE_Y = 100;
+import { buildWindowPayload } from "@/utils/window-payload";
 
 interface DockItem {
-  type: TypeList;
+  type: Exclude<TypeList, "none">;
   label: string;
   color: string;
   icon: React.ReactNode;
-  width: number;
-  height: number;
 }
 
 const DOCK_ITEMS: DockItem[] = [
@@ -35,43 +28,30 @@ const DOCK_ITEMS: DockItem[] = [
     label: "YouTube",
     color: "#e88090",
     icon: <IoLogoYoutube size={22} />,
-    width: 580,   // ~16:9 player area + bottom UI
-    height: 440,
   },
   {
     type: "camera",
-    // 16:9 video area (480×270) + control bar (~46px) → 480×316 ≈ 480×320
-    // lockAspectRatio will keep this 3:2 ratio on resize
     label: "Camera",
     color: "#8fb870",
     icon: <IoCameraOutline size={22} />,
-    width: 480,
-    height: 320,
   },
   {
     type: "window",
-    // 16:9 video area (580×326) + control bar (~46px) → 580×372 ≈ 580×375
     label: "Screen",
     color: "#80b8d8",
     icon: <IoDesktopOutline size={22} />,
-    width: 580,
-    height: 375,
   },
   {
     type: "todo",
     label: "To-Do",
     color: "#e8c070",
     icon: <IoCheckboxOutline size={22} />,
-    width: 360,
-    height: 480,
   },
   {
     type: "timer",
     label: "Timer",
     color: "#c0b8e8",
     icon: <IoTimerOutline size={22} />,
-    width: 320,
-    height: 380,
   },
 ];
 
@@ -82,19 +62,9 @@ export default function WindowDock() {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   const handleCreate = (item: DockItem) => {
-    const maxZIndex =
-      windows.length > 0 ? Math.max(...windows.map((w) => w.zIndex)) : 0;
-    const step = windows.length % CASCADE_MAX;
-
+    // AI 실행기와 완전히 같은 함수를 쓴다 (utils/window-payload.ts)
     createWindow(
-      {
-        type: item.type,
-        zIndex: maxZIndex + 1,
-        x: BASE_X + step * STEP_X,
-        y: BASE_Y + step * STEP_Y,
-        width: item.width,
-        height: item.height,
-      },
+      buildWindowPayload(item.type, windows),
       {
         onError: () => {
           toast.error("창 추가에 실패했습니다.");
