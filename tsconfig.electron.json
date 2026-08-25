@@ -3,10 +3,17 @@
     "target": "ES2020",
     "module": "commonjs",
     "outDir": "./dist-electron",
-    "rootDir": "./src-electron",
+    "rootDir": "./",
     "strict": true,
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true
   },
-  "include": ["src-electron/**/*"],
-  "exclude": ["node_modules", "dist", ".next", "src-electron/**/*.test.ts"]
+  "include": ["src-electron/**/*", "types/tracking.ts"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    ".next",
+    "src-electron/**/*.test.ts"
+  ]
 }

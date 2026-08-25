@@ -15,6 +15,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { startExpressServer } from "./express-server";
+import { registerTrackerIpc } from "./tracker";
 
 // macOS 26 (Tahoe) workaround: V8 JIT 완전 비활성화
 // main 프로세스는 LSEnvironment.NODE_OPTIONS=--jitless 로 처리, renderer는 여기서 처리
@@ -406,6 +407,7 @@ app.whenReady().then(async () => {
   }
 
   setupAutoUpdater();
+  registerTrackerIpc();
   void createWindow().catch((err) => console.error("창 생성 실패:", err));
   registerCommandPaletteShortcut();
 });

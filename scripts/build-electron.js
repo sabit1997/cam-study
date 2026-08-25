@@ -49,7 +49,16 @@ esbuild
     platform: "node",
     target: "node20",
     format: "cjs",
-    external: ["electron", "fsevents"],
+    // get-windows와 electron-store는 ESM 전용이라 tracker에서 dynamic import로 로드한다.
+    // 여기서 external로 표시해 esbuild가 native 로더(@mapbox/node-pre-gyp) 등 그 의존까지
+    // 번들에 포함하려 하지 않도록 한다.
+    external: [
+      "electron",
+      "fsevents",
+      "get-windows",
+      "electron-store",
+      "conf",
+    ],
     outdir: "dist-electron",
     define: {
       __YOUTUBE_API_KEY__: JSON.stringify(ytKey),

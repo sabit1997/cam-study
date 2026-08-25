@@ -30,6 +30,7 @@ const SignUpPage = lazy(() => import("@/pages/sign-up"));
 const RecordPage = lazy(() => import("@/pages/my-page/record"));
 const StatisticsPage = lazy(() => import("@/pages/my-page/statistics"));
 const ThemeSettingPage = lazy(() => import("@/pages/my-page/theme-setting"));
+const DistractionSettingsPage = lazy(() => import("@/pages/my-page/distraction"));
 const DownloadPage = lazy(() => import("@/pages/download"));
 
 const queryClient = getQueryClient();
@@ -154,6 +155,14 @@ function AppShell() {
                 element={
                   <RequireAuth>
                     <ThemeSettingPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/my-page/distraction"
+                element={
+                  <RequireAuth>
+                    <DistractionSettingsPage />
                   </RequireAuth>
                 }
               />
