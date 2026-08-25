@@ -5,14 +5,24 @@ import { LuTimerReset, LuSkipForward } from "react-icons/lu";
 import { formatSeconds } from "@/utils/formatSeconds";
 import { playPomoSound } from "@/utils/pomoSound";
 import PomodoroSettingsModal from "./modals/pomodoro-settings-modal";
+import SessionSummaryModal from "./tracking/session-summary-modal";
 import { useGetTodayTime } from "@/apis/services/timer-services/query";
 import {
   usePostTime,
   useResetTime,
   usePatchPomoCycles,
 } from "@/apis/services/timer-services/mutation";
+import {
+  buildChunks,
+  type CorrectionChoice,
+} from "@/utils/session-correction";
+import type { SessionSummary } from "@/types/tracking";
 import { toast } from "sonner";
 import { useThemeStore } from "@/stores/theme-state";
+
+/** window.electronAPI.tracker가 있는지 — 데스크탑에서만 true, 웹에서는 false. */
+const hasTracker = (): boolean =>
+  typeof window !== "undefined" && Boolean(window.electronAPI?.tracker);
 
 type TimerMode = "stopwatch" | "pomodoro";
 type PomoPhase = "work" | "break";
@@ -57,6 +67,13 @@ const Timer: React.FC = () => {
     return Number.isFinite(v) && v > 0 ? v : DEFAULT_BREAK_MINS;
   });
   const [showPomoSettings, setShowPomoSettings] = useState(false);
+
+  // ── Tracker (딴짓 감지 · 데스크탑 전용) ──
+  // 스톱워치 세션이 트래커로 감지된 결과를 사용자가 확인하고 서버 반영 방식을 고르는 모달.
+  // confirmed 세그먼트가 하나라도 있을 때만 뜬다.
+  const [pendingSummary, setPendingSummary] = useState<SessionSummary | null>(
+    null
+  );
 
   const workSecs = workMins * 60;
   const breakSecs = breakMins * 60;
@@ -130,6 +147,28 @@ const Timer: React.FC = () => {
     [sendTime]
   );
 
+  /**
+   * 트래커가 낸 세션 요약을 서버에 반영한다.
+   *
+   * choice에 따라 원본 한 번(keep) 또는 focus 구간 여러 번(exclude) 나눠 POST한다.
+   * baseTotalSecondsRef는 실제로 서버에 기록되는 시간과 일치시켜 UI가 어긋나지 않게 한다.
+   */
+  const applyTrackerSummary = useCallback(
+    (summary: SessionSummary, choice: CorrectionChoice) => {
+      const chunks = buildChunks(summary, choice);
+      for (const chunk of chunks) {
+        sendTime(new Date(chunk.startAt), new Date(chunk.endAt));
+      }
+      // 서버에 실제 기록되는 초 만큼만 baseTotalSecondsRef에 반영해 elapsed와 통계가 맞게 한다.
+      const bookedSec =
+        choice === "keep" ? summary.rawDurationSec : summary.correctedDurationSec;
+      const nextBase = baseTotalSecondsRef.current + bookedSec;
+      baseTotalSecondsRef.current = nextBase;
+      setElapsed(nextBase);
+    },
+    [sendTime]
+  );
+
   const flushPomodoroWork = useCallback(
     (keepalive = false) => {
       const startAt = pomoWorkStartRef.current;
@@ -169,6 +208,10 @@ const Timer: React.FC = () => {
     isRunningRef.current = true;
     startAtRef.current = new Date();
 
+    // 딴짓 감지 트래커에 세션 시작을 알린다. 데스크탑에만 있고 웹에는 없다.
+    // fire-and-forget — 실패해도 타이머 자체는 정상 동작한다.
+    window.electronAPI?.tracker?.startSession();
+
     timerRef.current = setInterval(() => {
       if (!startAtRef.current) return;
       setElapsed(
@@ -177,21 +220,26 @@ const Timer: React.FC = () => {
       );
     }, 1000);
 
-    saveRef.current = setInterval(() => {
-      if (!startAtRef.current) return;
-      const now = new Date();
-      const deltaSec = Math.floor(
-        (now.getTime() - startAtRef.current.getTime()) / 1000
-      );
-      const corrected = baseTotalSecondsRef.current + deltaSec;
-      setElapsed(corrected);
-      sendTime(startAtRef.current, now);
-      baseTotalSecondsRef.current = corrected;
-      startAtRef.current = now;
-    }, 60000);
+    // 트래커가 활성이면 60초 자동저장은 끄고, 세션 종료 시 청크로 한꺼번에 보낸다.
+    // 이유: 자동저장이 중간에 raw 시간을 서버에 기록해 두면, 세션 종료 시 "제외" 선택이
+    // 이미 기록된 raw 시간을 되돌리지 못한다. 크래시 시 최대 한 세션치를 잃는 트레이드오프.
+    if (!hasTracker()) {
+      saveRef.current = setInterval(() => {
+        if (!startAtRef.current) return;
+        const now = new Date();
+        const deltaSec = Math.floor(
+          (now.getTime() - startAtRef.current.getTime()) / 1000
+        );
+        const corrected = baseTotalSecondsRef.current + deltaSec;
+        setElapsed(corrected);
+        sendTime(startAtRef.current, now);
+        baseTotalSecondsRef.current = corrected;
+        startAtRef.current = now;
+      }, 60000);
+    }
   }, [sendTime, isPostTimePending]);
 
-  const stopTimer = useCallback(() => {
+  const stopTimer = useCallback(async () => {
     if (timerRef.current) {
       clearInterval(timerRef.current);
       timerRef.current = null;
@@ -200,9 +248,47 @@ const Timer: React.FC = () => {
       clearInterval(saveRef.current);
       saveRef.current = null;
     }
-    flushStopwatch();
     isRunningRef.current = false;
-  }, [flushStopwatch]);
+
+    // 트래커가 없으면(웹) 즉시 기존 경로로 flush.
+    if (!hasTracker()) {
+      flushStopwatch();
+      return;
+    }
+
+    // 트래커가 있으면 세션 요약을 받아 confirmed 세그먼트 유무에 따라 모달 or 자동 반영.
+    try {
+      const summary = await window.electronAPI?.tracker?.stopSession();
+      if (!summary) {
+        // 트래커에 세션이 없었으면(예: startSession 실패) 안전하게 기존 경로.
+        flushStopwatch();
+        return;
+      }
+      const hasConfirmed = summary.segments.some((s) => s.confirmed);
+      if (hasConfirmed) {
+        // 모달을 띄우고, 사용자 응답 후 applyTrackerSummary가 서버에 반영.
+        setPendingSummary(summary);
+        // startAtRef는 모달이 닫힐 때 정리한다. 정리 시점을 놓치지 않도록 여기서 미리 null로.
+        startAtRef.current = null;
+        return;
+      }
+      // 딴짓이 없었으면 원본 그대로 기록. 모달로 사용자를 붙잡지 않는다.
+      applyTrackerSummary(summary, "keep");
+      startAtRef.current = null;
+    } catch (error) {
+      console.warn("[timer] tracker stopSession 실패, 원본으로 flush:", error);
+      flushStopwatch();
+    }
+  }, [flushStopwatch, applyTrackerSummary]);
+
+  const handleSummaryChoice = useCallback(
+    (choice: CorrectionChoice) => {
+      if (!pendingSummary) return;
+      applyTrackerSummary(pendingSummary, choice);
+      setPendingSummary(null);
+    },
+    [pendingSummary, applyTrackerSummary]
+  );
 
   const resetTimer = () => {
     if (isResetTimePending) return;
@@ -358,7 +444,7 @@ const Timer: React.FC = () => {
               <IoPlay size={18} />
             </button>
             <button
-              onClick={stopTimer}
+              onClick={() => void stopTimer()}
               disabled={!Boolean(timerRef.current)}
               className="w-12 h-12 rounded-full flex items-center justify-center text-white shadow-md transition-transform hover:scale-105 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:scale-100"
               style={{ background: "#8fb870" }}
@@ -491,6 +577,13 @@ const Timer: React.FC = () => {
             />
           )}
         </div>
+      )}
+
+      {pendingSummary && (
+        <SessionSummaryModal
+          summary={pendingSummary}
+          onChoose={handleSummaryChoice}
+        />
       )}
     </div>
   );
