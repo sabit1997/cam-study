@@ -7,6 +7,21 @@ export interface InterpretResponse {
   actions: AiAction[];
 }
 
+export interface YoutubeSearchRequest {
+  query: string;
+  count?: number;
+}
+
+export interface YoutubeSearchCandidate {
+  videoId: string;
+  title: string;
+  channel: string;
+}
+
+export interface YoutubeSearchResponse {
+  candidates: YoutubeSearchCandidate[];
+}
+
 /**
  * 서버가 인식하는 목적 값. 서버(server/ai-interpret.ts)의 Purpose와 일치해야 한다.
  * 클라이언트 quota 가중치도 여기에 맞춰 정의된다(utils/ai-quota.ts).
@@ -42,6 +57,23 @@ export default class AiService {
       url: AiEndPoints.interpret(),
       method: AxiosMethod.POST,
       data: body,
+    });
+  };
+
+  /**
+   * Gemini 그라운딩 검색으로 유튜브 강의 후보를 찾는다.
+   *
+   * 반환된 videoId는 서버가 이미 정규식으로 검증했지만, 팔레트는 승인 전에
+   * 임베드 가능 여부까지 다시 확인한다(utils/youtube-pipeline.ts). LLM이 지어낸
+   * 존재하지 않는 videoId는 임베드 검사에서 걸린다.
+   */
+  public static readonly youtubeSearch = (
+    payload: YoutubeSearchRequest
+  ): Promise<YoutubeSearchResponse> => {
+    return request<YoutubeSearchResponse>({
+      url: AiEndPoints.youtubeSearch(),
+      method: AxiosMethod.POST,
+      data: payload,
     });
   };
 }

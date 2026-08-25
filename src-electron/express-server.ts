@@ -90,6 +90,34 @@ export function createExpressApp(staticDir: string) {
     }
   });
 
+  // 유튜브 검색 → 웹 배포본으로 프록시. AI 해석과 같은 이유로 데스크탑에서 직접 실행하지 않는다.
+  app.post("/api/youtube-search", express.json(), async (req, res) => {
+    if (!AI_PROXY_URL) {
+      res.status(500).json({
+        error: "AI 엔드포인트가 설정되지 않았습니다. 빌드 시 AI_PROXY_URL이 필요합니다.",
+      });
+      return;
+    }
+
+    try {
+      const upstream = await axios.post(
+        `${AI_PROXY_URL.replace(/\/$/, "")}/api/youtube-search`,
+        req.body,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            ...(req.headers.cookie ? { Cookie: req.headers.cookie } : {}),
+          },
+          validateStatus: () => true,
+        }
+      );
+      res.status(upstream.status).json(upstream.data);
+    } catch (err) {
+      console.error("[youtube-search]", err);
+      res.status(502).json({ error: "유튜브 검색 요청을 전달하지 못했습니다." });
+    }
+  });
+
   // 나머지 /api/* → 백엔드 프록시 (Cookie 헤더 자동 포워딩)
   // 패키징된 Electron은 http://localhost:<랜덤포트>에서 실행돼 클라이언트
   // Origin이 백엔드 whitelist에 없어 403이 난다. proxyReq에서 Origin/Referer를
