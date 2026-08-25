@@ -1,36 +1,55 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { useThemeStore } from "@/stores/theme-state";
 import { useWindowStore } from "@/stores/window-state";
-import { useInterpretCommand } from "@/apis/services/ai-services/mutation";
+import AiService, {
+  type ChatMessage,
+  type OnboardingReply,
+} from "@/apis/services/ai-services/service";
 import { validateAiActions } from "@/utils/ai-action-validate";
 import { describeAiActions } from "@/utils/ai-action-describe";
 import { runAiActions } from "@/components/ai/ai-action-runner";
-import { apiErrorMessage } from "@/utils/api-error";
+import { buildOnboardingActions } from "@/utils/onboarding-windows";
 import type { AiAction } from "@/types/ai-actions";
 
 /**
- * 첫 실행 온보딩 모달.
+ * 첫 실행 온보딩 — SSE 스트리밍 채팅 모달.
  *
- * 왜 창이 하나도 없을 때만 뜨는가:
- * - 사용자가 계정을 만들자마자 빈 대시보드를 보면 "이 앱으로 뭘 해야 하지"를 그대로 겪는다.
- * - 하지만 이미 창을 만들어본 사용자에게 온보딩을 다시 보여주면 방해가 된다.
- * - 그래서 조건이 두 개: (a) 창 0개 && (b) localStorage 완료 플래그 없음.
+ * ## 왜 대화형인가
+ * "공부용 기본 배치"라는 통용 답은 사람마다 다르다. 캠을 쓰는 사람과 안 쓰는 사람,
+ * 유튜브 강의를 듣는 사람과 조용히 하는 사람의 이상적 창 배치가 같을 수 없다.
+ * 세 번의 짧은 질문이 정적 프리셋보다 정확한 결과를 낸다.
  *
- * 앱 라벨은 여기서 묻지 않는다(설계 문서 §2.3). 프리셋으로 흔한 앱은 답이 정해져 있고,
- * 프리셋에 없는 앱은 실제로 감지된 시점에만 SUGGEST_LABEL 흐름으로 노출된다.
+ * ## 왜 스트리밍인가
+ * 정적 스피너는 왜 오래 걸리는지 알려주지 않고 사용자를 조바심으로 밀어넣는다.
+ * 글자가 순차적으로 나타나면 "생각 중"이라는 신호가 자연스레 전달되고,
+ * 첫 chunk가 빨리 도착하는 것만으로 체감 지연이 크게 줄어든다.
  *
- * 데스크탑 전용 기능(딴짓 감지) 안내는 tracker 유무를 감지해 웹에서만 다운로드 링크로 유도한다.
+ * ## 조건
+ * 창이 하나도 없고 온보딩 완료 플래그가 없을 때만 뜬다.
+ * 이미 창을 만들어본 사용자에게 다시 보여주면 방해다.
  */
 
 const STORAGE_KEY = "onboarding.done";
-const LAYOUT_PROMPT = "공부용 기본 배치 만들어줘";
 const ACCENT = "#8fb870";
+const KICKSTART_TEXT = "온보딩을 시작할게요.";
+const MAX_TURNS = 6;
 
-type Step =
+type Phase =
   | { kind: "intro" }
-  | { kind: "layout"; phase: "idle" | "loading" | "review" | "rejected" | "running"; actions?: AiAction[]; reason?: string }
+  | {
+      kind: "chat";
+      messages: ChatMessage[];
+      /** 현재 스트리밍 중인 어시스턴트 텍스트. done 시 messages로 옮겨진다. */
+      streaming: string;
+      /** 스트림이 실행 중인가. true면 사용자 입력을 막는다. */
+      pending: boolean;
+      /** 서버 오류·모델 형식 오류로 재시도가 필요할 때 */
+      error?: string;
+    }
+  | { kind: "review"; actions: AiAction[]; assistantText: string }
+  | { kind: "running" }
   | { kind: "outro" };
 
 const isBrowser = () => typeof window !== "undefined";
@@ -53,11 +72,6 @@ const markOnboardingDone = (): void => {
   }
 };
 
-/**
- * tracker 필드는 브랜치 2(feat/distraction-detect)에서 preload에 노출된다.
- * 이 브랜치(feat/onboarding)는 브랜치 1 위에서만 파생돼 아직 globals.d.ts에 없다.
- * 두 브랜치가 병합된 뒤에도 안전하도록 in 연산자로 검사한다.
- */
 const hasDesktopTracker = (): boolean =>
   isBrowser() &&
   Boolean(window.electronAPI) &&
@@ -68,12 +82,15 @@ const isDesktopApp = (): boolean => isBrowser() && Boolean(window.electronAPI);
 export default function FirstRunModal() {
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
   const windows = useWindowStore((state) => state.windows);
-  const { mutateAsync: interpretCommand } = useInterpretCommand();
 
   const [visible, setVisible] = useState(false);
-  const [step, setStep] = useState<Step>({ kind: "intro" });
+  const [phase, setPhase] = useState<Phase>({ kind: "intro" });
+  const [input, setInput] = useState("");
+  /** 스트림 요청·수신 중 세대 번호. 팔레트가 닫히거나 새 요청이 시작되면 무효화. */
+  const generationRef = useRef(0);
+  /** AbortController — 팔레트가 닫히면 진행 중 스트림도 즉시 취소. */
+  const abortRef = useRef<AbortController | null>(null);
 
-  // 창 목록이 처음 로드된 시점에 조건을 확인한다. 서버에서 창을 불러오기 전이면 아직 판단하지 않는다.
   useEffect(() => {
     if (hasCompletedOnboarding()) return;
     if (windows.length > 0) {
@@ -85,53 +102,161 @@ export default function FirstRunModal() {
   }, [windows.length]);
 
   const close = useCallback(() => {
+    generationRef.current += 1;
+    abortRef.current?.abort();
+    abortRef.current = null;
     markOnboardingDone();
     setVisible(false);
   }, []);
 
-  const requestLayout = useCallback(async () => {
-    setStep({ kind: "layout", phase: "loading" });
-    try {
-      const { actions } = await interpretCommand({
-        text: LAYOUT_PROMPT,
-        purpose: "command",
+  const requestNextTurn = useCallback(
+    async (messages: ChatMessage[]) => {
+      const gen = ++generationRef.current;
+      abortRef.current?.abort();
+      const ctrl = new AbortController();
+      abortRef.current = ctrl;
+
+      setPhase({ kind: "chat", messages, streaming: "", pending: true });
+
+      let streaming = "";
+      await AiService.onboardingChatStream(messages, {
+        signal: ctrl.signal,
+        onDelta: (delta) => {
+          if (gen !== generationRef.current) return;
+          streaming += delta;
+          setPhase({
+            kind: "chat",
+            messages,
+            streaming,
+            pending: true,
+          });
+        },
+        onDone: ({ reply, visibleText }) => {
+          if (gen !== generationRef.current) return;
+          handleAssistantDone(messages, visibleText || streaming, reply);
+        },
+        onError: (err) => {
+          if (gen !== generationRef.current) return;
+          setPhase({
+            kind: "chat",
+            messages,
+            streaming: "",
+            pending: false,
+            error: err.error,
+          });
+        },
       });
-      const validation = validateAiActions(actions);
-      if (!validation.ok || validation.actions.length === 0) {
-        setStep({
-          kind: "layout",
-          phase: "rejected",
-          reason: validation.ok
-            ? "추천을 만들지 못했어요. 다시 눌러보시겠어요?"
-            : validation.reasons.join(" "),
+    },
+    // handleAssistantDone은 useCallback([])로 안정 참조라 리렌더를 유발하지 않는다.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  const handleAssistantDone = useCallback(
+    (
+      priorMessages: ChatMessage[],
+      assistantText: string,
+      reply: OnboardingReply | null
+    ) => {
+      const messages: ChatMessage[] = [
+        ...priorMessages,
+        { role: "assistant", text: assistantText || "…" },
+      ];
+      if (reply?.phase === "done") {
+        const actions = buildOnboardingActions(reply.windows);
+        const validation = validateAiActions(actions);
+        if (!validation.ok || validation.actions.length === 0) {
+          setPhase({
+            kind: "chat",
+            messages,
+            streaming: "",
+            pending: false,
+            error: "제안된 창 배치가 앱이 지원하는 형식이 아니에요. 다시 시도해 주세요.",
+          });
+          return;
+        }
+        setPhase({
+          kind: "review",
+          actions: validation.actions,
+          assistantText,
         });
         return;
       }
-      setStep({ kind: "layout", phase: "review", actions: validation.actions });
-    } catch (error) {
-      setStep({
-        kind: "layout",
-        phase: "rejected",
-        reason: apiErrorMessage(error, "추천을 받지 못했어요."),
+      // reply == null (모델 형식 오류) 또는 phase == "ask"
+      const turnsUsed = messages.filter((m) => m.role === "assistant").length;
+      if (reply === null) {
+        setPhase({
+          kind: "chat",
+          messages,
+          streaming: "",
+          pending: false,
+          error: "응답을 이해하지 못했어요. 다시 시도해 주세요.",
+        });
+        return;
+      }
+      if (turnsUsed >= MAX_TURNS) {
+        setPhase({
+          kind: "chat",
+          messages,
+          streaming: "",
+          pending: false,
+          error: "대화가 길어졌어요. 이대로 시작하거나 다시 시도해 주세요.",
+        });
+        return;
+      }
+      setPhase({
+        kind: "chat",
+        messages,
+        streaming: "",
+        pending: false,
       });
-    }
-  }, [interpretCommand]);
+    },
+    []
+  );
 
-  const applyLayout = useCallback(async () => {
-    if (step.kind !== "layout" || step.phase !== "review" || !step.actions) return;
-    setStep({ kind: "layout", phase: "running", actions: step.actions });
-    const result = await runAiActions(step.actions);
+  const startChat = useCallback(() => {
+    const initial: ChatMessage[] = [{ role: "user", text: KICKSTART_TEXT }];
+    void requestNextTurn(initial);
+  }, [requestNextTurn]);
+
+  const sendUserMessage = useCallback(() => {
+    if (phase.kind !== "chat" || phase.pending) return;
+    const text = input.trim();
+    if (!text) return;
+    setInput("");
+    const next: ChatMessage[] = [...phase.messages, { role: "user", text }];
+    void requestNextTurn(next);
+  }, [phase, input, requestNextTurn]);
+
+  const retryChat = useCallback(() => {
+    if (phase.kind !== "chat") return;
+    void requestNextTurn(phase.messages);
+  }, [phase, requestNextTurn]);
+
+  const applyReview = useCallback(async () => {
+    if (phase.kind !== "review") return;
+    setPhase({ kind: "running" });
+    const result = await runAiActions(phase.actions);
     if (!result.ok) {
       toast.error("추천 배치 만들기가 일부 실패했어요.");
-      setStep({
-        kind: "layout",
-        phase: "rejected",
-        reason: result.reasons?.join(" ") ?? result.summary,
+      setPhase({
+        kind: "chat",
+        messages: [],
+        streaming: "",
+        pending: false,
+        error: result.reasons?.join(" ") ?? result.summary,
       });
       return;
     }
-    setStep({ kind: "outro" });
-  }, [step]);
+    setPhase({ kind: "outro" });
+  }, [phase]);
+
+  // 창이 닫히면 스트림도 즉시 취소.
+  useEffect(() => {
+    if (visible) return;
+    abortRef.current?.abort();
+    abortRef.current = null;
+  }, [visible]);
 
   if (!visible) return null;
 
@@ -143,9 +268,7 @@ export default function FirstRunModal() {
   const mutedColor = isDarkMode ? "rgba(232,234,242,0.6)" : "rgba(31,36,48,0.6)";
 
   const descriptions =
-    step.kind === "layout" && step.phase === "review" && step.actions
-      ? describeAiActions(step.actions)
-      : [];
+    phase.kind === "review" ? describeAiActions(phase.actions) : [];
 
   return createPortal(
     <div
@@ -164,23 +287,26 @@ export default function FirstRunModal() {
     >
       <div
         style={{
-          width: "min(520px, calc(100vw - 32px))",
+          width: "min(560px, calc(100vw - 32px))",
+          maxHeight: "calc(100vh - 32px)",
           background: surface,
           border,
           borderRadius: 14,
           color: textColor,
           boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
           overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
         }}
       >
-        {step.kind === "intro" && (
+        {phase.kind === "intro" && (
           <div style={{ padding: "24px 28px" }}>
             <h2 style={{ margin: 0, fontSize: 20, fontWeight: 600 }}>
               CamStudy에 오신 걸 환영해요
             </h2>
             <p style={{ marginTop: 8, fontSize: 14, lineHeight: 1.6, color: mutedColor }}>
-              공부용 워크스페이스를 몇 초 만에 세팅해 드릴게요. 원하지 않으면 나중에
-              Cmd+K로 언제든 다시 부를 수 있습니다.
+              몇 가지만 여쭤보고 맞춤 공부 워크스페이스를 만들어 드릴게요.
+              대화하듯 편하게 답해 주세요.
             </p>
             <div
               style={{
@@ -196,133 +322,94 @@ export default function FirstRunModal() {
               }}
             >
               <strong style={{ color: textColor }}>프라이버시 요약:</strong> 화면 픽셀·창
-              제목·대화 내용은 어디에도 전송하지 않아요. 자연어 명령과 시간 통계만 서버로
+              제목·대화 내용은 어디에도 전송하지 않아요. 자연어 답변만 AI 서버로
               보냅니다. 자세한 내용은 README를 참고하세요.
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-              <button
-                type="button"
-                onClick={close}
-                style={ghostButton(mutedColor)}
-              >
+              <button type="button" onClick={close} style={ghostButton(mutedColor)}>
                 건너뛰기
               </button>
-              <button
-                type="button"
-                onClick={() => setStep({ kind: "layout", phase: "idle" })}
-                style={primaryButton()}
-              >
+              <button type="button" onClick={startChat} style={primaryButton()}>
                 시작하기
               </button>
             </div>
           </div>
         )}
 
-        {step.kind === "layout" && (
+        {phase.kind === "chat" && (
+          <ChatView
+            messages={phase.messages}
+            streaming={phase.streaming}
+            pending={phase.pending}
+            error={phase.error}
+            input={input}
+            onInputChange={setInput}
+            onSend={sendUserMessage}
+            onRetry={retryChat}
+            onSkip={close}
+            border={border}
+            surface={surface}
+            textColor={textColor}
+            mutedColor={mutedColor}
+            isDarkMode={isDarkMode}
+          />
+        )}
+
+        {phase.kind === "review" && (
           <div style={{ padding: "24px 28px" }}>
             <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>
-              공부용 기본 배치를 추천해 드릴게요
+              이렇게 만들어 드릴까요?
             </h2>
-            <p style={{ marginTop: 6, fontSize: 13, color: mutedColor }}>
-              AI가 만든 창 배치를 미리 보고 승인하기 전까지 아무것도 만들지 않습니다.
+            <p style={{ marginTop: 8, fontSize: 13, color: mutedColor, lineHeight: 1.6 }}>
+              {phase.assistantText}
             </p>
-
-            {step.phase === "idle" && (
-              <div style={{ marginTop: 18, display: "flex", justifyContent: "flex-end", gap: 8 }}>
-                <button type="button" onClick={close} style={ghostButton(mutedColor)}>
-                  나중에
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void requestLayout()}
-                  style={primaryButton()}
-                >
-                  추천 받기
-                </button>
-              </div>
-            )}
-
-            {step.phase === "loading" && (
-              <p style={{ marginTop: 16, fontSize: 13, color: mutedColor }}>
-                추천 배치를 만드는 중…
-              </p>
-            )}
-
-            {step.phase === "review" && (
-              <>
-                <ul
+            <ul
+              style={{
+                listStyle: "none",
+                margin: "16px 0",
+                padding: 0,
+                fontSize: 14,
+              }}
+            >
+              {descriptions.map((item, i) => (
+                <li
+                  key={`${item.text}-${i}`}
                   style={{
-                    listStyle: "none",
-                    margin: "16px 0",
-                    padding: 0,
-                    fontSize: 14,
+                    display: "flex",
+                    gap: 10,
+                    padding: "6px 0",
+                    color: item.supported ? undefined : mutedColor,
                   }}
                 >
-                  {descriptions.map((item, i) => (
-                    <li
-                      key={`${item.text}-${i}`}
-                      style={{
-                        display: "flex",
-                        gap: 10,
-                        padding: "6px 0",
-                        color: item.supported ? undefined : mutedColor,
-                      }}
-                    >
-                      <span aria-hidden="true">{item.icon}</span>
-                      <span>{item.text}</span>
-                    </li>
-                  ))}
-                </ul>
-                <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-                  <button type="button" onClick={close} style={ghostButton(mutedColor)}>
-                    건너뛰기
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void applyLayout()}
-                    style={primaryButton()}
-                  >
-                    이대로 만들기
-                  </button>
-                </div>
-              </>
-            )}
-
-            {step.phase === "running" && (
-              <p style={{ marginTop: 16, fontSize: 13, color: mutedColor }}>
-                창을 만드는 중…
-              </p>
-            )}
-
-            {step.phase === "rejected" && (
-              <>
-                <p
-                  style={{
-                    marginTop: 16,
-                    fontSize: 13,
-                    color: "#d9534f",
-                  }}
-                >
-                  {step.reason}
-                </p>
-                <div style={{ marginTop: 16, display: "flex", justifyContent: "flex-end", gap: 8 }}>
-                  <button type="button" onClick={close} style={ghostButton(mutedColor)}>
-                    닫기
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => void requestLayout()}
-                    style={primaryButton()}
-                  >
-                    다시 시도
-                  </button>
-                </div>
-              </>
-            )}
+                  <span aria-hidden="true">{item.icon}</span>
+                  <span>{item.text}</span>
+                </li>
+              ))}
+            </ul>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button type="button" onClick={close} style={ghostButton(mutedColor)}>
+                건너뛰기
+              </button>
+              <button
+                type="button"
+                onClick={() => void applyReview()}
+                style={primaryButton()}
+              >
+                이대로 만들기
+              </button>
+            </div>
           </div>
         )}
 
-        {step.kind === "outro" && (
+        {phase.kind === "running" && (
+          <div style={{ padding: "24px 28px" }}>
+            <p style={{ margin: 0, fontSize: 13, color: mutedColor }}>
+              창을 만드는 중…
+            </p>
+          </div>
+        )}
+
+        {phase.kind === "outro" && (
           <div style={{ padding: "24px 28px" }}>
             <h2 style={{ margin: 0, fontSize: 18, fontWeight: 600 }}>
               시작 준비가 끝났어요 🎉
@@ -356,10 +443,7 @@ export default function FirstRunModal() {
                 {!isDesktopApp() && (
                   <>
                     {" "}
-                    <a
-                      href="/download"
-                      style={{ color: ACCENT, textDecoration: "underline" }}
-                    >
+                    <a href="/download" style={{ color: ACCENT, textDecoration: "underline" }}>
                       데스크탑 앱 다운로드
                     </a>
                   </>
@@ -377,6 +461,248 @@ export default function FirstRunModal() {
       </div>
     </div>,
     document.body
+  );
+}
+
+/**
+ * 채팅 뷰. 첫 사용자 메시지("온보딩을 시작할게요")는 kickstart용이라 숨긴다.
+ * 그 뒤 어시스턴트·사용자 메시지가 번갈아 뜨고, 스트리밍 중인 어시스턴트 답변은
+ * 커서 blink와 함께 실시간으로 성장한다.
+ */
+interface ChatViewProps {
+  messages: ChatMessage[];
+  streaming: string;
+  pending: boolean;
+  error?: string;
+  input: string;
+  onInputChange: (v: string) => void;
+  onSend: () => void;
+  onRetry: () => void;
+  onSkip: () => void;
+  border: string;
+  surface: string;
+  textColor: string;
+  mutedColor: string;
+  isDarkMode: boolean;
+}
+
+function ChatView({
+  messages,
+  streaming,
+  pending,
+  error,
+  input,
+  onInputChange,
+  onSend,
+  onRetry,
+  onSkip,
+  border,
+  textColor,
+  mutedColor,
+  isDarkMode,
+}: ChatViewProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // 새 chunk가 도착할 때마다 아래로 스크롤한다. 사용자가 위로 스크롤 중이면
+  // 방해가 되지만, 온보딩 대화는 짧아 이 트레이드오프가 가치 있다.
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
+  }, [messages, streaming]);
+
+  // 스트림이 끝나면 입력창에 포커스.
+  useEffect(() => {
+    if (!pending) textareaRef.current?.focus();
+  }, [pending]);
+
+  const visible = messages.filter((m, i) => !(i === 0 && m.role === "user"));
+
+  return (
+    <>
+      <div
+        ref={scrollRef}
+        style={{
+          padding: "20px 24px 8px",
+          overflowY: "auto",
+          minHeight: 240,
+          maxHeight: "60vh",
+        }}
+      >
+        {visible.length === 0 && !streaming && !error && (
+          <p style={{ margin: 0, fontSize: 13, color: mutedColor }}>
+            대화를 준비하고 있어요…
+          </p>
+        )}
+        {visible.map((m, i) => (
+          <Bubble
+            key={i}
+            role={m.role}
+            text={m.text}
+            textColor={textColor}
+            mutedColor={mutedColor}
+            isDarkMode={isDarkMode}
+          />
+        ))}
+        {pending && (
+          <Bubble
+            role="assistant"
+            text={streaming || "…"}
+            textColor={textColor}
+            mutedColor={mutedColor}
+            isDarkMode={isDarkMode}
+            typing
+          />
+        )}
+        {error && (
+          <p
+            style={{
+              margin: "12px 0 0",
+              fontSize: 13,
+              color: "#d9534f",
+            }}
+          >
+            {error}
+          </p>
+        )}
+      </div>
+      <div
+        style={{
+          padding: "12px 20px 16px",
+          borderTop: border,
+        }}
+      >
+        <div style={{ display: "flex", gap: 8 }}>
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => onInputChange(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                if (error) {
+                  onRetry();
+                } else {
+                  onSend();
+                }
+              }
+            }}
+            disabled={pending}
+            placeholder={
+              pending
+                ? "AI가 답변 중…"
+                : error
+                  ? "Enter로 다시 시도"
+                  : "답을 입력하고 Enter"
+            }
+            rows={2}
+            style={{
+              flex: 1,
+              padding: "10px 12px",
+              borderRadius: 8,
+              border,
+              background: isDarkMode
+                ? "rgba(255,255,255,0.04)"
+                : "rgba(0,0,0,0.03)",
+              color: textColor,
+              fontSize: 14,
+              fontFamily: "inherit",
+              resize: "none",
+              outline: "none",
+            }}
+          />
+          <button
+            type="button"
+            onClick={error ? onRetry : onSend}
+            disabled={pending || (!error && input.trim().length === 0)}
+            style={{
+              ...primaryButton(),
+              opacity: pending || (!error && input.trim().length === 0) ? 0.5 : 1,
+              cursor:
+                pending || (!error && input.trim().length === 0)
+                  ? "not-allowed"
+                  : "pointer",
+            }}
+          >
+            {error ? "다시 시도" : "보내기"}
+          </button>
+        </div>
+        <div style={{ marginTop: 8, display: "flex", justifyContent: "flex-end" }}>
+          <button
+            type="button"
+            onClick={onSkip}
+            style={{
+              ...ghostButton(mutedColor),
+              padding: "4px 8px",
+              fontSize: 12,
+            }}
+          >
+            건너뛰기
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+interface BubbleProps {
+  role: "user" | "assistant";
+  text: string;
+  textColor: string;
+  mutedColor: string;
+  isDarkMode: boolean;
+  typing?: boolean;
+}
+
+function Bubble({ role, text, textColor, mutedColor, isDarkMode, typing }: BubbleProps) {
+  const isUser = role === "user";
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: isUser ? "flex-end" : "flex-start",
+        margin: "8px 0",
+      }}
+    >
+      <div
+        style={{
+          maxWidth: "82%",
+          padding: "10px 14px",
+          borderRadius: 12,
+          fontSize: 14,
+          lineHeight: 1.55,
+          whiteSpace: "pre-wrap",
+          color: isUser ? "#fff" : textColor,
+          background: isUser
+            ? ACCENT
+            : isDarkMode
+              ? "rgba(255,255,255,0.06)"
+              : "rgba(0,0,0,0.04)",
+        }}
+      >
+        {text}
+        {typing && (
+          <span
+            aria-hidden="true"
+            style={{
+              display: "inline-block",
+              width: 6,
+              height: 12,
+              marginLeft: 2,
+              verticalAlign: "middle",
+              background: mutedColor,
+              opacity: 0.7,
+              animation: "onboardingCaret 1s steps(2) infinite",
+            }}
+          />
+        )}
+      </div>
+      <style>{`
+        @keyframes onboardingCaret {
+          0%, 50% { opacity: 0.7; }
+          51%, 100% { opacity: 0; }
+        }
+      `}</style>
+    </div>
   );
 }
 

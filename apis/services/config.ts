@@ -13,6 +13,9 @@ export const AiEndPoints = {
   // 개발은 Vite 미들웨어, 웹은 Vercel 함수, 데스크탑은 Express 프록시가 받는다.
   interpret: () => `/ai-interpret`,
   youtubeSearch: () => `/youtube-search`,
+  // 온보딩 대화(SSE 스트림). 다른 엔드포인트와 달리 JSON이 아니라
+  // text/event-stream을 반환하므로 axios 대신 fetch로 직접 호출한다.
+  onboardingChat: () => `/onboarding-chat`,
 };
 
 export const WindowEndpoints = {
