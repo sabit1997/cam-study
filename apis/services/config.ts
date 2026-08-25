@@ -8,6 +8,12 @@ export const AuthEndPoints = {
   refresh: () => `/auth/refresh`,
 };
 
+export const AiEndPoints = {
+  // 백엔드(api.oeyo-cam.site)가 아니라 이 앱이 직접 제공하는 엔드포인트다.
+  // 개발은 Vite 미들웨어, 웹은 Vercel 함수, 데스크탑은 Express 프록시가 받는다.
+  interpret: () => `/ai-interpret`,
+};
+
 export const WindowEndpoints = {
   getWindows: () => `/windows`,
   createWindow: () => `/windows`,

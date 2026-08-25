@@ -16,6 +16,8 @@ import { useUserStore } from "@/stores/user-state";
 import Navigation from "@/components/navigation";
 import GlobalInitializer from "@/components/global-Initializer";
 import ScreenPickerModal from "@/components/modals/screen-picker-modal";
+import AiActionRunner from "@/components/ai/ai-action-runner";
+import CommandPalette from "@/components/ai/command-palette";
 import ServiceWorkerRegister from "@/components/service-worker-register";
 import UpdateNotifier from "@/components/update-notifier";
 import ErrorFallback from "@/components/error-boundary";
@@ -93,6 +95,8 @@ function AppShell() {
       <ServiceWorkerRegister />
       <AuthBootstrap>
         <ScreenPickerModal />
+        <AiActionRunner />
+        <CommandPalette />
         <Navigation />
         <ErrorBoundary FallbackComponent={ErrorFallback}>
           <Suspense fallback={null}>
