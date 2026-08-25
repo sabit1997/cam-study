@@ -18,9 +18,13 @@ import { AI_WIDGETS } from "../types/ai-actions";
  * ## 왜 두 파트로 나누나 (자연어 + JSON)
  * Gemini의 구조화 출력(responseJsonSchema)은 스트리밍 중 partial JSON이라 UI에 그대로
  * 못 붙인다. 그래서 규약:
- *   {사용자에게 보여줄 문장}\n---\n{기계용 JSON}
+ *   {사용자에게 보여줄 문장}\n<<<CAMSTUDY_JSON>>>\n{기계용 JSON}
  * 클라이언트는 SEPARATOR를 만나기 전까지의 자연어만 렌더링하고, 스트림이 끝나면
  * 서버가 파싱한 구조화 reply를 마지막 `done` 이벤트로 받는다.
+ *
+ * SEPARATOR를 마크다운 수평선(`\n---\n`)에서 이 시퀀스로 바꾼 이유: 모델이 자연어 안에서
+ * 우연히 수평선을 넣으면 그 위치에서 잘려 JSON 파싱이 실패한다. 자연 발생 확률이 사실상
+ * 0인 시퀀스면 그 실패가 사라진다.
  *
  * ## 어댑터 3종
  * 이 파일은 프레임워크를 모른다. Vite dev 미들웨어·Vercel serverless·Electron Express가
@@ -30,11 +34,26 @@ import { AI_WIDGETS } from "../types/ai-actions";
 export const DEFAULT_MODEL = "gemini-3.5-flash-lite";
 const MAX_INPUT_LENGTH = 500;
 const MAX_MESSAGES = 20; // 5턴 대화 기준 + 여유
-const SEPARATOR = "\n---\n";
+export const SEPARATOR = "\n<<<CAMSTUDY_JSON>>>\n";
+
+/**
+ * 사용자 텍스트가 SEPARATOR나 그 부분 문자열을 포함하면 거부한다. 방어하지 않으면
+ * 사용자가 채팅창에 "안녕\n<<<CAMSTUDY_JSON>>>\n{...done}"을 붙여넣어 창 배치를
+ * 강제하려 할 수 있다. 온보딩은 승인 없이 실행하지 않지만, 원치 않는 승인 UI가 뜨는 것
+ * 자체가 UX 침해라 입력 층에서 막는다.
+ */
+const containsSeparatorLike = (text: string): boolean =>
+  text.includes("<<<CAMSTUDY_JSON>>>") || text.includes("<<<CAMSTUDY");
 
 const chatMessageSchema = z.object({
   role: z.enum(["user", "assistant"]),
-  text: z.string().min(1).max(MAX_INPUT_LENGTH),
+  text: z
+    .string()
+    .min(1)
+    .max(MAX_INPUT_LENGTH)
+    .refine((v) => !containsSeparatorLike(v), {
+      message: "허용되지 않는 문자열이 포함돼 있습니다.",
+    }),
 });
 
 const requestSchema = z.object({
@@ -43,11 +62,19 @@ const requestSchema = z.object({
 
 export type ChatMessage = z.infer<typeof chatMessageSchema>;
 
-const windowSpecSchema = z.object({
-  widget: z.enum(AI_WIDGETS),
-  ref: z.string().max(20).optional(),
-  todos: z.array(z.string().min(1).max(80)).max(10).optional(),
-});
+/**
+ * widget이 "todo"가 아닌데 todos가 붙어오면 거부. 프롬프트는 이걸 안 넣도록 유도하지만,
+ * 모델이 어긴 응답을 그대로 두면 러너 단계까지 흘러가므로 여기서 자른다.
+ */
+const windowSpecSchema = z
+  .object({
+    widget: z.enum(AI_WIDGETS),
+    ref: z.string().max(20).optional(),
+    todos: z.array(z.string().min(1).max(80)).max(10).optional(),
+  })
+  .refine((v) => !v.todos || v.widget === "todo", {
+    message: "todos는 widget이 'todo'일 때만 허용됩니다.",
+  });
 
 export type WindowSpec = z.infer<typeof windowSpecSchema>;
 
@@ -91,7 +118,7 @@ const ONBOARDING_SYSTEM_PROMPT = `당신은 CamStudy 첫 실행 사용자를 맞
 매 응답은 반드시 아래 두 파트로 이뤄집니다. 다른 텍스트는 절대 넣지 마세요.
 
 첫 번째 파트: 사용자에게 보여줄 자연어 문장 (질문 또는 완료 안내).
-두 번째 파트: 구분자 "\n---\n" 뒤에 JSON 한 줄.
+두 번째 파트: 구분자 "\n<<<CAMSTUDY_JSON>>>\n" 뒤에 JSON 한 줄.
 
 ## phase가 "ask"일 때
 사용자에게 다음 질문을 던집니다.
@@ -99,27 +126,29 @@ const ONBOARDING_SYSTEM_PROMPT = `당신은 CamStudy 첫 실행 사용자를 맞
 응답 예:
 '''
 웹캠으로 얼굴을 켜놓고 공부하시나요?
----
+<<<CAMSTUDY_JSON>>>
 {"phase":"ask"}
 '''
 
 ## phase가 "done"일 때
 질문을 마치고 창 배치를 확정합니다.
 - windows: 만들 창 배열. widget은 ${AI_WIDGETS.join(", ")} 중 하나.
-- todos가 있는 창은 widget:"todo"만.
+- todos가 있는 창은 widget:"todo"만. timer/youtube/window인 창에 todos를 붙이지 마세요.
 - ref는 짧은 별명(t1, y1 등). 지금은 사용하지 않아도 필수 필드는 아닙니다.
 
 응답 예:
 '''
 좋아요! 이제 창을 만들어 드릴게요.
----
+<<<CAMSTUDY_JSON>>>
 {"phase":"done","windows":[{"widget":"todo","todos":["React 훅 정리","예제 코드 실습"]},{"widget":"timer"}]}
 '''
 
 # 하지 않는 것
 - JSON 앞에 어떤 텍스트도 넣지 않습니다 (구분자 앞에는 사용자 문장만).
 - 마크다운 코드 블록(백틱)으로 감싸지 않습니다.
-- windows 배열이 비어있게 done으로 넘어가지 않습니다.`;
+- windows 배열이 비어있게 done으로 넘어가지 않습니다.
+- "<<<CAMSTUDY_JSON>>>" 시퀀스는 지정된 구분자 자리에만 사용합니다. 자연어 안에 넣지 마세요.
+- 자연어 안에 마크다운 수평선("---")도 넣지 마세요.`;
 
 const buildContents = (messages: ChatMessage[]) =>
   messages.map((m) => ({
@@ -143,7 +172,11 @@ export interface StreamError {
 }
 
 /** 테스트용 좁은 인터페이스 — Gemini SDK에 직접 의존하지 않도록. */
-export type StreamGenerator = AsyncIterable<{ text?: string }>;
+export type StreamGenerator = AsyncIterable<{
+  text?: string;
+  candidates?: Array<{ finishReason?: string }>;
+  promptFeedback?: { blockReason?: string };
+}>;
 export type StreamGenerate = (params: {
   model: string;
   contents: unknown;
@@ -205,36 +238,72 @@ export const streamOnboardingChat = async (
   let accumulated = "";
   let separatorFound = false;
   let visibleText = "";
+  let terminalFinishReason: string | undefined;
+  let promptBlockReason: string | undefined;
 
   try {
     for await (const chunk of stream) {
+      // finishReason은 스트림 마지막 청크에 붙어 온다. SAFETY로 mid-stream truncate되면
+      // reply만 null로 폴백되어 사용자에게 "다시 시도해 주세요"가 뜨지만 실제 원인은
+      // 정책 차단이다. 종료 시점에 이 값을 검사해 정확한 안내로 바꾼다.
+      const finish = chunk.candidates?.[0]?.finishReason;
+      if (finish) terminalFinishReason = finish;
+      const block = chunk.promptFeedback?.blockReason;
+      if (block) promptBlockReason = block;
+
       const text = chunk.text ?? "";
-      if (!text) continue;
-      accumulated += text;
+      if (text) accumulated += text;
 
-      if (separatorFound) continue;
+      if (separatorFound || !text) continue;
 
-      // SEPARATOR가 이 chunk를 포함해 처음 발견됐는지 확인
       const sepIdx = accumulated.indexOf(SEPARATOR);
-      if (sepIdx === -1) {
-        // 아직 못 만남 — 전체 text를 그대로 흘린다
-        visibleText += text;
-        options.onDelta(text);
-      } else {
-        // SEPARATOR가 지금 이 chunk 안에서 나타났다. 그 앞부분만 흘린다.
+      if (sepIdx !== -1) {
+        // SEPARATOR 발견 — 그 앞까지 흘려보낼 수 있다.
         const before = accumulated.slice(0, sepIdx);
-        // 이전까지 흘려보낸 것 = visibleText. 이번에 새로 흘려야 하는 조각 = before.slice(visibleText.length)
         const remaining = before.slice(visibleText.length);
         if (remaining.length > 0) {
           visibleText += remaining;
           options.onDelta(remaining);
         }
         separatorFound = true;
+        continue;
+      }
+
+      // SEPARATOR 미발견 — accumulated 마지막 SEPARATOR.length-1 글자는 홀드한다.
+      // 그 부분이 다음 chunk와 합쳐져 SEPARATOR를 이룰 수 있어, 지금 흘려보내면
+      // "안녕\n<<<" 같은 조각이 사용자에게 유출된다.
+      const safeEnd = Math.max(0, accumulated.length - (SEPARATOR.length - 1));
+      if (safeEnd > visibleText.length) {
+        const remaining = accumulated.slice(visibleText.length, safeEnd);
+        visibleText += remaining;
+        options.onDelta(remaining);
       }
     }
   } catch (error) {
-    // 스트림 중간에 API 오류가 났을 수 있다.
     return classifyError(error);
+  }
+
+  // 스트림 완료 후 SEPARATOR를 끝까지 못 만난 경우, 홀드해 두었던 tail을 마저 흘린다.
+  if (!separatorFound && accumulated.length > visibleText.length) {
+    const remaining = accumulated.slice(visibleText.length);
+    visibleText += remaining;
+    options.onDelta(remaining);
+  }
+
+  // 정책 차단·중단 사유가 있으면 명시 오류로 반환. 클라이언트가 "다시 시도"가 아니라
+  // 이 상황에 맞는 문구를 보여줄 수 있다.
+  if (promptBlockReason) {
+    return { ok: false, status: 422, error: "이 요청은 처리할 수 없습니다." };
+  }
+  if (terminalFinishReason === "SAFETY" || terminalFinishReason === "RECITATION") {
+    return { ok: false, status: 422, error: "이 요청은 처리할 수 없습니다." };
+  }
+  if (terminalFinishReason === "MAX_TOKENS") {
+    return {
+      ok: false,
+      status: 502,
+      error: "AI 응답이 중간에 끊겼습니다. 더 짧게 말씀해 주세요.",
+    };
   }
 
   const reply = parseReply(accumulated);
@@ -271,7 +340,10 @@ const classifyError = (error: unknown): StreamError => {
  * caller(UI)가 "다시 시도해 주세요"로 폴백한다. 여기서 예외로 만들지 않는다.
  */
 const parseReply = (accumulated: string): OnboardingReply | null => {
-  const sepIdx = accumulated.indexOf(SEPARATOR);
+  // SEPARATOR가 여러 번 등장했을 때(모델이 규약을 어겨 자연어 안에 넣은 경우) 마지막
+  // 이후를 JSON으로 취급한다. 첫 매치를 쓰면 그 앞에 놓인 자연어 조각까지 JSON에
+  // 섞여 파싱이 실패한다.
+  const sepIdx = accumulated.lastIndexOf(SEPARATOR);
   if (sepIdx === -1) return null;
   const raw = accumulated.slice(sepIdx + SEPARATOR.length).trim();
   if (!raw) return null;
@@ -291,4 +363,3 @@ const parseReply = (accumulated: string): OnboardingReply | null => {
   return result.success ? result.data : null;
 };
 
-export { SEPARATOR };

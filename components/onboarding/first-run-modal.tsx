@@ -48,8 +48,14 @@ type Phase =
       /** 서버 오류·모델 형식 오류로 재시도가 필요할 때 */
       error?: string;
     }
-  | { kind: "review"; actions: AiAction[]; assistantText: string }
-  | { kind: "running" }
+  | {
+      kind: "review";
+      actions: AiAction[];
+      assistantText: string;
+      /** 승인 실패 시 chat 단계로 되돌아갈 때 이 이력을 복원한다. */
+      messages: ChatMessage[];
+    }
+  | { kind: "running"; messages: ChatMessage[] }
   | { kind: "outro" };
 
 const isBrowser = () => typeof window !== "undefined";
@@ -179,6 +185,7 @@ export default function FirstRunModal() {
           kind: "review",
           actions: validation.actions,
           assistantText,
+          messages,
         });
         return;
       }
@@ -235,13 +242,16 @@ export default function FirstRunModal() {
 
   const applyReview = useCallback(async () => {
     if (phase.kind !== "review") return;
-    setPhase({ kind: "running" });
+    // 실패 시 되돌아갈 대화 이력을 running phase에도 물고 간다. 실패했다고 messages를
+    // 비우면 사용자가 처음부터 다시 답변해야 해서 UX가 매우 나빠진다.
+    const preservedMessages = phase.messages;
+    setPhase({ kind: "running", messages: preservedMessages });
     const result = await runAiActions(phase.actions);
     if (!result.ok) {
       toast.error("추천 배치 만들기가 일부 실패했어요.");
       setPhase({
         kind: "chat",
-        messages: [],
+        messages: preservedMessages,
         streaming: "",
         pending: false,
         error: result.reasons?.join(" ") ?? result.summary,
