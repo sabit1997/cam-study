@@ -6,13 +6,15 @@ import { useInterpretCommand } from "@/apis/services/ai-services/mutation";
 import { validateAiActions } from "@/utils/ai-action-validate";
 import { describeAiActions } from "@/utils/ai-action-describe";
 import { filterSuggestions } from "@/utils/command-suggestions";
-import { apiErrorMessage } from "@/utils/api-error";
+import { apiErrorMessage, parseQuotaReason } from "@/utils/api-error";
 import { consume as consumeQuota, getRemaining as getQuotaRemaining } from "@/utils/ai-quota";
 import { getFallbackActions } from "@/utils/ai-fallback";
+import { isDailyLocked, setDailyLock } from "@/utils/ai-daily-lock";
 import {
   searchAndFilter,
   toPlayActions,
   type FilteredCandidate,
+  type SearchSource,
 } from "@/utils/youtube-pipeline";
 import { runAiActions } from "./ai-action-runner";
 import AiAnswerPanel from "./ai-answer-panel";
@@ -43,7 +45,12 @@ type Phase =
   // 조회 액션 실행 결과. 답변 마크다운을 인라인 카드로 보여준다.
   | { status: "answered"; answer: string }
   | { status: "searching-youtube" }
-  | { status: "youtube-review"; candidates: FilteredCandidate[] };
+  | {
+      status: "youtube-review";
+      candidates: FilteredCandidate[];
+      /** 결과가 캐시·stale에서 왔으면 사용자에게 짧게 알려준다. fresh면 undefined. */
+      source?: SearchSource;
+    };
 
 /**
  * 팔레트가 검색 흐름으로 라우팅할 문장을 감지한다.
@@ -166,18 +173,18 @@ export default function CommandPalette() {
         return;
       }
       setPhase({ status: "searching-youtube" });
-      try {
-        const count = extractCount(query);
-        const candidates = await searchAndFilter(query, count);
-        if (generation !== requestId.current) return;
-        setPhase({ status: "youtube-review", candidates });
-      } catch (error) {
-        if (generation !== requestId.current) return;
+      const count = extractCount(query);
+      const outcome = await searchAndFilter(query, count);
+      if (generation !== requestId.current) return;
+      if (outcome.ok) {
         setPhase({
-          status: "rejected",
-          reasons: [apiErrorMessage(error, "유튜브 검색에 실패했어요.")],
+          status: "youtube-review",
+          candidates: outcome.candidates,
+          source: outcome.source,
         });
+        return;
       }
+      setPhase({ status: "rejected", reasons: [outcome.message] });
     },
     []
   );
@@ -216,6 +223,23 @@ export default function CommandPalette() {
         return;
       }
 
+      // Gemini daily 소진이 이미 알려진 상태라면 API를 아예 태우지 않는다.
+      // 예시 문장이면 fallback으로 살리고, 아니면 정확한 안내를 준다.
+      if (isDailyLocked("interpret")) {
+        const fallback = getFallbackActions(trimmed);
+        if (fallback) {
+          showFallback(generation, fallback);
+          return;
+        }
+        setPhase({
+          status: "rejected",
+          reasons: [
+            "AI 무료 사용량을 오늘 다 썼어요. 내일 다시 시도해 주세요.",
+          ],
+        });
+        return;
+      }
+
       setPhase({ status: "interpreting" });
       try {
         const { actions } = await interpretCommand(trimmed);
@@ -239,13 +263,13 @@ export default function CommandPalette() {
         setPhase({ status: "review", actions: validation.actions, source: "server" });
       } catch (error) {
         if (generation !== requestId.current) return;
-        // 429(서버 레이트리밋)에 걸렸어도 예시 문장이면 fallback으로 넘긴다.
-        // apis/request.ts는 { response: { status } } 평면 객체로 reject한다.
-        const status =
-          typeof error === "object" && error !== null && "response" in error
-            ? (error as { response?: { status?: number } }).response?.status
-            : undefined;
-        if (status === 429) {
+        // 429(서버 레이트리밋 또는 Gemini quota)에 걸렸어도 예시 문장이면 fallback으로 넘긴다.
+        // reason이 "daily"면 다음 요청부터 API를 아예 태우지 않도록 락을 심어둔다.
+        const info = parseQuotaReason(error);
+        if (info.status === 429 && info.reason === "daily") {
+          setDailyLock("interpret", info.retryAfterSec);
+        }
+        if (info.status === 429) {
           const fallback = getFallbackActions(trimmed);
           if (fallback) {
             showFallback(generation, fallback);
@@ -599,6 +623,7 @@ export default function CommandPalette() {
             onApprove={(selected) => void approveYoutube(selected)}
             onCancel={handleClose}
             isDarkMode={isDarkMode}
+            source={phase.source}
           />
         )}
       </div>
