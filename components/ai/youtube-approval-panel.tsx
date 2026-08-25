@@ -1,5 +1,8 @@
 import { useState } from "react";
-import type { FilteredCandidate } from "@/utils/youtube-pipeline";
+import type {
+  FilteredCandidate,
+  SearchSource,
+} from "@/utils/youtube-pipeline";
 
 /**
  * 유튜브 검색 결과 승인 UI.
@@ -15,13 +18,22 @@ interface Props {
   onApprove: (selected: FilteredCandidate[]) => void;
   onCancel: () => void;
   isDarkMode: boolean;
+  /** 결과 출처. cache/stale이면 "지난번 검색 결과" 배지를 띄운다. */
+  source?: SearchSource;
 }
+
+const sourceLabel = (source?: SearchSource): string | null => {
+  if (source === "cache") return "지난번 검색 결과를 재사용했어요";
+  if (source === "stale") return "AI가 오늘 쉬는 중이라 지난번 결과로 보여드려요";
+  return null;
+};
 
 export default function YoutubeApprovalPanel({
   candidates,
   onApprove,
   onCancel,
   isDarkMode,
+  source,
 }: Props) {
   // 초기값: 전부 체크. 사용자가 명시적으로 뺄 게 없다면 그대로 실행되게 한다.
   const [selected, setSelected] = useState<Set<string>>(
@@ -85,6 +97,18 @@ export default function YoutubeApprovalPanel({
       <p style={{ margin: "0 0 10px", fontSize: 13, color: mutedColor }}>
         재생목록에 담을 영상을 골라주세요 ({selected.size}개 선택)
       </p>
+      {sourceLabel(source) && (
+        <p
+          style={{
+            margin: "0 0 10px",
+            fontSize: 12,
+            color: mutedColor,
+            fontStyle: "italic",
+          }}
+        >
+          {sourceLabel(source)}
+        </p>
+      )}
       <ul style={{ listStyle: "none", margin: "0 0 12px", padding: 0 }}>
         {candidates.map((c) => {
           const checked = selected.has(c.videoId);

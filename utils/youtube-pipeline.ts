@@ -1,6 +1,16 @@
 import AiService, {
   type YoutubeSearchCandidate,
 } from "@/apis/services/ai-services/service";
+import {
+  getCachedCandidates,
+  getStaleCandidates,
+  putCandidates,
+} from "@/utils/youtube-cache";
+import {
+  isDailyLocked,
+  setDailyLock,
+} from "@/utils/ai-daily-lock";
+import { parseQuotaReason } from "@/utils/api-error";
 
 /**
  * 유튜브 검색 → 임베드 검사 → 후보 정리 오케스트레이터.
@@ -55,20 +65,28 @@ export interface FilteredCandidate {
 }
 
 /**
- * 검색 → 임베드 검사 → 통과분만 반환.
- * search 결과가 비어 있거나 모두 걸러지면 빈 배열이 나온다. 사용자에게는 별도 안내로 전환한다.
+ * 검색 결과의 출처. 팔레트가 사용자에게 "지난번 결과예요" 안내를 보여줄지 결정한다.
+ * - fresh: 방금 API에서 받아온 결과
+ * - cache: 신선한 캐시(TTL 이내)
+ * - stale: TTL은 지났지만 daily-lock으로 API를 못 태워 재사용한 결과
  */
-export const searchAndFilter = async (
-  query: string,
-  count: number
-): Promise<FilteredCandidate[]> => {
-  const { candidates } = await AiService.youtubeSearch({ query, count });
-  if (candidates.length === 0) return [];
+export type SearchSource = "fresh" | "cache" | "stale";
 
+export type SearchOutcome =
+  | { ok: true; candidates: FilteredCandidate[]; source: SearchSource }
+  | { ok: false; kind: "locked-empty"; message: string }
+  | { ok: false; kind: "error"; message: string };
+
+const LOCKED_EMPTY_MESSAGE =
+  "AI 무료 사용량을 오늘 다 썼어요. 내일 다시 시도하거나, 이전에 검색한 적 있는 키워드를 다시 써 주세요.";
+
+const runEmbedFilter = async (
+  candidates: YoutubeSearchCandidate[]
+): Promise<FilteredCandidate[]> => {
+  if (candidates.length === 0) return [];
   const checks = await Promise.all(
     candidates.map((c: YoutubeSearchCandidate) => checkEmbeddable(c.videoId))
   );
-
   const out: FilteredCandidate[] = [];
   for (let i = 0; i < candidates.length; i += 1) {
     const check = checks[i];
@@ -81,6 +99,81 @@ export const searchAndFilter = async (
     });
   }
   return out;
+};
+
+/**
+ * 검색 → 임베드 검사 → 통과분만 반환. 캐시·daily-lock과 통합돼 있어
+ * 같은 검색어를 되풀이하거나 quota 소진 상태에서도 사용자에게 결과를 보여주려 시도한다.
+ *
+ * 흐름:
+ * 1. daily-lock이 걸려 있으면 API를 태우지 않고 stale 캐시를 시도한다.
+ * 2. 락이 없으면 신선한 캐시부터 확인.
+ * 3. 신선한 캐시가 없으면 API 호출. 성공 시 결과를 캐시에 저장.
+ * 4. 429 daily 응답이 오면 락을 저장하고 stale 캐시를 마지막으로 시도.
+ *
+ * 임베드 검사는 어떤 소스에서 왔든 다시 태워, 삭제된 videoId는 자동으로 걸러진다.
+ */
+export const searchAndFilter = async (
+  query: string,
+  count: number
+): Promise<SearchOutcome> => {
+  // 1. 락 확인 — API 콜을 아예 안 태우고 stale로 우회
+  if (isDailyLocked("youtube-search")) {
+    const stale = getStaleCandidates(query);
+    if (stale && stale.length > 0) {
+      const filtered = await runEmbedFilter(stale.slice(0, count));
+      if (filtered.length > 0) {
+        return { ok: true, candidates: filtered, source: "stale" };
+      }
+    }
+    return { ok: false, kind: "locked-empty", message: LOCKED_EMPTY_MESSAGE };
+  }
+
+  // 2. 신선한 캐시
+  const fresh = getCachedCandidates(query);
+  if (fresh && fresh.length > 0) {
+    const filtered = await runEmbedFilter(fresh.slice(0, count));
+    if (filtered.length > 0) {
+      return { ok: true, candidates: filtered, source: "cache" };
+    }
+    // 캐시된 후보가 전부 임베드 불가로 걸러졌으면 신선 검색으로 진행.
+  }
+
+  // 3. 실제 API 호출
+  try {
+    const { candidates } = await AiService.youtubeSearch({ query, count });
+    if (candidates.length > 0) {
+      putCandidates(query, candidates);
+    }
+    const filtered = await runEmbedFilter(candidates);
+    return { ok: true, candidates: filtered, source: "fresh" };
+  } catch (error) {
+    const info = parseQuotaReason(error);
+    // 4. daily 소진이면 락 저장 후 stale 시도
+    if (info.status === 429 && info.reason === "daily") {
+      setDailyLock("youtube-search", info.retryAfterSec);
+      const stale = getStaleCandidates(query);
+      if (stale && stale.length > 0) {
+        const filtered = await runEmbedFilter(stale.slice(0, count));
+        if (filtered.length > 0) {
+          return { ok: true, candidates: filtered, source: "stale" };
+        }
+      }
+      return { ok: false, kind: "locked-empty", message: LOCKED_EMPTY_MESSAGE };
+    }
+    // 다른 오류는 서버 문구를 그대로 사용자에게 전달
+    return {
+      ok: false,
+      kind: "error",
+      message:
+        (error && typeof error === "object" && "response" in error
+          ? (
+              (error as { response?: { data?: { error?: unknown } } }).response
+                ?.data?.error as string | undefined
+            )
+          : undefined) ?? "유튜브 검색에 실패했어요.",
+    };
+  }
 };
 
 /**
