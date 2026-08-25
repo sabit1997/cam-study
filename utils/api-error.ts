@@ -12,6 +12,8 @@
 
 interface ErrorBody {
   error?: unknown;
+  reason?: unknown;
+  retryAfterSec?: unknown;
 }
 
 const bodyOf = (error: unknown): ErrorBody | null => {
@@ -31,4 +33,45 @@ export const apiErrorMessage = (error: unknown, fallback: string): string => {
   return typeof message === "string" && message.trim().length > 0
     ? message
     : fallback;
+};
+
+const statusOf = (error: unknown): number | undefined => {
+  if (typeof error !== "object" || error === null) return undefined;
+  const response = (error as { response?: unknown }).response;
+  if (typeof response !== "object" || response === null) return undefined;
+  const status = (response as { status?: unknown }).status;
+  return typeof status === "number" ? status : undefined;
+};
+
+export type QuotaReason = "daily" | "minute" | "server" | "unknown";
+
+export interface QuotaReasonInfo {
+  status?: number;
+  reason?: QuotaReason;
+  retryAfterSec?: number;
+}
+
+/**
+ * 실패 응답에서 429의 세부 정보를 뽑는다. 서버가 reason·retryAfterSec를 실어 보내면
+ * 그걸, 없으면 status만 반환한다. daily-lock 저장·안내 분기의 입력이 된다.
+ */
+export const parseQuotaReason = (error: unknown): QuotaReasonInfo => {
+  const status = statusOf(error);
+  const body = bodyOf(error);
+  const rawReason =
+    typeof body?.reason === "string" ? (body.reason as string) : undefined;
+  const reason: QuotaReason | undefined =
+    rawReason === "daily" ||
+    rawReason === "minute" ||
+    rawReason === "server" ||
+    rawReason === "unknown"
+      ? rawReason
+      : undefined;
+  const retryAfterSec =
+    typeof body?.retryAfterSec === "number" ? body.retryAfterSec : undefined;
+  return {
+    ...(status !== undefined ? { status } : {}),
+    ...(reason !== undefined ? { reason } : {}),
+    ...(retryAfterSec !== undefined ? { retryAfterSec } : {}),
+  };
 };
