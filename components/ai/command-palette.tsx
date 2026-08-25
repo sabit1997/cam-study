@@ -9,8 +9,14 @@ import { filterSuggestions } from "@/utils/command-suggestions";
 import { apiErrorMessage } from "@/utils/api-error";
 import { consume as consumeQuota, getRemaining as getQuotaRemaining } from "@/utils/ai-quota";
 import { getFallbackActions } from "@/utils/ai-fallback";
+import {
+  searchAndFilter,
+  toPlayActions,
+  type FilteredCandidate,
+} from "@/utils/youtube-pipeline";
 import { runAiActions } from "./ai-action-runner";
 import AiAnswerPanel from "./ai-answer-panel";
+import YoutubeApprovalPanel from "./youtube-approval-panel";
 import type { AiAction } from "@/types/ai-actions";
 
 /**
@@ -35,7 +41,27 @@ type Phase =
   | { status: "rejected"; reasons: string[] }
   | { status: "running" }
   // 조회 액션 실행 결과. 답변 마크다운을 인라인 카드로 보여준다.
-  | { status: "answered"; answer: string };
+  | { status: "answered"; answer: string }
+  | { status: "searching-youtube" }
+  | { status: "youtube-review"; candidates: FilteredCandidate[] };
+
+/**
+ * 팔레트가 검색 흐름으로 라우팅할 문장을 감지한다.
+ *
+ * 왜 서버(LLM)에 맡기지 않는가:
+ * - LLM에게 "이건 검색이야 아니면 명령이야"를 물으면 두 번 호출이 되고 quota를 두 배로 태운다.
+ * - 짧은 키워드 매칭이 발표 데모의 대표 문장 "강의 3개 찾아서 담아줘"를 안정적으로 잡는다.
+ * - 매칭 실패 시 자연스럽게 기존 ai-interpret 경로로 흘러가므로 다른 명령은 영향받지 않는다.
+ */
+const YOUTUBE_SEARCH_RE = /(유튜브|영상|강의)[^]*?(찾아|검색|추천|담아|틀어)/;
+
+/** 문장에서 "숫자 개" 표현을 뽑아 검색할 후보 수로 삼는다. 못 찾으면 3개. */
+const extractCount = (text: string): number => {
+  const match = text.match(/(\d+)\s*개/);
+  if (!match) return 3;
+  const n = parseInt(match[1], 10);
+  return Math.max(1, Math.min(8, n));
+};
 
 export default function CommandPalette() {
   const { isOpen, close } = useCommandPalette();
@@ -127,12 +153,47 @@ export default function CommandPalette() {
     []
   );
 
+  const runYoutubeFlow = useCallback(
+    async (generation: number, query: string) => {
+      // 유튜브 검색은 quota를 두 배로 먹는다(youtube-search purpose).
+      const reservation = consumeQuota("youtube-search");
+      setQuotaRemaining(reservation.remaining);
+      if (!reservation.ok) {
+        setPhase({
+          status: "rejected",
+          reasons: ["오늘의 AI 호출 몫을 다 썼어요. 자정에 다시 채워집니다."],
+        });
+        return;
+      }
+      setPhase({ status: "searching-youtube" });
+      try {
+        const count = extractCount(query);
+        const candidates = await searchAndFilter(query, count);
+        if (generation !== requestId.current) return;
+        setPhase({ status: "youtube-review", candidates });
+      } catch (error) {
+        if (generation !== requestId.current) return;
+        setPhase({
+          status: "rejected",
+          reasons: [apiErrorMessage(error, "유튜브 검색에 실패했어요.")],
+        });
+      }
+    },
+    []
+  );
+
   const submit = useCallback(
     async (text: string) => {
       const trimmed = text.trim();
       if (!trimmed) return;
 
       const generation = ++requestId.current;
+
+      // 유튜브 검색 흐름은 별도 경로 — 승인 UI가 다르고 quota 가중치도 다르다.
+      if (YOUTUBE_SEARCH_RE.test(trimmed)) {
+        void runYoutubeFlow(generation, trimmed);
+        return;
+      }
 
       // 요청을 보내기 전에 남은 몫을 먼저 예약한다. 부족하면 서버까지 가지 않는다.
       // 서버 IP 레이트리밋은 실질 방어선으로 남기고, 사용자에게는 이 층에서 사전 안내를 준다.
@@ -199,7 +260,27 @@ export default function CommandPalette() {
         });
       }
     },
-    [interpretCommand, showFallback]
+    [interpretCommand, showFallback, runYoutubeFlow]
+  );
+
+  const approveYoutube = useCallback(
+    async (selected: FilteredCandidate[]) => {
+      if (selected.length === 0) {
+        handleClose();
+        return;
+      }
+      const generation = ++requestId.current;
+      setPhase({ status: "running" });
+      const actions = toPlayActions(selected);
+      const result = await runAiActions(actions);
+      if (generation !== requestId.current) return;
+      if (result.ok) {
+        handleClose();
+        return;
+      }
+      setPhase({ status: "rejected", reasons: result.reasons ?? [result.summary] });
+    },
+    [handleClose]
   );
 
   const confirm = useCallback(async () => {
@@ -286,7 +367,10 @@ export default function CommandPalette() {
   const mutedColor = isDarkMode ? "rgba(232,234,242,0.6)" : "rgba(31,36,48,0.6)";
 
   const descriptions = phase.status === "review" ? describeAiActions(phase.actions) : [];
-  const isBusy = phase.status === "interpreting" || phase.status === "running";
+  const isBusy =
+    phase.status === "interpreting" ||
+    phase.status === "running" ||
+    phase.status === "searching-youtube";
 
   return createPortal(
     <div
@@ -384,6 +468,9 @@ export default function CommandPalette() {
           {phase.status === "running" && "실행 중입니다."}
           {phase.status === "rejected" && phase.reasons.join(" ")}
           {phase.status === "answered" && "답변이 준비됐어요."}
+          {phase.status === "searching-youtube" && "유튜브 강의를 검색하는 중입니다."}
+          {phase.status === "youtube-review" &&
+            `${phase.candidates.length}개의 후보 영상을 검토하세요.`}
         </div>
 
         {phase.status === "input" && suggestions.length > 0 && (
@@ -420,7 +507,11 @@ export default function CommandPalette() {
 
         {isBusy && (
           <p style={{ ...PANEL, borderTop: border, color: mutedColor }}>
-            {phase.status === "interpreting" ? "해석하는 중…" : "실행하는 중…"}
+            {phase.status === "interpreting"
+              ? "해석하는 중…"
+              : phase.status === "searching-youtube"
+                ? "유튜브 강의를 찾는 중…"
+                : "실행하는 중…"}
           </p>
         )}
 
@@ -498,6 +589,15 @@ export default function CommandPalette() {
           <AiAnswerPanel
             markdown={phase.answer}
             onClose={handleClose}
+            isDarkMode={isDarkMode}
+          />
+        )}
+
+        {phase.status === "youtube-review" && (
+          <YoutubeApprovalPanel
+            candidates={phase.candidates}
+            onApprove={(selected) => void approveYoutube(selected)}
+            onCancel={handleClose}
             isDarkMode={isDarkMode}
           />
         )}

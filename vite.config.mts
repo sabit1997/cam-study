@@ -88,14 +88,21 @@ export default defineConfig(({ mode }) => {
             }
             try {
               const body = await readBody(req);
-              const { text } = JSON.parse(body) as { text?: unknown };
+              const { text, purpose } = JSON.parse(body) as {
+                text?: unknown;
+                purpose?: unknown;
+              };
               // Vite의 모듈 파이프라인으로 로드한다. 설정 파일에서 직접 import하면
               // 설정 로더가 TS/ESM을 CJS로 취급해 경고가 나고, 앞으로는 아예 깨진다.
               // 이렇게 하면 server/ 코드를 고쳐도 개발 서버를 재시작할 필요가 없다.
-              const { interpret } = (await server.ssrLoadModule(
+              const { interpret, isPurpose } = (await server.ssrLoadModule(
                 "/server/ai-interpret.ts"
               )) as typeof import("./server/ai-interpret");
-              const result = await interpret(text, { apiKey: geminiApiKey });
+              const p = isPurpose(purpose) ? purpose : undefined;
+              const result = await interpret(text, {
+                apiKey: geminiApiKey,
+                ...(p ? { purpose: p } : {}),
+              });
               if (!result.ok) {
                 send(result.status, { error: result.error });
                 return;
@@ -104,6 +111,43 @@ export default defineConfig(({ mode }) => {
             } catch (err) {
               console.error("[ai-interpret]", err);
               send(500, { error: "AI 요청 처리에 실패했습니다." });
+            }
+          });
+        },
+      },
+      {
+        // 개발 환경(Vite) 어댑터. Gemini 그라운딩 검색을 태워 유튜브 강의 후보를 뽑는다.
+        // 배포 환경 어댑터는 api/youtube-search.ts, 데스크탑은 express-server.ts.
+        name: "youtube-search",
+        configureServer(server) {
+          server.middlewares.use(async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
+            if (req.url !== "/api/youtube-search" || req.method !== "POST") {
+              next();
+              return;
+            }
+            const send = (status: number, body: object) => {
+              res.writeHead(status, { "Content-Type": "application/json" });
+              res.end(JSON.stringify(body));
+            };
+            if (!geminiApiKey) {
+              send(500, { error: "GEMINI_API_KEY가 설정되지 않았습니다." });
+              return;
+            }
+            try {
+              const body = await readBody(req);
+              const parsed = JSON.parse(body) as unknown;
+              const { searchYoutube } = (await server.ssrLoadModule(
+                "/server/youtube-search.ts"
+              )) as typeof import("./server/youtube-search");
+              const result = await searchYoutube(parsed, { apiKey: geminiApiKey });
+              if (!result.ok) {
+                send(result.status, { error: result.error });
+                return;
+              }
+              send(200, { candidates: result.candidates });
+            } catch (err) {
+              console.error("[youtube-search]", err);
+              send(500, { error: "유튜브 검색에 실패했습니다." });
             }
           });
         },
