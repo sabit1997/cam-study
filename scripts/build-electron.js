@@ -31,6 +31,14 @@ if (!ytKey) {
   console.warn("[build-electron] 경고: YOUTUBE_API_KEY가 설정되지 않았습니다.");
 }
 
+// AI 해석을 넘길 웹 배포본 주소. API 키 자체는 절대 주입하지 않는다.
+const aiProxyUrl = process.env.AI_PROXY_URL ?? "";
+if (!aiProxyUrl) {
+  console.warn(
+    "[build-electron] 경고: AI_PROXY_URL이 설정되지 않아 데스크탑에서 AI 명령이 동작하지 않습니다."
+  );
+}
+
 esbuild
   .build({
     entryPoints: [
@@ -45,6 +53,7 @@ esbuild
     outdir: "dist-electron",
     define: {
       __YOUTUBE_API_KEY__: JSON.stringify(ytKey),
+      __AI_PROXY_URL__: JSON.stringify(aiProxyUrl),
     },
   })
   .then(() => {

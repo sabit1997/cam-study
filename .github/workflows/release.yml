@@ -31,6 +31,8 @@ jobs:
         run: npm run build:ts
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          # 키가 아니라 주소다. 데스크탑은 AI 요청을 웹 배포본으로 넘긴다.
+          AI_PROXY_URL: https://www.oeyo-cam.site
 
       - name: 웹 빌드 (Vite)
         run: npm run build:web
@@ -73,6 +75,8 @@ jobs:
         run: npm run build:ts
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          # 키가 아니라 주소다. 데스크탑은 AI 요청을 웹 배포본으로 넘긴다.
+          AI_PROXY_URL: https://www.oeyo-cam.site
 
       - name: 웹 빌드 (Vite)
         run: npm run build:web
