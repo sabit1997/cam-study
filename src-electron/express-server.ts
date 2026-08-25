@@ -118,6 +118,48 @@ export function createExpressApp(staticDir: string) {
     }
   });
 
+  // 온보딩 대화 → 웹 배포본으로 SSE 프록시. axios responseType: "stream"으로 받아
+  // 청크가 도착할 때마다 렌더러에 그대로 흘려보낸다. 헤더도 통째로 전달해야
+  // 브라우저 fetch가 SSE로 인식한다.
+  app.post("/api/onboarding-chat", express.json(), async (req, res) => {
+    if (!AI_PROXY_URL) {
+      res.status(500).json({
+        error: "AI 엔드포인트가 설정되지 않았습니다. 빌드 시 AI_PROXY_URL이 필요합니다.",
+      });
+      return;
+    }
+    try {
+      const upstream = await axios.post(
+        `${AI_PROXY_URL.replace(/\/$/, "")}/api/onboarding-chat`,
+        req.body,
+        {
+          responseType: "stream",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "text/event-stream",
+            ...(req.headers.cookie ? { Cookie: req.headers.cookie } : {}),
+          },
+          validateStatus: () => true,
+        }
+      );
+      res.status(upstream.status);
+      // 필수 SSE 헤더만 forward — Content-Type·Cache-Control·X-Accel-Buffering.
+      // 나머지(예: transfer-encoding)는 Node http가 다시 세팅한다.
+      const ct = upstream.headers["content-type"];
+      if (typeof ct === "string") res.setHeader("Content-Type", ct);
+      res.setHeader("Cache-Control", "no-cache, no-transform");
+      res.setHeader("X-Accel-Buffering", "no");
+      upstream.data.pipe(res);
+    } catch (err) {
+      console.error("[onboarding-chat]", err);
+      if (!res.headersSent) {
+        res.status(502).json({ error: "AI 요청을 전달하지 못했습니다." });
+      } else {
+        res.end();
+      }
+    }
+  });
+
   // 나머지 /api/* → 백엔드 프록시 (Cookie 헤더 자동 포워딩)
   // 패키징된 Electron은 http://localhost:<랜덤포트>에서 실행돼 클라이언트
   // Origin이 백엔드 whitelist에 없어 403이 난다. proxyReq에서 Origin/Referer를

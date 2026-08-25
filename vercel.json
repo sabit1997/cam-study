@@ -3,7 +3,7 @@
   "buildCommand": "npm run build:web",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/api/:path((?!check-youtube$|ai-interpret$|youtube-search$).*)", "destination": "https://api.oeyo-cam.site/:path" },
+    { "source": "/api/:path((?!check-youtube$|ai-interpret$|youtube-search$|onboarding-chat$).*)", "destination": "https://api.oeyo-cam.site/:path" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ]
 }

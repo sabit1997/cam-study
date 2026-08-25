@@ -123,6 +123,68 @@ export default defineConfig(({ mode }) => {
         },
       },
       {
+        // 개발 환경(Vite) 어댑터 — 온보딩 대화 SSE 스트림.
+        // 배포 환경 어댑터는 api/onboarding-chat.ts(웹)와 src-electron/express-server.ts.
+        // 헤더를 즉시 flush하고 chunk마다 write해 브라우저가 순차적으로 받게 한다.
+        name: "onboarding-chat",
+        configureServer(server) {
+          server.middlewares.use(async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
+            if (req.url !== "/api/onboarding-chat" || req.method !== "POST") {
+              next();
+              return;
+            }
+            if (!geminiApiKey) {
+              res.writeHead(500, { "Content-Type": "application/json" });
+              res.end(JSON.stringify({ error: "GEMINI_API_KEY가 설정되지 않았습니다." }));
+              return;
+            }
+            try {
+              const body = await readBody(req);
+              const parsed = JSON.parse(body) as unknown;
+              const { streamOnboardingChat } = (await server.ssrLoadModule(
+                "/server/onboarding-chat.ts"
+              )) as typeof import("./server/onboarding-chat");
+
+              res.writeHead(200, {
+                "Content-Type": "text/event-stream; charset=utf-8",
+                "Cache-Control": "no-cache, no-transform",
+                Connection: "keep-alive",
+                "X-Accel-Buffering": "no",
+              });
+
+              const send = (obj: object) => {
+                res.write(`data: ${JSON.stringify(obj)}\n\n`);
+              };
+
+              const result = await streamOnboardingChat(parsed, {
+                apiKey: geminiApiKey,
+                onDelta: (text) => send({ type: "delta", text }),
+              });
+              if (result.ok) {
+                send({
+                  type: "done",
+                  reply: result.reply,
+                  visibleText: result.visibleText,
+                });
+              } else {
+                send({ type: "error", ...result });
+              }
+              res.end();
+            } catch (err) {
+              console.error("[onboarding-chat]", err);
+              // 응답이 이미 시작됐다면 SSE 안에서 에러를 보내고, 아니면 JSON 500.
+              if (res.headersSent) {
+                res.write(`data: ${JSON.stringify({ type: "error", status: 500, error: "AI 요청 처리에 실패했습니다." })}\n\n`);
+                res.end();
+              } else {
+                res.writeHead(500, { "Content-Type": "application/json" });
+                res.end(JSON.stringify({ error: "AI 요청 처리에 실패했습니다." }));
+              }
+            }
+          });
+        },
+      },
+      {
         // 개발 환경(Vite) 어댑터. Gemini 그라운딩 검색을 태워 유튜브 강의 후보를 뽑는다.
         // 배포 환경 어댑터는 api/youtube-search.ts, 데스크탑은 express-server.ts.
         name: "youtube-search",
