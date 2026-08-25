@@ -7,6 +7,7 @@ import { validateAiActions } from "@/utils/ai-action-validate";
 import { describeAiActions } from "@/utils/ai-action-describe";
 import { filterSuggestions } from "@/utils/command-suggestions";
 import { apiErrorMessage } from "@/utils/api-error";
+import { consume as consumeQuota, getRemaining as getQuotaRemaining } from "@/utils/ai-quota";
 import { runAiActions } from "./ai-action-runner";
 import type { AiAction } from "@/types/ai-actions";
 
@@ -40,6 +41,15 @@ export default function CommandPalette() {
   const [query, setQuery] = useState("");
   const [phase, setPhase] = useState<Phase>({ status: "input" });
   const [activeIndex, setActiveIndex] = useState(0);
+  const [quotaRemaining, setQuotaRemaining] = useState<number>(() =>
+    getQuotaRemaining()
+  );
+
+  // 팔레트를 열 때 localStorage에서 남은 몫을 다시 읽는다.
+  // 사용자가 다른 탭·데스크탑에서 소비했을 수 있고, 자정이 지났을 수도 있다.
+  useEffect(() => {
+    if (isOpen) setQuotaRemaining(getQuotaRemaining());
+  }, [isOpen]);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -93,6 +103,20 @@ export default function CommandPalette() {
     async (text: string) => {
       const trimmed = text.trim();
       if (!trimmed) return;
+
+      // 요청을 보내기 전에 남은 몫을 먼저 예약한다. 부족하면 서버까지 가지 않는다.
+      // 서버 IP 레이트리밋은 실질 방어선으로 남기고, 사용자에게는 이 층에서 사전 안내를 준다.
+      const reservation = consumeQuota("command");
+      setQuotaRemaining(reservation.remaining);
+      if (!reservation.ok) {
+        setPhase({
+          status: "rejected",
+          reasons: [
+            "오늘의 AI 호출 몫을 다 썼어요. 자정에 다시 채워집니다.",
+          ],
+        });
+        return;
+      }
 
       const generation = ++requestId.current;
       setPhase({ status: "interpreting" });
@@ -241,36 +265,61 @@ export default function CommandPalette() {
           color: textColor,
         }}
       >
-        <input
-          ref={inputRef}
-          type="text"
-          role="combobox"
-          aria-expanded={suggestions.length > 0}
-          aria-controls={LISTBOX_ID}
-          aria-autocomplete="list"
-          aria-activedescendant={
-            phase.status === "input" && suggestions.length > 0
-              ? `${LISTBOX_ID}-${activeIndex}`
-              : undefined
-          }
-          value={query}
-          disabled={isBusy}
-          onChange={(event) => {
-            setQuery(event.target.value);
-            setActiveIndex(0);
-            if (phase.status !== "input") setPhase({ status: "input" });
-          }}
-          placeholder="하고 싶은 것을 문장으로 적어보세요"
-          style={{
-            width: "100%",
-            padding: "18px 20px",
-            fontSize: 17,
-            border: "none",
-            outline: "none",
-            background: "transparent",
-            color: textColor,
-          }}
-        />
+        <div style={{ position: "relative" }}>
+          <input
+            ref={inputRef}
+            type="text"
+            role="combobox"
+            aria-expanded={suggestions.length > 0}
+            aria-controls={LISTBOX_ID}
+            aria-autocomplete="list"
+            aria-activedescendant={
+              phase.status === "input" && suggestions.length > 0
+                ? `${LISTBOX_ID}-${activeIndex}`
+                : undefined
+            }
+            value={query}
+            disabled={isBusy}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setActiveIndex(0);
+              if (phase.status !== "input") setPhase({ status: "input" });
+            }}
+            placeholder="하고 싶은 것을 문장으로 적어보세요"
+            style={{
+              width: "100%",
+              padding: "18px 92px 18px 20px", // 우측 여유는 뱃지 자리
+              fontSize: 17,
+              border: "none",
+              outline: "none",
+              background: "transparent",
+              color: textColor,
+              boxSizing: "border-box",
+            }}
+          />
+          {/* 남은 AI 호출 뱃지 — 무료 티어 할당량을 사용자에게 미리 알려준다.
+              스크린 리더에는 aria-label 하나로만 읽히도록 시각 요소는 aria-hidden. */}
+          <span
+            aria-label={`남은 AI 호출 ${quotaRemaining}회`}
+            style={{
+              position: "absolute",
+              right: 18,
+              top: "50%",
+              transform: "translateY(-50%)",
+              padding: "3px 9px",
+              borderRadius: 999,
+              fontSize: 11,
+              fontWeight: 600,
+              letterSpacing: 0.2,
+              background: quotaRemaining > 0 ? `${ACCENT}22` : "rgba(217,83,79,0.15)",
+              color: quotaRemaining > 0 ? ACCENT : "#d9534f",
+              whiteSpace: "nowrap",
+              pointerEvents: "none",
+            }}
+          >
+            <span aria-hidden="true">남은 AI · {quotaRemaining}</span>
+          </span>
+        </div>
 
         {/* 상태 변화는 완료된 문장 단위로 한 번만 알린다.
             토큰이 올 때마다 알리면 스크린 리더가 처음부터 다시 읽어 아무것도 알아들을 수 없다. */}
