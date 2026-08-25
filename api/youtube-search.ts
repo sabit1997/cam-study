@@ -64,9 +64,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const verdict = limiter(clientIp(req), Date.now());
   if (!verdict.allowed) {
+    // 우리 서버 IP 레이트리밋에서 온 429. 클라이언트가 Gemini의 daily/minute와 구분해서
+    // 안내할 수 있도록 reason: "server"로 라벨링.
     res.setHeader("Retry-After", String(verdict.retryAfterSec));
     res.status(429).json({
-      error: `요청이 너무 많습니다. ${verdict.retryAfterSec}초 후에 다시 시도해주세요.`,
+      error: `요청이 너무 많아요. ${verdict.retryAfterSec}초 후에 다시 시도해주세요.`,
+      reason: "server",
+      retryAfterSec: verdict.retryAfterSec,
     });
     return;
   }
@@ -79,7 +83,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     const result = await searchYoutube(req.body);
     if (!result.ok) {
-      res.status(result.status).json({ error: result.error });
+      res.status(result.status).json({
+        error: result.error,
+        ...(result.reason ? { reason: result.reason } : {}),
+        ...(result.retryAfterSec !== undefined
+          ? { retryAfterSec: result.retryAfterSec }
+          : {}),
+      });
       return;
     }
     res.json({ candidates: result.candidates });

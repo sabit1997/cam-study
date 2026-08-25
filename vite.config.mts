@@ -104,7 +104,14 @@ export default defineConfig(({ mode }) => {
                 ...(p ? { purpose: p } : {}),
               });
               if (!result.ok) {
-                send(result.status, { error: result.error });
+                // reason·retryAfterSec를 함께 넘겨 daily/minute/server를 클라이언트가 구분.
+                send(result.status, {
+                  error: result.error,
+                  ...(result.reason ? { reason: result.reason } : {}),
+                  ...(result.retryAfterSec !== undefined
+                    ? { retryAfterSec: result.retryAfterSec }
+                    : {}),
+                });
                 return;
               }
               send(200, { actions: result.actions });
@@ -141,7 +148,14 @@ export default defineConfig(({ mode }) => {
               )) as typeof import("./server/youtube-search");
               const result = await searchYoutube(parsed, { apiKey: geminiApiKey });
               if (!result.ok) {
-                send(result.status, { error: result.error });
+                // reason·retryAfterSec를 함께 넘겨 daily/minute/server를 클라이언트가 구분.
+                send(result.status, {
+                  error: result.error,
+                  ...(result.reason ? { reason: result.reason } : {}),
+                  ...(result.retryAfterSec !== undefined
+                    ? { retryAfterSec: result.retryAfterSec }
+                    : {}),
+                });
                 return;
               }
               send(200, { candidates: result.candidates });
