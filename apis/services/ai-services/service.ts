@@ -193,13 +193,16 @@ export default class AiService {
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
 
-        // SSE 이벤트는 빈 줄로 구분된다. 완전한 이벤트만 뽑고 남은 부분은 buffer로.
-        let boundary = buffer.indexOf("\n\n");
-        while (boundary !== -1) {
-          const rawEvent = buffer.slice(0, boundary);
-          buffer = buffer.slice(boundary + 2);
+        // SSE 이벤트는 빈 줄로 구분된다. RFC상 라인 끝은 \n·\r\n·\r 모두 허용이라
+        // 이벤트 경계도 세 조합을 모두 잡아야 한다. Vercel edge·일부 CDN이 CRLF로
+        // 내려주는 사례가 있어서, LF만 검사하면 이벤트가 영영 파싱되지 않고 buffer만
+        // 무한히 커진다.
+        let boundary = findEventBoundary(buffer);
+        while (boundary) {
+          const rawEvent = buffer.slice(0, boundary.index);
+          buffer = buffer.slice(boundary.index + boundary.length);
           handleSseEvent(rawEvent, callbacks);
-          boundary = buffer.indexOf("\n\n");
+          boundary = findEventBoundary(buffer);
         }
       }
     } catch (err) {
@@ -208,20 +211,48 @@ export default class AiService {
         status: 500,
         error: "AI 응답 스트림이 중간에 끊겼어요.",
       });
+    } finally {
+      // reader를 잡고 있으면 body가 GC되지 않는다. 정상 종료·에러·abort 모두에서 해제.
+      try {
+        reader.releaseLock();
+      } catch {
+        // 이미 해제됐거나 취소된 경우는 무시
+      }
     }
   };
 }
 
 /**
+ * buffer에서 가장 먼저 나타나는 SSE 이벤트 경계를 찾는다.
+ * SSE 스펙(EventSource): "\n\n" · "\r\r" · "\r\n\r\n" 모두 유효한 경계.
+ */
+export const findEventBoundary = (
+  buffer: string
+): { index: number; length: number } | null => {
+  let best: { index: number; length: number } | null = null;
+  const consider = (idx: number, len: number) => {
+    if (idx === -1) return;
+    if (best === null || idx < best.index) best = { index: idx, length: len };
+  };
+  consider(buffer.indexOf("\r\n\r\n"), 4);
+  consider(buffer.indexOf("\n\n"), 2);
+  consider(buffer.indexOf("\r\r"), 2);
+  return best;
+};
+
+/**
  * SSE 한 이벤트(빈 줄로 끊긴 덩어리)를 파싱해 콜백을 부른다.
  * data: 로 시작하는 여러 줄이 오면 이어붙여 하나의 JSON으로 취급한다.
  */
-const handleSseEvent = (
+export const handleSseEvent = (
   rawEvent: string,
   callbacks: OnboardingChatCallbacks
 ): void => {
   const dataLines: string[] = [];
-  for (const line of rawEvent.split("\n")) {
+  // CRLF·CR·LF 어느 조합이든 라인으로 잘라내고, 각 라인의 trailing \r도 제거한다.
+  const lines = rawEvent.split(/\r\n|\n|\r/);
+  for (const rawLine of lines) {
+    const line = rawLine.endsWith("\r") ? rawLine.slice(0, -1) : rawLine;
     if (line.startsWith("data:")) dataLines.push(line.slice(5).trimStart());
   }
   if (dataLines.length === 0) return;
