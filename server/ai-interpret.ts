@@ -142,9 +142,16 @@ export const interpret = async (
   const purpose = options.purpose ?? DEFAULT_PURPOSE;
   const thinkingLevel = THINKING_BY_PURPOSE[purpose];
 
+  // "오늘"·"지난주 화요일" 같은 상대 날짜를 해석할 수 있도록 오늘 날짜를 앞머리에 주입.
+  // 프롬프트에 하드코딩하면 배포 시점의 날짜로 굳으므로, 매 요청마다 서버가 오늘을 채운다.
+  // 서버 UTC와 사용자 로컬이 자정 근처에서 하루 차이가 날 수 있는 트레이드오프가 있지만
+  // 사용자가 사후에 명시적 날짜를 넣어 다시 물을 수 있어 실제 사용에서는 큰 문제가 아니다.
+  const today = new Date().toISOString().slice(0, 10);
+  const contents = `[오늘: ${today}]\n${text}`;
+
   const request = {
     model: options.model ?? process.env.GEMINI_MODEL ?? DEFAULT_MODEL,
-    contents: text,
+    contents,
     config: {
       systemInstruction: SYSTEM_PROMPT,
       responseMimeType: "application/json",

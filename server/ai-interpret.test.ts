@@ -49,7 +49,8 @@ describe("interpret", () => {
 
     const params = generateContent.mock.calls[0][0];
     expect(params.model).toBe(DEFAULT_MODEL);
-    expect(params.contents).toBe("타이머 켜줘");
+    // 상대 날짜 해석을 위해 오늘 날짜를 앞머리에 주입한다.
+    expect(params.contents).toMatch(/^\[오늘: \d{4}-\d{2}-\d{2}\]\n타이머 켜줘$/);
     expect(params.config.responseMimeType).toBe("application/json");
     expect(params.config.systemInstruction).toContain("CamStudy");
     // 명령 해석은 짧은 구조 변환이라 깊게 생각시키지 않는다 (지연이 곧 체감 품질)
