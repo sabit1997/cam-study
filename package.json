@@ -14,7 +14,7 @@
     "build:app": "npm run build:ts && npm run build:web && electron-builder",
     "type-check": "tsc --noEmit",
     "type-check:electron": "tsc -p tsconfig.electron.json --noEmit",
-    "lint": "eslint src components apis stores hooks utils",
+    "lint": "eslint src components apis stores hooks utils types server api",
     "test": "vitest run",
     "check": "npm run type-check && npm run type-check:electron && npm run lint && npm test",
     "preview": "vite preview",
