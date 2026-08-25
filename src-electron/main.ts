@@ -3,6 +3,7 @@ import {
   BrowserWindow,
   desktopCapturer,
   dialog,
+  globalShortcut,
   ipcMain,
   session,
   shell,
@@ -229,6 +230,46 @@ async function createWindow() {
   await win.loadURL(appUrl);
 }
 
+/**
+ * 앱이 백그라운드에 있어도 Cmd/Ctrl+Shift+K로 명령 팔레트를 연다.
+ *
+ * 이게 데스크탑 앱이어야 하는 이유다. 웹에서는 브라우저 탭이 포커스를 갖고 있어야만
+ * 키 입력을 받으므로 "VSCode에서 코딩하다가 창 전환 없이 명령"이 원리적으로 불가능하다.
+ *
+ * Shift를 넣은 이유: 전역 등록은 OS 전체에서 그 조합을 가로챈다. Cmd+K를 잡으면
+ * CamStudy가 켜져 있는 동안 VS Code의 Ctrl+K 코드 체인과 Slack 퀵스위처가 함께 죽는다.
+ * 바로 그 VS Code를 위해 만든 기능이 VS Code를 망가뜨리는 셈이라 조합을 비켰다.
+ * 앱 안에서는 렌더러가 여전히 Cmd+K를 처리한다(hooks/useCommandPalette.ts).
+ *
+ * 다른 앱이 이미 쓰고 있으면 등록에 실패할 수 있다. 그때는 조용히 포기한다.
+ */
+const PALETTE_ACCELERATOR = "CommandOrControl+Shift+K";
+
+function registerCommandPaletteShortcut() {
+  const registered = globalShortcut.register(PALETTE_ACCELERATOR, () => {
+    // macOS는 창을 닫아도 앱이 살아 있다. 여기서 그냥 return하면 단축키를
+    // 전역으로 빼앗은 채 아무 일도 하지 않는 상태가 된다 — 창부터 되살린다.
+    if (!mainWindow) {
+      void createWindow()
+        // createWindow는 loadURL까지 기다린다. 다만 그 시점에 렌더러의 IPC 구독이
+        // 아직 없을 수 있어 이 전송은 최선 노력이다. 놓치면 앱 안에서 Cmd+K로 열면 된다.
+        .then(() => mainWindow?.webContents.send("palette:open"))
+        .catch((err) => console.error("창 생성 실패:", err));
+      return;
+    }
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.show();
+    mainWindow.focus();
+    mainWindow.webContents.send("palette:open");
+  });
+
+  if (!registered) {
+    console.warn(
+      `[shortcut] ${PALETTE_ACCELERATOR} 등록 실패 — 다른 앱이 사용 중일 수 있습니다.`
+    );
+  }
+}
+
 app.whenReady().then(async () => {
   persistLocalSessionCookies();
   session.defaultSession.webRequest.onBeforeSendHeaders(
@@ -366,6 +407,7 @@ app.whenReady().then(async () => {
 
   setupAutoUpdater();
   void createWindow().catch((err) => console.error("창 생성 실패:", err));
+  registerCommandPaletteShortcut();
 });
 
 app.on("activate", () => {
@@ -376,4 +418,8 @@ app.on("activate", () => {
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
+});
+
+app.on("will-quit", () => {
+  globalShortcut.unregisterAll();
 });
