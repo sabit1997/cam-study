@@ -102,9 +102,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   const verdict = limiter(clientIp(req), Date.now());
   if (!verdict.allowed) {
+    // 우리 서버 IP 레이트리밋에서 온 429. Gemini의 daily/minute와 구분해야 클라이언트가
+    // 오해 없는 안내를 낼 수 있다. reason: "server"로 표기하고 실제 재시도 시간을 넘긴다.
     res.setHeader("Retry-After", String(verdict.retryAfterSec));
     res.status(429).json({
-      error: `요청이 너무 많습니다. ${verdict.retryAfterSec}초 후에 다시 시도해주세요.`,
+      error: `요청이 너무 많아요. ${verdict.retryAfterSec}초 후에 다시 시도해주세요.`,
+      reason: "server",
+      retryAfterSec: verdict.retryAfterSec,
     });
     return;
   }
@@ -125,7 +129,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const result = await interpret(body?.text, purpose ? { purpose } : {});
 
     if (!result.ok) {
-      res.status(result.status).json({ error: result.error });
+      // reason·retryAfterSec가 있으면 함께 전달 — 클라이언트가 daily/minute/server를 구분해
+      // 안내 문구를 조정할 수 있다.
+      res.status(result.status).json({
+        error: result.error,
+        ...(result.reason ? { reason: result.reason } : {}),
+        ...(result.retryAfterSec !== undefined
+          ? { retryAfterSec: result.retryAfterSec }
+          : {}),
+      });
       return;
     }
     res.json({ actions: result.actions });
