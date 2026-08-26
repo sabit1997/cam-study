@@ -301,7 +301,8 @@ const AddWindow = ({ window, vw, vh }: AddWindowProps) => {
       />
     ),
     todo: <Todos window={window} />,
-    timer: <Timer />,
+    // windowId를 넘겨야 명령 팔레트가 "이 창의 타이머"를 지목할 수 있다(utils/timer-bridge.ts).
+    timer: <Timer windowId={window.id} />,
   };
 
   return (

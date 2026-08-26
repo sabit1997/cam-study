@@ -27,14 +27,12 @@ export interface AiActionDescription {
 /**
  * 스키마에는 있지만 실행기가 아직 연결하지 못한 액션.
  *
- * components/timer.tsx가 타이머 상태를 컴포넌트 로컬에 들고 있어서, 밖에서 시작시킬
- * 방법이 없다. Phase D에서 스토어로 리프팅하면 이 집합이 비워진다.
+ * 지금은 비어 있다 — 타이머 제어까지 utils/timer-bridge.ts로 연결되면서 모든 액션이
+ * 끝까지 동작한다. 새 액션을 스키마에 먼저 추가하고 실행기를 나중에 붙이는 경우를 위해
+ * 장치는 남겨둔다. 여기 넣은 액션은 승인 화면에서 흐리게 표시되고 실행 시 실패로 보고된다.
  * 실행기(components/ai/ai-action-runner.tsx)와 반드시 함께 바뀌어야 한다.
  */
-const UNSUPPORTED_ACTION_TYPES = new Set<AiActionType>([
-  "START_POMODORO",
-  "START_STOPWATCH",
-]);
+const UNSUPPORTED_ACTION_TYPES = new Set<AiActionType>();
 
 const WIDGET_LABEL: Record<string, string> = {
   todo: "할 일 목록",
