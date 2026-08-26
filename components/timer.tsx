@@ -19,6 +19,7 @@ import {
 import type { SessionSummary } from "@/types/tracking";
 import { toast } from "sonner";
 import { useThemeStore } from "@/stores/theme-state";
+import { registerTimerCommands } from "@/utils/timer-bridge";
 
 /** window.electronAPI.tracker가 있는지 — 데스크탑에서만 true, 웹에서는 false. */
 const hasTracker = (): boolean =>
@@ -36,7 +37,17 @@ function fmtMS(s: number) {
   ).padStart(2, "0")}`;
 }
 
-const Timer: React.FC = () => {
+interface TimerProps {
+  /**
+   * 이 타이머가 들어 있는 창의 id.
+   *
+   * 명령 팔레트가 "이 창의 타이머를 시작해"라고 지목할 수 있게 하는 유일한 열쇠다.
+   * 창 밖(온보딩 미리보기 등)에서 쓰일 때는 없을 수 있고, 그때는 등록하지 않는다.
+   */
+  windowId?: number;
+}
+
+const Timer: React.FC<TimerProps> = ({ windowId }) => {
   const { data: todayTimeRes, isPending: isTodayTimePending } =
     useGetTodayTime();
   const todayDate = new Date().toLocaleDateString("en-CA");
@@ -77,6 +88,18 @@ const Timer: React.FC = () => {
 
   const workSecs = workMins * 60;
   const breakSecs = breakMins * 60;
+
+  /**
+   * 돌고 있는 인터벌이 페이즈를 넘길 때 읽는 길이.
+   *
+   * 클로저 대신 ref를 쓰는 이유: 명령 팔레트가 "45분 집중 15분 휴식"을 주면 setState와
+   * 인터벌 시작이 같은 tick에 일어난다. 클로저를 읽으면 첫 페이즈 전환에서 이전 설정으로
+   * 되돌아간다 — 사용자가 승인한 것과 다른 타이머가 돈다.
+   */
+  const durationsRef = useRef({ workSecs, breakSecs });
+  useEffect(() => {
+    durationsRef.current = { workSecs, breakSecs };
+  }, [workSecs, breakSecs]);
 
   const pomoStateRef = useRef<{
     phase: PomoPhase;
@@ -334,7 +357,10 @@ const Timer: React.FC = () => {
           toast.success("휴식 완료! 다시 집중해봐요 🍅");
         }
         s.phase = nextPhase;
-        s.remaining = nextPhase === "work" ? workSecs : breakSecs;
+        s.remaining =
+          nextPhase === "work"
+            ? durationsRef.current.workSecs
+            : durationsRef.current.breakSecs;
       } else {
         s.remaining--;
       }
@@ -342,7 +368,7 @@ const Timer: React.FC = () => {
       setPomoRemaining(s.remaining);
       setPomoCycle(s.cycle);
     }, 1000);
-  }, [workSecs, breakSecs, sendTime, patchCycles]);
+  }, [sendTime, patchCycles]);
 
   const pomoStop = useCallback(() => {
     if (pomoIntervalRef.current) {
@@ -376,29 +402,65 @@ const Timer: React.FC = () => {
     setPomoRemaining(workSecs);
   }, [workSecs, pomoRunning]);
 
-  const applyPomoSettings = (w: number, b: number) => {
-    setWorkMins(w);
-    setBreakMins(b);
-    localStorage.setItem("pomo-work-mins", String(w));
-    localStorage.setItem("pomo-break-mins", String(b));
-    if (pomoIntervalRef.current) {
-      clearInterval(pomoIntervalRef.current);
-      pomoIntervalRef.current = null;
-    }
-    // 설정 변경 직전까지 집중했던 시간 저장 (일시정지 없이 설정 창을 열 수는 없지만 방어적으로 처리)
-    flushPomodoroWork();
-    const newWorkSecs = w * 60;
-    // 사이클은 하루 누적값이므로 설정 변경 시 초기화하지 않는다
-    const currentCycle = pomoStateRef.current.cycle;
-    pomoStateRef.current = {
-      phase: "work",
-      remaining: newWorkSecs,
-      cycle: currentCycle,
-    };
-    setPomoPhase("work");
-    setPomoRemaining(newWorkSecs);
-    setPomoRunning(false);
-  };
+  /**
+   * 집중·휴식 길이를 적용하고 포모도로를 집중 0초부터 되돌린다.
+   *
+   * 설정 모달과 명령 팔레트가 같은 함수를 쓴다. 두 경로가 갈라지면 한쪽에만
+   * flush나 ref 동기화가 빠져서, "AI로 시작했을 때만 시간이 안 쌓인다" 같은 차이가 생긴다.
+   */
+  const applyPomoDurations = useCallback(
+    (w: number, b: number) => {
+      setWorkMins(w);
+      setBreakMins(b);
+      localStorage.setItem("pomo-work-mins", String(w));
+      localStorage.setItem("pomo-break-mins", String(b));
+      if (pomoIntervalRef.current) {
+        clearInterval(pomoIntervalRef.current);
+        pomoIntervalRef.current = null;
+      }
+      // 설정 변경 직전까지 집중했던 시간 저장 (일시정지 없이 설정 창을 열 수는 없지만 방어적으로 처리)
+      flushPomodoroWork();
+      const newWorkSecs = w * 60;
+      // setState는 다음 렌더에나 보이므로, 곧바로 시작될 인터벌을 위해 ref는 동기로 맞춘다.
+      durationsRef.current = { workSecs: newWorkSecs, breakSecs: b * 60 };
+      // 사이클은 하루 누적값이므로 설정 변경 시 초기화하지 않는다
+      const currentCycle = pomoStateRef.current.cycle;
+      pomoStateRef.current = {
+        phase: "work",
+        remaining: newWorkSecs,
+        cycle: currentCycle,
+      };
+      setPomoPhase("work");
+      setPomoRemaining(newWorkSecs);
+      setPomoRunning(false);
+    },
+    [flushPomodoroWork]
+  );
+
+  /**
+   * 명령 팔레트에 이 창의 타이머를 내놓는다.
+   *
+   * 반환값은 "말한 대로 됐는가"다. 실행기가 이걸 그대로 성공·실패로 보고하므로,
+   * 시작되지 않았는데 성공 토스트가 뜨는 일이 생기지 않는다.
+   */
+  useEffect(() => {
+    if (windowId === undefined) return;
+    return registerTimerCommands(windowId, {
+      startPomodoro: (w, b) => {
+        applyPomoDurations(w, b);
+        setMode("pomodoro");
+        setShowPomoSettings(false);
+        pomoStart();
+        return pomoIntervalRef.current !== null;
+      },
+      startStopwatch: () => {
+        setMode("stopwatch");
+        startTimer();
+        // 이미 돌고 있었으면 그대로 true — 사용자가 원한 상태에 이미 있다.
+        return isRunningRef.current;
+      },
+    });
+  }, [windowId, applyPomoDurations, pomoStart, startTimer]);
 
   // Pomodoro ring
   const pomoProgress =
@@ -572,7 +634,7 @@ const Timer: React.FC = () => {
             <PomodoroSettingsModal
               workMins={workMins}
               breakMins={breakMins}
-              onApply={applyPomoSettings}
+              onApply={applyPomoDurations}
               onClose={() => setShowPomoSettings(false)}
             />
           )}
