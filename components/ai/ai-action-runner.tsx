@@ -7,6 +7,7 @@ import { validateAiActions } from "@/utils/ai-action-validate";
 import { planAiActions, type PlannedStep } from "@/utils/ai-action-plan";
 import { buildWindowPayload } from "@/utils/window-payload";
 import { extractYouTubeId } from "@/utils/extractYouTubeId";
+import { waitForTimerCommands } from "@/utils/timer-bridge";
 import {
   formatCategoryAnswer,
   formatDistractPatternAnswer,
@@ -81,13 +82,16 @@ export default function AiActionRunner() {
       const refToId = new Map<string, number>();
       /** ref 없는 할 일이 여러 개여도 창은 한 번만 만든다 */
       let fallbackTodoWindowId: number | null = null;
+      /** 타이머 명령이 여러 개여도 창은 한 번만 만들고 같은 창에 말한다 */
+      let timerWindowId: number | null = null;
       const failed: string[] = [];
       let createdWindows = 0;
       let addedTodos = 0;
+      let startedTimers = 0;
       const answers: string[] = [];
 
       /** 지금 화면에서 가장 앞에 있는(= 사용자가 방금 보고 있던) 해당 종류의 창 */
-      const topmostWindowId = (type: "todo"): number | null => {
+      const topmostWindowId = (type: "todo" | "timer"): number | null => {
         const found = useWindowStore
           .getState()
           .windows.filter((window) => window.type === type)
@@ -108,7 +112,30 @@ export default function AiActionRunner() {
         bringToFront(created.id);
         createdWindows += 1;
         if (step.ref) refToId.set(step.ref, created.id);
+        // 배치가 CREATE_WINDOW(timer)와 START_POMODORO를 함께 담아 와도 창은 하나여야 한다.
+        // 쿼리 리페치가 끝나기 전에는 스토어에 이 창이 없어 topmostWindowId가 못 찾는다 —
+        // 여기서 붙잡아두지 않으면 타이머 창이 두 개 열린다.
+        if (step.widget === "timer") timerWindowId ??= created.id;
         return created.id;
+      };
+
+      /**
+       * 명령을 받을 타이머 창을 확보한다.
+       *
+       * 열려 있는 타이머 창 중 맨 앞의 것을 쓰고, 하나도 없으면 만든다.
+       * 새로 만든 창은 서버 응답 → 리페치 → 렌더 → lazy 청크 로드를 거쳐야 마운트되므로
+       * 명령 창구가 등록될 때까지 기다린다. 기다리지 않고 쏘면 창만 열리고 타이머는 멈춰 있다.
+       */
+      const resolveTimerCommands = async () => {
+        if (timerWindowId === null) {
+          timerWindowId =
+            topmostWindowId("timer") ??
+            (await createWindowStep({ kind: "createWindow", widget: "timer" }));
+        } else {
+          // 같은 배치의 두 번째 타이머 명령 — 창은 그대로 두고 앞으로만 올린다.
+          bringToFront(timerWindowId);
+        }
+        return waitForTimerCommands(timerWindowId);
       };
 
       for (const [index, step] of steps.entries()) {
@@ -143,12 +170,23 @@ export default function AiActionRunner() {
               break;
             }
 
-            case "startPomodoro":
-            case "startStopwatch":
-              // Phase D(timer-bridge)에서 연결한다. 그때까지는 실패로 보고한다.
-              // 성공으로 세면 "포모도로 시작"이라고 승인받고 아무 일도 하지 않은 뒤
-              // 성공 토스트까지 띄우게 된다 — 승인 절차가 있으나 마나가 된다.
-              throw new Error("타이머 제어는 아직 지원하지 않습니다.");
+            case "startPomodoro": {
+              const timer = await resolveTimerCommands();
+              if (!timer.startPomodoro(step.workMins, step.breakMins)) {
+                throw new Error("포모도로를 시작하지 못했습니다.");
+              }
+              startedTimers += 1;
+              break;
+            }
+
+            case "startStopwatch": {
+              const timer = await resolveTimerCommands();
+              if (!timer.startStopwatch()) {
+                throw new Error("스톱워치를 시작하지 못했습니다.");
+              }
+              startedTimers += 1;
+              break;
+            }
 
             case "queryTotal": {
               const result = await getTotal(step.from, step.to);
@@ -193,6 +231,7 @@ export default function AiActionRunner() {
       const done = [
         createdWindows > 0 ? `창 ${createdWindows}개` : null,
         addedTodos > 0 ? `할 일 ${addedTodos}개` : null,
+        startedTimers > 0 ? `타이머 ${startedTimers}개` : null,
         answers.length > 0 ? `조회 ${answers.length}건` : null,
       ].filter(Boolean);
 
@@ -204,7 +243,12 @@ export default function AiActionRunner() {
         return { ok: false, summary, reasons: failed, answer };
       }
       // 조회만 있었으면 UI가 살짝 변한 게 없어 토스트 없이 답변만 보여준다.
-      if (createdWindows === 0 && addedTodos === 0 && answers.length > 0) {
+      if (
+        createdWindows === 0 &&
+        addedTodos === 0 &&
+        startedTimers === 0 &&
+        answers.length > 0
+      ) {
         return { ok: true, summary, answer };
       }
       toast.success(summary);
