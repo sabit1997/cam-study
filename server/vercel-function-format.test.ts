@@ -18,9 +18,10 @@ import path from "node:path";
  * {"error":{"code":"500","message":"A server error has occurred"}}만 도착한다.
  * 우리 코드가 만든 응답이 아니라서 원인을 짚기가 유난히 어렵다.
  *
- * 실제로 AI 엔드포인트 3개가 이 상태로 배포돼 있었다. api/check-youtube.ts만
- * 멀쩡했던 이유는 값 import가 하나도 없어서(import type만 있어서) 컴파일 결과에
- * import 문이 남지 않았기 때문이다 — 즉 "우연히" 유효한 CJS였다.
+ * 실제로 **api/ 함수 4개 전부**가 이 상태로 배포돼 있었다. onboarding-chat만 로그에
+ * 남은 건 첫 실행 온보딩이 자동으로 호출해서다. check-youtube는 값 import가 없어서
+ * (import type만 있어서) import 문이 남지 않지만 `export default`가 남으므로 CJS
+ * 로더에서 똑같이 죽는다 — ESM 문법은 import만이 아니다.
  *
  * ## 왜 로컬 테스트로 잡히지 않았나
  *
