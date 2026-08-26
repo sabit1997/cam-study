@@ -48,19 +48,20 @@ describe("describeAiAction — 무엇이 바뀌는지 보여준다", () => {
     ).toBe(true);
   });
 
-  it("아직 연결되지 않은 타이머 액션은 승인 화면에서 미리 밝힌다", () => {
-    // 될 것처럼 보여주고 안 되는 것이 승인 UI가 할 수 있는 가장 나쁜 거짓말이다
+  it("타이머 액션도 이제 끝까지 동작한다 — 흐리게 표시하지 않는다", () => {
+    // utils/timer-bridge.ts로 연결되기 전에는 "아직 지원 안 됨"을 붙였다.
+    // 실행기가 실제로 처리하는데도 그 꼬리표가 남아 있으면 사용자는 안 될 거라 생각하고 취소한다.
     const pomodoro = describeAiAction({
       type: "START_POMODORO",
       workMins: 25,
       breakMins: 5,
     });
-    expect(pomodoro.supported).toBe(false);
-    expect(pomodoro.text).toContain("아직 지원 안 됨");
+    expect(pomodoro.supported).toBe(true);
+    expect(pomodoro.text).not.toContain("아직 지원 안 됨");
 
     const stopwatch = describeAiAction({ type: "START_STOPWATCH" });
-    expect(stopwatch.supported).toBe(false);
-    expect(stopwatch.text).toContain("아직 지원 안 됨");
+    expect(stopwatch.supported).toBe(true);
+    expect(stopwatch.text).not.toContain("아직 지원 안 됨");
   });
 
   it("액션 5종 모두 아이콘과 문장을 갖는다", () => {

@@ -11,6 +11,7 @@ import { validateAiActions } from "@/utils/ai-action-validate";
 import { describeAiActions } from "@/utils/ai-action-describe";
 import { runAiActions } from "@/components/ai/ai-action-runner";
 import { buildOnboardingActions } from "@/utils/onboarding-windows";
+import { commandPaletteShortcut } from "@/utils/platform-shortcut";
 import type { AiAction } from "@/types/ai-actions";
 
 /**
@@ -333,7 +334,7 @@ export default function FirstRunModal() {
             >
               <strong style={{ color: textColor }}>프라이버시 요약:</strong> 화면 픽셀·창
               제목·대화 내용은 어디에도 전송하지 않아요. 자연어 답변만 AI 서버로
-              보냅니다. 자세한 내용은 README를 참고하세요.
+              보냅니다.
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
               <button type="button" onClick={close} style={ghostButton(mutedColor)}>
@@ -425,7 +426,7 @@ export default function FirstRunModal() {
               시작 준비가 끝났어요 🎉
             </h2>
             <p style={{ marginTop: 6, fontSize: 13, color: mutedColor, lineHeight: 1.6 }}>
-              언제든 Cmd+K로 자연어 명령을 쓸 수 있어요. 예를 들어:
+              언제든 {commandPaletteShortcut()}로 자연어 명령을 쓸 수 있어요. 예를 들어:
               <br />
               <em style={{ color: textColor }}>&ldquo;React 공부 할 일 3개 만들어줘&rdquo;</em>
             </p>

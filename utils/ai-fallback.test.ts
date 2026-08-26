@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest";
 import { validateAiActions } from "@/utils/ai-action-validate";
 import { COMMAND_SUGGESTIONS } from "@/utils/command-suggestions";
 import { getFallbackActions, isFallbackAvailable } from "@/utils/ai-fallback";
+import { describeAiActions } from "@/utils/ai-action-describe";
 
 describe("ai-fallback", () => {
-  it("예시 다섯 개 전부에 fallback이 있다", () => {
+  it("예시 전부에 fallback이 있다", () => {
     for (const suggestion of COMMAND_SUGGESTIONS) {
       expect(isFallbackAvailable(suggestion)).toBe(true);
       expect(getFallbackActions(suggestion)).not.toBeNull();
@@ -18,6 +19,17 @@ describe("ai-fallback", () => {
       const validation = validateAiActions(actions!);
       expect(validation.ok).toBe(true);
       if (validation.ok) expect(validation.actions.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("모든 fallback 액션이 실행기가 처리할 수 있는 것이다", () => {
+    // 예시는 처음 팔레트를 연 사용자가 가장 먼저 눌러보는 항목이다.
+    // 하나라도 "아직 지원 안 됨"이면 기능 전체를 신뢰하지 않게 된다.
+    for (const suggestion of COMMAND_SUGGESTIONS) {
+      const described = describeAiActions(getFallbackActions(suggestion)!);
+      for (const item of described) {
+        expect(item.supported, `${suggestion}: ${item.text}`).toBe(true);
+      }
     }
   });
 
