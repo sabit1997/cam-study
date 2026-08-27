@@ -2,7 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { useThemeStore } from "@/stores/theme-state";
-import { useWindowStore } from "@/stores/window-state";
+import { useUserStore } from "@/stores/user-state";
+import { useWindows } from "@/apis/services/window-services/query";
 import AiService, {
   type ChatMessage,
   type OnboardingReply,
@@ -11,6 +12,10 @@ import { validateAiActions } from "@/utils/ai-action-validate";
 import { describeAiActions } from "@/utils/ai-action-describe";
 import { runAiActions } from "@/components/ai/ai-action-runner";
 import { buildOnboardingActions } from "@/utils/onboarding-windows";
+import {
+  clearOnboardingPending,
+  isOnboardingPending,
+} from "@/utils/onboarding-gate";
 import { commandPaletteShortcut } from "@/utils/platform-shortcut";
 import type { AiAction } from "@/types/ai-actions";
 
@@ -28,11 +33,15 @@ import type { AiAction } from "@/types/ai-actions";
  * 첫 chunk가 빨리 도착하는 것만으로 체감 지연이 크게 줄어든다.
  *
  * ## 조건
- * 창이 하나도 없고 온보딩 완료 플래그가 없을 때만 뜬다.
- * 이미 창을 만들어본 사용자에게 다시 보여주면 방해다.
+ * 이 기기에서 가입하고 방금 첫 로그인한 계정에만 뜬다(utils/onboarding-gate).
+ * 게이트는 "완료 표시가 없으면 신규"가 아니라 "가입 표식이 있어야 신규"다.
+ * 부정 신호는 저장소를 비우거나 기기를 바꾼 기존 회원까지 신규로 오인했다.
+ *
+ * 추가로 서버 창 목록 로딩이 끝날 때까지 판단을 미룬다. 창 상태의 초기값은
+ * 빈 배열이라 "창 없음"과 "아직 안 불러옴"이 구분되지 않고, 그 틈에 모달이
+ * 열리면 창을 이미 가진 사용자에게도 떠버린다.
  */
 
-const STORAGE_KEY = "onboarding.done";
 const ACCENT = "#8fb870";
 const KICKSTART_TEXT = "온보딩을 시작할게요.";
 const MAX_TURNS = 6;
@@ -61,24 +70,6 @@ type Phase =
 
 const isBrowser = () => typeof window !== "undefined";
 
-const hasCompletedOnboarding = (): boolean => {
-  if (!isBrowser()) return true;
-  try {
-    return window.localStorage.getItem(STORAGE_KEY) === "1";
-  } catch {
-    return true;
-  }
-};
-
-const markOnboardingDone = (): void => {
-  if (!isBrowser()) return;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, "1");
-  } catch {
-    // 저장 실패해도 세션 안에서는 완료로 취급.
-  }
-};
-
 const hasDesktopTracker = (): boolean =>
   isBrowser() &&
   Boolean(window.electronAPI) &&
@@ -88,7 +79,9 @@ const isDesktopApp = (): boolean => isBrowser() && Boolean(window.electronAPI);
 
 export default function FirstRunModal() {
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
-  const windows = useWindowStore((state) => state.windows);
+  const user = useUserStore((state) => state.user);
+  // WindowZone과 같은 queryKey라 요청이 추가로 나가지 않고 캐시를 공유한다.
+  const { data: serverWindows, isSuccess } = useWindows();
 
   const [visible, setVisible] = useState(false);
   const [phase, setPhase] = useState<Phase>({ kind: "intro" });
@@ -99,22 +92,25 @@ export default function FirstRunModal() {
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    if (hasCompletedOnboarding()) return;
-    if (windows.length > 0) {
-      // 이미 창이 있는 사용자에게는 온보딩을 보이지 않는다 — 조용히 완료 처리.
-      markOnboardingDone();
+    if (!user) return;
+    if (!isOnboardingPending(user.userId)) return;
+    // 창 목록이 도착하기 전에는 아무것도 판단하지 않는다.
+    if (!isSuccess) return;
+    if ((serverWindows?.length ?? 0) > 0) {
+      // 이미 창이 있는 사용자에게는 온보딩을 보이지 않는다 — 조용히 표식 해제.
+      clearOnboardingPending(user.userId);
       return;
     }
     setVisible(true);
-  }, [windows.length]);
+  }, [user, isSuccess, serverWindows]);
 
   const close = useCallback(() => {
     generationRef.current += 1;
     abortRef.current?.abort();
     abortRef.current = null;
-    markOnboardingDone();
+    if (user) clearOnboardingPending(user.userId);
     setVisible(false);
-  }, []);
+  }, [user]);
 
   const requestNextTurn = useCallback(
     async (messages: ChatMessage[]) => {

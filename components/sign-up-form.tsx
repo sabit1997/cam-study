@@ -4,6 +4,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { useState } from "react";
 import { FiUser, FiMail, FiLock, FiEye, FiEyeOff } from "react-icons/fi";
 import { useThemeStore } from "@/stores/theme-state";
+import { markSignupPending } from "@/utils/onboarding-gate";
 
 const SignUpForm = () => {
   const navigate = useNavigate();
@@ -45,6 +46,9 @@ const SignUpForm = () => {
       { email, password, username },
       {
         onSuccess: () => {
+          // 이 기기에서 방금 만들어진 계정이라는 표식. 같은 이메일로 첫 로그인할 때
+          // 온보딩 모달이 한 번 열린다.
+          markSignupPending(email);
           navigate("/sign-in", { replace: true });
         },
         onError: (err) => {

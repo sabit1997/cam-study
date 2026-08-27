@@ -4,6 +4,7 @@ import { useLogin } from "@/apis/services/auth-services/mutation";
 import { useUserStore } from "@/stores/user-state";
 import { FiMail, FiLock, FiEye, FiEyeOff } from "react-icons/fi";
 import { useThemeStore } from "@/stores/theme-state";
+import { claimSignupPending } from "@/utils/onboarding-gate";
 
 // request.ts가 plain object { message, code, response }로 reject하므로
 // instanceof Error 대신 응답 형태를 직접 확인한다.
@@ -48,6 +49,8 @@ const SignInForm = () => {
       { email, password },
       {
         onSuccess: (data) => {
+          // 가입 표식이 이 이메일 것이면 userId 키로 승격 — 온보딩 대상 판정 근거.
+          claimSignupPending(email, data.userId);
           loginUser(data);
           navigate("/", { replace: true });
         },

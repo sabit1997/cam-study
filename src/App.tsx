@@ -18,7 +18,6 @@ import GlobalInitializer from "@/components/global-Initializer";
 import ScreenPickerModal from "@/components/modals/screen-picker-modal";
 import AiActionRunner from "@/components/ai/ai-action-runner";
 import CommandPalette from "@/components/ai/command-palette";
-import FirstRunModal from "@/components/onboarding/first-run-modal";
 import ServiceWorkerRegister from "@/components/service-worker-register";
 import UpdateNotifier from "@/components/update-notifier";
 import ErrorFallback from "@/components/error-boundary";
@@ -99,7 +98,6 @@ function AppShell() {
         <ScreenPickerModal />
         <AiActionRunner />
         <CommandPalette />
-        <FirstRunModal />
         <Navigation />
         <ErrorBoundary FallbackComponent={ErrorFallback}>
           <Suspense fallback={null}>
