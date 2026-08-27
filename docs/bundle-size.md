@@ -266,7 +266,7 @@ electron-builder 는 한 번의 실행 안에서 Electron 런타임을 `dist/win
 | --- | --- | --- | --- | --- | --- |
 | `perf/bundle-diet-minify` | B | main.js raw | 2.94 MB | **1.75 MB** | −40.5 % |
 | | | main.js gzip | 591.7 KB | 496.1 KB | −16.2 % |
-| `perf/bundle-diet-zod-lazy` | A | **초기 로드 raw** | 518.5 KB | **408.4 KB** | **−21.2 %** |
+| `perf/bundle-diet-zod-lazy` | A | **임계 경로 raw** | 518.5 KB | **408.4 KB** | **−21.2 %** |
 | | | 초기 로드 gzip | 162.0 KB | 127.9 KB | −21.0 % |
 | | | 초기 청크 수 | 7 | 3 | |
 | `perf/bundle-diet-deadcode` | C | 프로덕션 패키지 | 435 | **410** | −25 |
@@ -280,6 +280,19 @@ electron-builder 는 한 번의 실행 안에서 Electron 런타임을 `dist/win
 **zod lazy (A)** — `src/App.tsx` 의 정적 import 두 줄을 lazy 로 바꾼 것이 전부다. zod 121.7 KB 가 `ai-action-runner` lazy 청크로 옮겨갔다.
 
 여기서 측정 방식이 판단을 가를 수 있다는 것을 실제로 겪었다. **`index` 청크는 355.7 → 373.0 KB 로 커졌다.** Rollup 이 재청킹해 `config`·`useQuery`·`middleware`·`window-state` 를 `index` 로 합쳤기 때문이다. 청크 하나만 봤다면 개선을 회귀로 오판했을 것이다. 그래서 초기 로드 세트를 1순위 지표로 올렸다.
+
+#### 이 개선이 줄이는 것과 줄이지 않는 것
+
+브라우저 캡처(`bundle-out/*/network.json`)가 주장의 범위를 좁혀준다. **총 전송량은 변하지 않는다.**
+
+| | BEFORE | AFTER |
+| --- | --- | --- |
+| 임계 경로 (첫 페인트를 막는 것) | 518.5 KB · 7개 | **408.4 KB · 3개** |
+| 세션 총 JS 전송량 | 523.7 KB · 9개 | 523.8 KB · 9개 |
+
+AFTER 의 요청 목록에 `ai-action-runner` 78.8 KB · `command-palette` 18.9 KB · `ai-action-describe` 3.3 KB — 합 101 KB 가 그대로 있다. `<Suspense>` 안에서 마운트되므로 앱이 뜨는 즉시 받아온다. 즉 **101 KB 가 "다운로드되지 않게" 된 것이 아니라 "첫 페인트를 막지 않게" 된 것이다.** 이득은 실재하지만 그 종류가 다르다.
+
+더 줄이려면 팔레트를 열 때만 마운트해야 한다(`{isOpen && <CommandPalette/>}`). 하지만 `AiActionRunner` 는 `null` 을 렌더하면서 모듈 변수 `currentRun` 에 store 연결 클로저를 등록하는 브리지다 — `runAiActions` 가 이걸 통해 동작한다. 그리고 `components/onboarding/first-run-modal.tsx` 도 팔레트와 무관하게 `runAiActions` 를 호출한다. 따라서 팔레트 열림에 종속시키면 온보딩의 AI 액션이 조용히 깨진다. **여기서 멈춘 이유는 게으름이 아니라 이 제약이다.**
 
 덧붙여 `useCommandPalette` 를 `AppShell` 로 끌어올렸다. 이 훅의 keydown 리스너를 lazy 컴포넌트 안에 두면 청크가 내려오기 전까지 Cmd+K 가 죽는다. 훅은 작고 zod 를 끌지 않아 정적으로 둬도 대가가 없다.
 
