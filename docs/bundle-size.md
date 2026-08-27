@@ -69,6 +69,14 @@ npm run bundle:evidence before
 
 `network.png` 의 요청 수는 초기 로드 세트보다 많다 — 라우터가 라우트 청크(비인증이면 `sign-in`)까지 받기 때문이다. 두 숫자는 재는 대상이 다르므로 섞지 않는다.
 
+**A 계층만 그림이 나온다.** B·C·D 는 대신 이렇게 본다.
+
+| 계층 | 시각화 수단 |
+| --- | --- |
+| B Electron 메인 | `dist-electron/meta.json` 을 [esbuild.github.io/analyze](https://esbuild.github.io/analyze/) 에 올리면 같은 형태의 트리맵이 나온다. 로컬 산출물이라 업로드 없이 쓰려면 리포트의 패키지별 표를 쓴다 |
+| C 프로덕션 의존성 | 리포트의 상위 15개 표. 트리맵으로 만들 만한 계층 구조가 아니다(플랫하게 설치된다) |
+| D 인스톨러 | `bundle-out/<label>/asar-list.txt` — asar 안의 전체 항목 목록. 정정 5의 1차 증거다 |
+
 ### 자가 점검
 
 `perf-measure.mjs` 와 같은 규약으로, 리포트 끝에 점검표가 붙는다. 측정이 조용히 틀리는 것을 막는 장치다.
