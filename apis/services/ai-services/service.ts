@@ -7,7 +7,8 @@ import { AiEndPoints } from "../config";
  * 온보딩 채팅 전용 타입.
  * 다른 AI 요청과 달리 SSE 스트림이라 axios 인스턴스를 재사용하지 않고
  * fetch로 직접 호출한다. request.ts의 401 자동 refresh는 이 엔드포인트에서
- * 필요하지 않다 — 온보딩은 첫 실행 흐름에서만 열리므로 세션은 이미 살아 있다.
+ * 필요하지 않다 — 모달이 RequireAuth 안쪽 홈 화면에서, 그것도 방금 로그인해
+ * 창 목록까지 받아온 뒤에만 열리므로 세션은 이미 살아 있다.
  */
 export interface ChatMessage {
   role: "user" | "assistant";
