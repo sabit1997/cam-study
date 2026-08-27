@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useThemeStore } from "@/stores/theme-state";
-import useCommandPalette from "@/hooks/useCommandPalette";
 import { useInterpretCommand } from "@/apis/services/ai-services/mutation";
 import { validateAiActions } from "@/utils/ai-action-validate";
 import { describeAiActions } from "@/utils/ai-action-describe";
@@ -70,8 +69,20 @@ const extractCount = (text: string): number => {
   return Math.max(1, Math.min(8, n));
 };
 
-export default function CommandPalette() {
-  const { isOpen, close } = useCommandPalette();
+/**
+ * 열림 상태를 props 로 받는 이유는 이 컴포넌트가 lazy 로 불려서다.
+ *
+ * useCommandPalette 의 keydown 리스너를 여기서 걸면, 청크가 내려오기 전까지
+ * Cmd+K 가 죽는다. 그래서 훅은 src/App.tsx(AppShell)에서 미리 호출하고 결과만
+ * 내려받는다. 훅 자체는 작고 zod 를 끌지 않으므로 정적으로 둬도 대가가 없다.
+ */
+export default function CommandPalette({
+  isOpen,
+  close,
+}: {
+  isOpen: boolean;
+  close: () => void;
+}) {
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
   const { mutateAsync: interpretCommand } = useInterpretCommand();
 
