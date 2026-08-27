@@ -121,7 +121,7 @@ CamStudy가 Gemini에 실제로 보내는 것은 위 표의 마지막 세 항목
 | 상태/데이터 페칭 | `zustand`, `@tanstack/react-query`                                                                                       |
 | HTTP 통신        | `axios`, `qs`                                                                                                            |
 | 스타일링         | `tailwindcss`, `@tailwindcss/postcss`, `postcss`, `autoprefixer`                                                         |
-| UI & 인터랙션    | `react-rnd`(창 드래그/리사이즈), `@radix-ui/react-tooltip`, `@uiw/react-color`(컬러 피커), `react-icons`, `use-debounce` |
+| UI & 인터랙션    | `react-rnd`(창 드래그/리사이즈), `@radix-ui/react-tooltip`, `react-icons`, `use-debounce`                                |
 | 미디어/임베드    | `react-youtube`                                                                                                          |
 | 차트             | `recharts`                                                                                                               |
 | 알림             | `sonner`                                                                                                                 |
