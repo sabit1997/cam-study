@@ -229,14 +229,24 @@ export default defineConfig(({ mode }) => {
           });
         },
       },
-      // 번들 크기 측정용 모듈별 기여도 산출 (scripts/measure-bundle.mjs 가 파싱).
-      // 측정 중에만 켠다 — 일반 빌드와 CI 를 느리게 하지 않기 위해서다.
+      // 번들 크기 측정용 산출물. 측정 중에만 켠다 — 일반 빌드와 CI 를 느리게 하지
+      // 않기 위해서다. 한 인스턴스가 템플릿 하나만 내므로 두 번 건다.
+      //   raw-data: scripts/measure-bundle.mjs 가 파싱하는 기계용 JSON
+      //   treemap:  사람이 보고 증거로 쓰는 시각화
+      //             (scripts/capture-bundle-evidence.mjs 가 PNG 로 굽는다)
       ...(process.env.BUNDLE_ANALYZE
         ? [
             visualizer({
               filename: "dist-analyze/renderer.json",
               template: "raw-data",
               gzipSize: true,
+            }),
+            visualizer({
+              filename: "dist-analyze/treemap.html",
+              template: "treemap",
+              gzipSize: true,
+              // 청크 경계를 보여주는 게 목적이므로 초기 청크만 접지 않고 다 펼친다
+              title: "cam-study 렌더러 번들",
             }),
           ]
         : []),

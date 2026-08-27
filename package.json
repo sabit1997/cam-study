@@ -22,7 +22,8 @@
     "perf:before": "node perf-measure.mjs before",
     "perf:after": "node perf-measure.mjs after",
     "bundle:before": "node scripts/measure-bundle.mjs before",
-    "bundle:after": "node scripts/measure-bundle.mjs after"
+    "bundle:after": "node scripts/measure-bundle.mjs after",
+    "bundle:evidence": "node scripts/capture-bundle-evidence.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.18.0",

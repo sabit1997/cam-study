@@ -50,6 +50,25 @@ npm run bundle:after      # 개선 후
 - **C** — `npm ls --prod --all --parseable` 로 프로덕션 패키지 경로를 받아 각 디렉터리의 apparent size 를 직접 합산한다. 중첩 `node_modules` 는 건너뛴다 — `npm ls` 가 중첩 패키지도 각각 한 줄로 내놓기 때문에 안 그러면 같은 바이트를 두 번 센다.
 - **D** — `electron-builder --dir` 로 `app.asar` 를 만들고, `@electron/asar list` 로 **asar 안에 `node_modules` 가 실리는지 판정한다.** 이 판정이 C 계층 정리의 실효성을 좌우한다 → [정정 5](#정정-5--deps-18747-mb-인스톨러-140-mb-미검증-전제).
 
+### 증거 자료 굽기
+
+숫자만으로는 나중에 "정말 그랬나"를 확인할 수 없다. 측정 뒤에 시각 증거를 남긴다.
+
+```bash
+npm run bundle:before        # 또는 bundle:after — dist 를 만든다
+npm run bundle:evidence before
+```
+
+| 산출물 | 무엇의 증거인가 |
+| --- | --- |
+| `bundle-out/<label>/treemap.png` | rollup-plugin-visualizer 트리맵. **어느 패키지가 어느 청크 안에 있는지** 눈으로 확인된다. zod 가 `index` 안에 있는지 lazy 청크로 옮겨갔는지가 바로 보인다 |
+| `bundle-out/<label>/network.png` | 실제 브라우저가 첫 화면에 받는 요청 목록. DevTools Network 패널에 해당하며 캐시를 끄고(`Cache-Control: no-store`) 잰다 |
+| `bundle-out/<label>/network.json` | 위 캡처의 원본 데이터 |
+
+브라우저는 **시스템 Chrome**(`channel: "chrome"`)을 쓴다. Playwright 전용 Chromium(~150 MB)을 내려받지 않으려는 의도적 선택이다. 같은 이유로 `perf-measure.mjs` 는 지금 상태에서 Chromium 설치 없이는 돌지 않는다.
+
+`network.png` 의 요청 수는 초기 로드 세트보다 많다 — 라우터가 라우트 청크(비인증이면 `sign-in`)까지 받기 때문이다. 두 숫자는 재는 대상이 다르므로 섞지 않는다.
+
 ### 자가 점검
 
 `perf-measure.mjs` 와 같은 규약으로, 리포트 끝에 점검표가 붙는다. 측정이 조용히 틀리는 것을 막는 장치다.
