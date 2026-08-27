@@ -85,6 +85,24 @@ describe("Vercel 함수 모듈 포맷", () => {
     }
   });
 
+  it("export const config 가 리터럴만 담는다 — as const·satisfies 금지", () => {
+    // @vercel/static-config는 ts-morph로 이 객체를 읽는데 문자열·숫자·불리언·배열·
+    // 객체 리터럴만 이해한다. `as const`를 붙이면 AsExpression이 되어
+    //
+    //   Unhandled type: "AsExpression" "edge" as const
+    //
+    // 로 죽는다. 타입만 거들려던 한 글자가 runtime 지정 전체를 무효로 만들고,
+    // 함수는 Edge가 아니라 Node로 배포된다 — SSE 버퍼링이 그대로 되살아난다.
+    // 타입스크립트도 vitest도 잡지 못한다. 배포 로그에만 남는 종류의 사고라
+    // 여기서 소스 텍스트로 지킨다.
+    for (const entry of functionEntries()) {
+      const source = readFileSync(path.join(repoRoot, "api", entry), "utf8");
+      const match = source.match(/export const config\s*=\s*(\{[\s\S]*?\})\s*;/);
+      if (!match) continue;
+      expect(match[1], `api/${entry}`).not.toMatch(/\bas\s+const\b|\bsatisfies\b/);
+    }
+  });
+
   it("api/ 안에 테스트 파일이 없다 — 있으면 엔드포인트로 배포된다", () => {
     // /api/check-youtube.test 같은 엔드포인트가 생기고, 그 파일은 vitest(devDependency)를
     // import하므로 배포본에서 로드에 실패한다. .vercelignore가 막지만 여기서도 지킨다.

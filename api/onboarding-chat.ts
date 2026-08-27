@@ -17,7 +17,11 @@ import { createRateLimiter } from "../server/rate-limit";
  * - 인메모리 rate-limit의 정확성은 Node 때와 동일 — "정확한 상한이 아니라 남용 억제 장치".
  */
 
-export const config = { runtime: "edge" as const };
+// @vercel/static-config가 ts-morph로 이 객체를 읽는다. 문자열·숫자·불리언·배열·객체
+// 리터럴만 이해하므로 `as const`나 `satisfies`를 붙이면
+//   Unhandled type: "AsExpression" "edge" as const
+// 로 죽고 runtime 지정이 통째로 무시된다. 리터럴 그대로 둔다.
+export const config = { runtime: "edge" };
 
 const ALLOWED_ORIGINS = (
   process.env.ALLOWED_ORIGINS ?? "https://www.oeyo-cam.site,https://oeyo-cam.site"
