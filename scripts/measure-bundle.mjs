@@ -140,8 +140,40 @@ function measureRenderer() {
     }
   }
 
+  // ── 초기 로드 세트 ──
+  //
+  // 이게 A 계층의 1순위 지표다. 청크 하나만 보면 판단을 틀린다.
+  //
+  // 실제로 겪은 일: AI 컴포넌트를 lazy 로 내렸더니 zod 121.8 KB 가 index 에서
+  // 빠졌는데도 index 청크는 355.7 → 373.0 KB 로 "커졌다". Rollup 이 재청킹해
+  // config·useQuery·middleware·window-state 를 index 로 합쳤기 때문이다.
+  // 그런데 초기 로드 세트 전체로 보면 7개 518.5 KB → 3개 408.4 KB 로 21 % 줄었다.
+  // index 만 봤다면 개선을 회귀로 오판했을 것이다.
+  //
+  // index.html 의 <script src> 와 <link rel=modulepreload href> 가 브라우저가
+  // 첫 화면에 실제로 받는 것들이다.
+  const initial = (() => {
+    const htmlPath = path.join(ROOT, "dist", "index.html");
+    if (!fs.existsSync(htmlPath)) return null;
+    const html = fs.readFileSync(htmlPath, "utf8");
+    const names = [...html.matchAll(/(?:src|href)="\/assets\/([^"]+\.js)"/g)].map((m) => m[1]);
+    let raw = 0;
+    let gzip = 0;
+    const files = [];
+    for (const n of names) {
+      const p = path.join(assetsDir, n);
+      if (!fs.existsSync(p)) continue;
+      const buf = fs.readFileSync(p);
+      raw += buf.length;
+      gzip += zlib.gzipSync(buf).length;
+      files.push(n);
+    }
+    return { count: files.length, files, raw, gzip };
+  })();
+
   return {
     chunks,
+    initial,
     totalRaw: chunks.reduce((s, c) => s + c.raw, 0),
     totalGzip: chunks.reduce((s, c) => s + c.gzip, 0),
     cssBytes: css,
@@ -240,13 +272,19 @@ function measureMain() {
 function measureDeps() {
   console.log("── C: npm ls --prod --all ─────────────");
   let paths;
+  // npm ls 가 실패했는지 기록한다. 실패의 대표 원인은 node_modules 가 lockfile 과
+  // 어긋난 것(브랜치를 옮긴 뒤 npm ci 를 안 돌린 상태)이고, 그러면 C 계층 수치가
+  // 지금 브랜치의 package.json 이 아니라 디스크에 남은 잔여물을 재게 된다.
+  // 실제로 이 함정을 밟았다 — 다른 브랜치에서 의존성을 지우고 돌아왔더니 435 대신
+  // 410 이 나왔다.
+  let lsClean = true;
   try {
-    // npm ls 는 peer 경고 등으로 exit code 가 0이 아닐 수 있어 stderr 를 무시한다
     paths = sh("npm ls --prod --all --parseable", { stdio: ["ignore", "pipe", "ignore"] })
       .split("\n")
       .map((s) => s.trim())
       .filter(Boolean);
   } catch (e) {
+    lsClean = false;
     // 비정상 종료라도 stdout 은 유효한 경우가 많다
     paths = String(e.stdout ?? "")
       .split("\n")
@@ -289,6 +327,7 @@ function measureDeps() {
     prodFiles: files,
     allBytes: all.bytes,
     allFiles: all.files,
+    lsClean,
     top,
   };
 }
@@ -424,6 +463,17 @@ md += `## A · 렌더러 청크\n\n`;
 if (A.error) {
   md += `⚠ ${A.error}\n\n`;
 } else {
+  if (A.initial) {
+    md += `### 초기 로드 (1순위 지표)\n\n`;
+    md += `브라우저가 첫 화면에 실제로 받는 청크. **개별 청크 크기가 아니라 이 값으로 판정한다** — `;
+    md += `Rollup 재청킹 때문에 index 가 커지면서도 초기 로드는 줄어들 수 있다.\n\n`;
+    md += `| 항목 | 값 |\n|---|---|\n`;
+    md += `| 청크 수 | ${A.initial.count} |\n`;
+    md += `| **raw** | **${fmtBytes(A.initial.raw)}** |\n`;
+    md += `| **gzip** | **${fmtBytes(A.initial.gzip)}** |\n`;
+    md += `| 구성 | ${A.initial.files.join(", ")} |\n\n`;
+  }
+  md += `### 청크 전체\n\n`;
   md += `| 청크 | raw | gzip |\n|---|---|---|\n`;
   for (const c of A.chunks.slice(0, 12)) {
     md += `| ${c.name} | ${fmtBytes(c.raw)} | ${fmtBytes(c.gzip)} |\n`;
@@ -520,6 +570,21 @@ if (!A.error) {
     ok: ratio != null && ratio >= 2.5 && ratio <= 5,
     hint: "비율이 벗어나면 gzip 계산 또는 청크 선택이 잘못됐다",
   });
+  checks.push({
+    name: "초기 로드 세트 집계됨",
+    expected: "1개 이상",
+    got: A.initial ? `${A.initial.count}개 / ${fmtBytes(A.initial.raw)}` : "실패",
+    ok: Boolean(A.initial) && A.initial.count > 0,
+    hint: "dist/index.html 파싱 실패 — 엔트리 주입 방식이 바뀌었는지 확인",
+  });
+  checks.push({
+    // 초기 로드가 전체보다 클 수는 없다. 크면 파싱이 같은 청크를 두 번 셌다는 뜻.
+    name: "초기 로드 ≤ 전체 JS",
+    expected: "initial ≤ total",
+    got: A.initial ? `${fmtBytes(A.initial.raw)} ≤ ${fmtBytes(A.totalRaw)}` : "—",
+    ok: Boolean(A.initial) && A.initial.raw <= A.totalRaw,
+    hint: "index.html 정규식이 같은 파일을 중복 매칭했을 가능성",
+  });
 }
 
 if (!B.error) {
@@ -546,6 +611,13 @@ if (!C.error) {
     got: `${fmtBytes(C.prodBytes)} < ${fmtBytes(C.allBytes)}`,
     ok: C.prodBytes < C.allBytes,
     hint: "중첩 패키지 이중 계산 의심 — dirStat skipNested 확인",
+  });
+  checks.push({
+    name: "node_modules 가 lockfile 과 일치",
+    expected: "npm ls 정상 종료",
+    got: C.lsClean ? "일치" : "불일치",
+    ok: C.lsClean === true,
+    hint: "npm ci 를 돌린 뒤 재측정 — 지금 수치는 디스크 잔여물을 재고 있다",
   });
 }
 
