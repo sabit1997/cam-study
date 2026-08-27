@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
+import { visualizer } from "rollup-plugin-visualizer";
 import type { IncomingMessage, ServerResponse } from "http";
 
 const YOUTUBE_ID_RE = /^[a-zA-Z0-9_-]{11}$/;
@@ -228,6 +229,17 @@ export default defineConfig(({ mode }) => {
           });
         },
       },
+      // 번들 크기 측정용 모듈별 기여도 산출 (scripts/measure-bundle.mjs 가 파싱).
+      // 측정 중에만 켠다 — 일반 빌드와 CI 를 느리게 하지 않기 위해서다.
+      ...(process.env.BUNDLE_ANALYZE
+        ? [
+            visualizer({
+              filename: "dist-analyze/renderer.json",
+              template: "raw-data",
+              gzipSize: true,
+            }),
+          ]
+        : []),
     ],
     root: ".",
     publicDir: "public",

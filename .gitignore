@@ -52,4 +52,8 @@ perf-auth.json
 perf-out/
 window-fixture.json
 
+# 번들 크기 측정 산출물 (scripts/measure-bundle.mjs)
+bundle-out/
+dist-analyze/
+
 /docs

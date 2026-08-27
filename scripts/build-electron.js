@@ -60,12 +60,19 @@ esbuild
       "conf",
     ],
     outdir: "dist-electron",
+    // 번들 크기 측정(scripts/measure-bundle.mjs)이 모듈별 기여도를 읽는 입력.
+    // 산출물 크기에는 영향이 없고 meta.json 한 개가 더 생길 뿐이다.
+    metafile: true,
     define: {
       __YOUTUBE_API_KEY__: JSON.stringify(ytKey),
       __AI_PROXY_URL__: JSON.stringify(aiProxyUrl),
     },
   })
-  .then(() => {
+  .then((result) => {
+    fs.writeFileSync(
+      path.join(__dirname, "..", "dist-electron", "meta.json"),
+      JSON.stringify(result.metafile)
+    );
     console.log("[build-electron] 빌드 완료");
   })
   .catch((err) => {

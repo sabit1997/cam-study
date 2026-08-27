@@ -20,7 +20,9 @@
     "preview": "vite preview",
     "perf:auth": "node perf-auth-setup.mjs",
     "perf:before": "node perf-measure.mjs before",
-    "perf:after": "node perf-measure.mjs after"
+    "perf:after": "node perf-measure.mjs after",
+    "bundle:before": "node scripts/measure-bundle.mjs before",
+    "bundle:after": "node scripts/measure-bundle.mjs after"
   },
   "dependencies": {
     "@google/genai": "^2.18.0",
@@ -75,6 +77,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "playwright": "^1.62.1",
     "postcss": "^8.5.3",
+    "rollup-plugin-visualizer": "^7.1.1",
     "tailwindcss": "^4.1.4",
     "typescript": "^5.8.3",
     "vite": "^8.2.0",
