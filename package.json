@@ -24,7 +24,9 @@
     "bundle:before": "node scripts/measure-bundle.mjs before",
     "bundle:after": "node scripts/measure-bundle.mjs after",
     "bundle:evidence": "node scripts/capture-bundle-evidence.mjs",
-    "bundle:devtools": "node scripts/capture-devtools.mjs"
+    "bundle:devtools": "node scripts/capture-devtools.mjs",
+    "timing:snapshot": "node scripts/measure-load-timing.mjs snapshot",
+    "timing:compare": "node scripts/measure-load-timing.mjs compare"
   },
   "dependencies": {
     "@google/genai": "^2.18.0",
