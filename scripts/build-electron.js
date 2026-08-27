@@ -60,6 +60,11 @@ esbuild
       "conf",
     ],
     outdir: "dist-electron",
+    // main.js 는 2.94 MB 인데 그중 앱 코드는 38 KB 다. 나머지는 전부 번들된
+    // 의존성(express 하위 트리 1.92 MB, iconv-lite 539 KB 등)이라 minify 가
+    // 그대로 먹는다. 메인 프로세스는 사용자가 소스를 읽을 일이 없고 스택
+    // 트레이스도 로그로만 보므로 잃는 것이 없다.
+    minify: true,
     // 번들 크기 측정(scripts/measure-bundle.mjs)이 모듈별 기여도를 읽는 입력.
     // 산출물 크기에는 영향이 없고 meta.json 한 개가 더 생길 뿐이다.
     metafile: true,
