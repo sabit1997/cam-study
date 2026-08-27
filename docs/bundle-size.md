@@ -70,6 +70,26 @@ npm run bundle:devtools before   # 실제 DevTools Network 패널
 | `bundle-out/<label>/network.png` | 같은 데이터를 표로 렌더한 것. 로컬 요청만 필터하므로 Google Fonts 등 외부 요청이 빠진다 |
 | `bundle-out/<label>/network.json` | 위 표의 원본 데이터 |
 | `bundle-out/<label>/app.png` | 앱 화면. 경량화 후에도 화면이 뜬다는 증거 |
+| `bundle-out/timing/timing.png` | 첫 로드 시간 before/after. 회차 원값을 점으로 전부 찍고 중앙값을 세로선으로 표시해, 두 계열이 겹치는지 벌어지는지가 그림에서 판정된다 |
+
+### 시간 측정
+
+```bash
+# 각 브랜치에서 dist 스냅샷을 뜬다 (working tree 가 깨끗해야 한다)
+git switch perf/bundle-baseline   && npm run timing:snapshot before
+git switch perf/bundle-diet-zod-lazy && npm run timing:snapshot after
+
+# 두 스냅샷을 한 세션에서 교차 실행
+npm run timing:compare -- --runs=9
+```
+
+크기 주장과 속도 주장은 다르다. "3.08 MB → 1.79 MB" 는 크기 주장이고, 기동이 빨라졌다고 말하려면 ms 를 재야 한다. 이 하네스가 신경 쓰는 것 세 가지.
+
+- **스로틀링** — localhost 는 대역폭이 사실상 무한이라 바이트 차이가 시간으로 드러나지 않는다. Fast 3G(RTT 562.5 ms) + CPU 4× 를 걸어야 임계 경로 요청 수 차이가 왕복 횟수로 나타난다.
+- **교차 실행** — before 를 N번 돌린 뒤 after 를 N번 돌리면 그 사이 머신 상태 변화가 한쪽에만 얹힌다. 회차마다 번갈아 돌리고 순서도 뒤집는다.
+- **차이 > 잡음 점검** — 이게 ⚠ 면 그 지표로는 빨라졌다고 말할 수 없다. 중앙값만 보여주면 잡음이 숨으므로 PNG 에 회차 원값을 전부 찍는다.
+
+두 스냅샷의 커밋이 같으면 실행을 거부한다 — 같은 브랜치에서 두 번 뜨는 실수를 막는다.
 
 ### DevTools 캡처가 왜 이렇게 생겼나
 
@@ -319,6 +339,33 @@ electron-builder 는 한 번의 실행 안에서 Electron 런타임을 `dist/win
 AFTER 의 요청 목록에 `ai-action-runner` 78.8 KB · `command-palette` 18.9 KB · `ai-action-describe` 3.3 KB — 합 101 KB 가 그대로 있다. `<Suspense>` 안에서 마운트되므로 앱이 뜨는 즉시 받아온다. 즉 **101 KB 가 "다운로드되지 않게" 된 것이 아니라 "첫 페인트를 막지 않게" 된 것이다.** 이득은 실재하지만 그 종류가 다르다.
 
 더 줄이려면 팔레트를 열 때만 마운트해야 한다(`{isOpen && <CommandPalette/>}`). 하지만 `AiActionRunner` 는 `null` 을 렌더하면서 모듈 변수 `currentRun` 에 store 연결 클로저를 등록하는 브리지다 — `runAiActions` 가 이걸 통해 동작한다. 그리고 `components/onboarding/first-run-modal.tsx` 도 팔레트와 무관하게 `runAiActions` 를 호출한다. 따라서 팔레트 열림에 종속시키면 온보딩의 AI 액션이 조용히 깨진다. **여기서 멈춘 이유는 게으름이 아니라 이 제약이다.**
+
+#### 그래서 실제로 빨라지는가 — 9회 중앙값
+
+크기 주장과 속도 주장은 다르다. 속도를 말하려면 시간을 재야 한다. `npm run timing:compare` 로 9회 교차 실행한 결과다. 기준: before `707cefd` / after `20edee0`, Fast 3G(205 KB/s · RTT 562.5 ms) + CPU 4×, 회차마다 캐시 비움.
+
+| 지표 | before 중앙값 | after 중앙값 | 차이 | 잡음(IQR) | 판정 |
+| --- | --- | --- | --- | --- | --- |
+| **FCP** | 5312 ms | **4420 ms** | **−892 ms (−16.8 %)** | 224 ms | 차이 > 잡음 ✓ |
+| DOMContentLoaded | 4800 ms | 3980 ms | −820 ms (−17.1 %) | 299 ms | 차이 > 잡음 ✓ |
+| load | 4814 ms | 3991 ms | −823 ms (−17.1 %) | 294 ms | 차이 > 잡음 ✓ |
+| load 시점 JS 요청 수 | 7 | 4 | −3 | 0~2 | |
+
+세 지표 모두 차이가 잡음 폭보다 크다. 회차 원값은 `bundle-out/timing/summary.md` 에 있고 점 구름이 겹치지 않는 것은 `timing.png` 에서 볼 수 있다.
+
+**기전은 바이트가 아니라 왕복 횟수다.** RTT 562.5 ms 에서 임계 경로 JS 요청이 7개에서 4개로 줄었다. 로컬 무스로틀에서는 이 차이가 시간으로 드러나지 않는다 — 그래서 스로틀을 건다.
+
+**자가점검이 ⚠ 를 하나 냈고, 그게 중요하다.** load 시점 전송량이 564.5 → 462.7 KB 로 101.8 KB 차이가 난다. 총량이 줄어든 것이 아니다. 밀린 AI 청크의 합이 정확히 그 값이다.
+
+```
+ai-action-runner    78.8 KB
+command-palette     18.9 KB
+ai-action-describe   3.3 KB
+                  ─────────
+                   101.0 KB   ≈ 101.8 KB
+```
+
+즉 **AI 청크는 `load` 이후에 도착한다** — 무엇도 막지 않는다는 뜻이고, 위 표의 시간 개선이 어디서 왔는지에 대한 답이다. 총 세션 전송량은 무스로틀 측정에서 523.7 → 523.8 KB 로 그대로다.
 
 덧붙여 `useCommandPalette` 를 `AppShell` 로 끌어올렸다. 이 훅의 keydown 리스너를 lazy 컴포넌트 안에 두면 청크가 내려오기 전까지 Cmd+K 가 죽는다. 훅은 작고 zod 를 끌지 않아 정적으로 둬도 대가가 없다.
 
