@@ -59,11 +59,29 @@ npm run bundle:before        # 또는 bundle:after — dist 를 만든다
 npm run bundle:evidence before
 ```
 
+```bash
+npm run bundle:devtools before   # 실제 DevTools Network 패널
+```
+
 | 산출물 | 무엇의 증거인가 |
 | --- | --- |
 | `bundle-out/<label>/treemap.png` | rollup-plugin-visualizer 트리맵. **어느 패키지가 어느 청크 안에 있는지** 눈으로 확인된다. zod 가 `index` 안에 있는지 lazy 청크로 옮겨갔는지가 바로 보인다 |
-| `bundle-out/<label>/network.png` | 실제 브라우저가 첫 화면에 받는 요청 목록. DevTools Network 패널에 해당하며 캐시를 끄고(`Cache-Control: no-store`) 잰다 |
-| `bundle-out/<label>/network.json` | 위 캡처의 원본 데이터 |
+| `bundle-out/<label>/devtools-network.png` | **실제 Chrome DevTools Network 패널.** 도구 자신의 화면이라 가장 강한 증거다. 요청 목록·크기·워터폴·하단 요약(요청 수, 전송량, DOMContentLoaded, Load)이 전부 들어간다 |
+| `bundle-out/<label>/network.png` | 같은 데이터를 표로 렌더한 것. 로컬 요청만 필터하므로 Google Fonts 등 외부 요청이 빠진다 |
+| `bundle-out/<label>/network.json` | 위 표의 원본 데이터 |
+| `bundle-out/<label>/app.png` | 앱 화면. 경량화 후에도 화면이 뜬다는 증거 |
+
+### DevTools 캡처가 왜 이렇게 생겼나
+
+`capture-devtools.mjs` 는 우회로가 세 개 있다. 전부 실패를 밟고 나온 것이라 지운 뒤 다시 밟지 않도록 적어둔다.
+
+**Playwright 로는 DevTools 를 열 수 없다.** Chrome 은 디버거를 하나만 허용한다. Playwright 가 CDP 로 붙어 있으면 `--auto-open-devtools-for-tabs` 도 F12 도 무시된다. 그래서 이 스크립트만 Playwright 를 쓰지 않고 `chrome.exe` 를 직접 띄운다.
+
+**화면 영역 캡처(`CopyFromScreen`)는 쓰지 않는다.** 창을 포그라운드로 올리는 데 실패하면 그 자리에 있던 **다른 창이 찍힌다.** 실제로 무관한 앱 창이 캡처된 적이 있다. 지금은 `PrintWindow(PW_RENDERFULLCONTENT)` 로 창 자신의 버퍼를 뜬다 — 다른 창의 내용은 구조적으로 들어올 수 없고 포커스도 필요 없다. 대신 Chrome 의 GPU 합성 페이지 영역은 흰색으로 나온다(패널이 목적이라 무해하고, 앱 화면은 `app.png` 가 담당).
+
+**DevTools 가 붙기 전에 로드하면 패널이 빈다.** `Ctrl+R` 을 보내려면 포커스가 필요해 위 문제로 돌아간다. 그래서 Chrome 을 `/__boot` 로 띄우고, 그 페이지가 몇 초 뒤 스스로 `/` 로 이동하게 했다. 포커스가 필요 없다.
+
+부수적으로 두 가지를 프로필 설정으로 박아둔다. Network 패널 선택 + Disable cache + DevTools 를 창 높이의 대부분으로(기본 크기로는 요청이 4줄만 보여 증거가 안 된다). 그리고 이 스크립트는 **직접 빌드한다** — 다른 브랜치의 `dist/` 가 남아 있으면 라벨과 내용이 어긋난다. 실제로 `before` 로 찍었는데 `command-palette` 청크가 찍혀 나온 적이 있다.
 
 브라우저는 **시스템 Chrome**(`channel: "chrome"`)을 쓴다. Playwright 전용 Chromium(~150 MB)을 내려받지 않으려는 의도적 선택이다. 같은 이유로 `perf-measure.mjs` 는 지금 상태에서 Chromium 설치 없이는 돌지 않는다.
 
