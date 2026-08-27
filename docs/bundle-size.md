@@ -65,6 +65,178 @@ npm run bundle:after      # 개선 후
 
 ---
 
+## BEFORE 기준선
+
+기준 커밋 **`4ebbf85`** · 2026-08-27 · Node v24.18.0 · win32-x64. 원본은 `bundle-out/before/summary.md`.
+
+### A · 렌더러 청크
+
+| 청크 | raw | gzip |
+| --- | --- | --- |
+| index | 355.7 KB | 108.2 KB |
+| record | 347.0 KB | 99.8 KB |
+| home | 113.7 KB | 36.6 KB |
+| config | 99.4 KB | 33.5 KB |
+| react | 35.7 KB | 10.3 KB |
+| youtube | 20.7 KB | 7.3 KB |
+| **합계 (JS 24개)** | **1.03 MB** | **326.1 KB** |
+
+CSS 42.6 KB · `dist/` 전체 1.25 MB (31 파일)
+
+`index` 청크 내 상위 패키지:
+
+| 패키지 | 기여 |
+| --- | --- |
+| react-dom | 443.0 KB |
+| **zod** | **121.8 KB** |
+| (앱 코드) | 104.3 KB |
+| react-router | 88.4 KB |
+| react-icons | 24.8 KB |
+| @tanstack/query-core | 12.4 KB |
+
+zod 121.8 KB 은 발표자료의 "122 KB" 와 일치한다 — **진단은 정확했다.** 처방만 틀렸다(정정 2). 참고로 `index` 의 최대 기여자는 react-dom 443 KB 이지만 이건 제거 대상이 아니고, zod 는 lazy 경계 하나로 빠진다.
+
+### B · Electron 메인
+
+| 항목 | 값 |
+| --- | --- |
+| main.js raw | 2.94 MB |
+| main.js gzip | 591.7 KB |
+| **minify** | **미적용** (평균 줄 길이 35) |
+| preload.js | 2.6 KB |
+| `dist-electron/` 전체 | 3.12 MB |
+
+패키지별 기여 (상위):
+
+| 패키지 | main.js 내 기여 |
+| --- | --- |
+| iconv-lite | 538.9 KB |
+| express | 269.3 KB |
+| send | 249.2 KB |
+| type-is | 239.8 KB |
+| accepts | 235.4 KB |
+| electron-updater | 231.8 KB |
+| mime-db | 207.6 KB |
+| axios | 157.6 KB |
+
+**귀속 방식 주의.** 위 표는 **패키지 단위**다. 발표자료의 "express 1.24 M" 은 **하위 트리 합산**이다. 실측 결과 express 하위 트리는 **1.92 MB** — main.js 2.94 MB 의 **65 %** 다(iconv-lite 538.9 KB 포함). iconv-lite 를 따로 세면 1.38 MB 로 발표자료 수치와 맞는다. 두 방식 모두 유효하나 **섞으면 안 된다** — 같은 바이트를 두 번 세게 된다.
+
+앱 코드 자체는 38.2 KB 다. main.js 2.94 MB 중 우리가 쓴 코드는 1.3 % 이고 나머지는 전부 의존성이다.
+
+### C · 프로덕션 의존성
+
+| 항목 | 값 |
+| --- | --- |
+| 프로덕션 패키지 수 | 435 |
+| 프로덕션 용량 (apparent) | 186.81 MB |
+| 프로덕션 파일 수 | 13,755 |
+| node_modules 전체 (dev 포함) | 880.15 MB (35,963 파일) |
+
+| 패키지 | 용량 | 파일 |
+| --- | --- | --- |
+| react-icons | 84.19 MB | 143 |
+| @google/genai | 16.55 MB | 25 |
+| web-streams-polyfill | 8.62 MB | 43 |
+| recharts | 6.99 MB | 812 |
+| react-dom | 6.98 MB | 43 |
+| @reduxjs/toolkit | 5.75 MB | 172 |
+| react-router | 4.55 MB | 159 |
+| zod | 4.35 MB | 718 |
+| es-toolkit | 3.65 MB | 3,939 |
+
+`@reduxjs/toolkit` 5.75 MB 은 이 앱이 Zustand 를 쓰는데도 프로덕션 트리에 있다 — recharts 를 통해 들어온다. 발표자료 슬라이드 17이 record 청크에서 짚은 것과 같은 것이다.
+
+### D · 인스톨러 / asar
+
+| 항목 | 값 |
+| --- | --- |
+| `app.asar` | **524.06 MB** |
+| unpacked 전체 (`dist/win-unpacked/`) | 882.63 MB |
+| asar 내 `node_modules` | **실림 — 10,607 / 10,720 항목** |
+
+**결정 게이트가 닫혔다: 발표자료 정정 5의 전제는 틀렸다.** `build.files` 화이트리스트는 `node_modules` 를 배제하지 **않는다.** 프로덕션 의존성이 asar 에 그대로 실린다.
+
+그리고 재보는 과정에서 별개의 문제가 하나 더 나왔다.
+
+#### app.asar 안에 Electron 런타임이 중복으로 들어간다
+
+`app.asar` 항목을 열어보면 `dist/win-unpacked/electron.exe`, `icudtl.dat`, `chrome_*.pak`, `*.dll`, `locales/*.pak` 가 들어 있다. 524.06 MB 의 구성은 이렇게 맞아떨어진다.
+
+```
+프로덕션 deps          186.81 MB
+우리 코드                4.40 MB   (dist 1.25 + dist-electron 3.12)
+중복된 Electron 런타임  약 333 MB
+                     ─────────────
+                       524.06 MB
+```
+
+원인은 설정 충돌이다.
+
+- `package.json` `build.directories.output` 이 지정되지 않아 기본값 **`dist`** 를 쓴다.
+- Vite `build.outDir` 도 **`dist`** 다.
+- `build.files` 에 **`"dist/**/*"`** 가 있다.
+
+electron-builder 는 한 번의 실행 안에서 Electron 런타임을 `dist/win-unpacked/` 로 먼저 풀고 그 다음에 asar 를 조립한다. 조립 시점의 glob 이 자기가 방금 만든 `dist/win-unpacked/**` 를 잡는다. **깨끗한 빌드에서도 재현된다** — 직전 출력을 지워도 막히지 않는다(타임스탬프로 확인: vite 16:01:24 → Electron 런타임 전개 16:01:51 → asar 조립 16:02:59).
+
+발표자료의 인스톨러 233.7 MB(HTTP `Content-Length`)와 모순되지 않는다. 중복된 런타임은 asar 밖의 원본과 바이트가 같아 NSIS 의 LZMA 압축이 잘 지워낸다. 즉 **다운로드 크기보다 설치 후 디스크와 asar 읽기 비용에 얹히는 문제**다. 인스톨러 크기는 이번에 재측정하지 않았다.
+
+#### 런타임에 실제로 필요한 프로덕션 패키지는 22개다
+
+`dist/assets/*.js` 는 Vite 가, `dist-electron/main.js` 는 esbuild 가 의존성을 전부 인라인한다. esbuild `external`(`scripts/build-electron.js:55-61`)만 예외이므로 런타임에 `node_modules` 가 필요한 것은 그 3개와 전이 의존성뿐이다.
+
+| 구분 | 패키지 | 용량 |
+| --- | --- | --- |
+| 런타임에 필요 | **22** | **2.53 MB** (396 파일) |
+| 빌드 타임 전용 | 413 | 184.28 MB |
+| 합계 (프로덕션 트리) | 435 | 186.81 MB |
+
+필요한 22개: `get-windows`, `electron-store`, `conf`, `ajv`, `ajv-formats`, `atomically`, `debounce-fn`, `dot-prop`, `env-paths`, `fast-deep-equal`, `fast-json-stable-stringify`, `json-schema-traverse`, `json-schema-typed`, `mimic-function`, `punycode`, `semver`, `stubborn-fs`, `stubborn-utils`, `type-fest`, `uint8array-extras`, `uri-js`, `when-exit`. (`get-windows` 는 네이티브 바이너리라 `asarUnpack` 에 이미 잡혀 있다.)
+
+`ignoredProductionDependencies` 로 정리할 때 **이 22개가 빠지면 패키징된 앱이 `MODULE_NOT_FOUND` 로 죽는다.** 이것이 정정 5가 요구한 제약의 구체적인 형태다.
+
+두 문제를 합치면 `app.asar` 의 이론적 하한은 **약 7 MB**(우리 코드 4.4 + 런타임 의존성 2.53)이고 현재는 524 MB 다. 발표자료의 "deps 187 → 47 MB" 는 방향은 맞았지만 오히려 보수적이었다.
+
+> 다만 "413개는 빌드 타임 전용" 은 정적 분석 결과다. 런타임 `require` 가 숨어 있을 수 있으므로 **패키징된 앱을 실제로 실행해 방해요소 tracker(get-windows)와 설정 저장(electron-store)까지 확인**해야 확정된다.
+
+### 발표자료 수치 재현 결과
+
+| 계층 | 항목 | 발표자료 (2026-08-26) | 실측 (`4ebbf85`) | 판정 |
+| --- | --- | --- | --- | --- |
+| C | 패키지 수 | 435 | 435 | **정확히 일치** |
+| C | 용량 | 187 MB | 186.81 MB | **일치** |
+| C | 파일 수 | 13,754 | 13,755 | **일치** |
+| C | react-icons | 85 MB | 84.19 MB | 일치 |
+| C | @google/genai | 17 MB | 16.55 MB | 일치 |
+| C | react-dom | 8 MB | 6.98 MB | 근사 |
+| C | recharts | 10 MB | 6.99 MB | **차이** |
+| C | zod | 7 MB | 4.35 MB | **차이** |
+| A | index 내 zod | 122 KB | 121.8 KB | **정확히 일치** |
+| A | index raw / gzip | 392.2 / 119.7 KB | 355.7 / 108.2 KB | 약 9 % 낮음 |
+| A | record raw / gzip | 355.3 / 103.1 KB | 347.0 / 99.8 KB | 근사 |
+| B | main.js raw | 3.08 MB | 2.94 MB | 약 5 % 낮음 |
+| B | minify 상태 | 미적용 | 미적용 | 일치 |
+
+**C 계층은 사실상 완전히 재현된다.** A·B 는 5~9 % 낮게 나온다. 발표자료에 커밋 해시가 없어 이 차이가 측정 오차인지 그 사이의 코드 변경인지 **구분할 수 없다** — 정정 7이 지적한 문제가 그대로 드러난 지점이다. 앞으로는 이 문서의 `4ebbf85` 기준선을 쓴다.
+
+`recharts`·`zod` 의 차이는 전이 의존성 포함 여부로 보인다(이 하네스는 중첩 `node_modules` 를 건너뛴다). 발표자료 쪽 집계 방식이 남아있지 않아 확정할 수 없다.
+
+### 데드코드 확증
+
+빌드 모듈 그래프(972 모듈) 조회 결과 — 정정 3·4·8의 근거다.
+
+| 대상 | 그래프 내 모듈 수 | 결론 |
+| --- | --- | --- |
+| `components/statics-section.tsx` | **0** | 데드코드 (정정 3) |
+| `@uiw/*` | **0** | 데드 의존성 (정정 4) |
+| `app/**` | **0** | 모듈 그래프 밖 (정정 8) |
+| `components/my-stats-page.tsx` | 1 | 살아있음 |
+| recharts | 251 | 살아있음 (record 청크) |
+| zod | 79 | 살아있음 (index 청크 — 정정 2) |
+
+`@uiw/*` 는 그래프에 0개이면서 프로덕션 의존성 트리에는 **22개 패키지**로 존재한다. A 에는 영향이 없고 C 에만 얹혀 있다는 정정 4의 근거다.
+
+---
+
 ## 발표자료 정정
 
 발표자료의 **측정 체계와 BEFORE 수치 자체는 유효하다.** 아래는 그 위에 얹힌 개선 처방과 일부 귀속의 오류다. 정정의 성격은 세 가지다.
@@ -190,8 +362,17 @@ Vite 엔트리는 `index.html` → `/src/main.tsx` 이고 라우팅은 react-rou
 
 ## 검증 범위
 
-정정 1~4 · 8은 코드에서 직접 확인했다(파일:행 근거 위 표기). 정정 5~7은 발표자료 자체의 논리·기준 문제다.
+| 정정 | 근거 | 상태 |
+| --- | --- | --- |
+| 1 lazy 13개 이미 적용 | `src/App.tsx:27-34`, `components/window.tsx:26-30` | **확정** |
+| 2 `import type` 처방 무효 | 임포터 14곳 분류 + 빌드 그래프에 zod 79 모듈 · index 청크 121.8 KB | **확정** |
+| 3 recharts 2곳 · 1곳은 데드 | 빌드 그래프 `statics-section` 0 모듈 | **확정** |
+| 4 `@uiw` 이미 데드 | 빌드 그래프 0 모듈 · 프로덕션 트리 22 패키지 | **확정** |
+| 5 deps 정리 전제 | asar 게이트 — `node_modules` 10,607 항목 실림 | **확정 (전제가 틀렸음)** |
+| 6 AFTER 목표 전제 | 정정 5에 종속 | **확정** |
+| 7 커밋 해시 부재 | A·B 가 5~9 % 어긋나는데 원인 구분 불가 | **확정 (현실화됨)** |
+| 8 `app/**` 잔재 | 빌드 그래프 0 모듈 · `tsconfig.json` include 대상 | **확정** |
 
-**발표자료의 C · D 수치는 이번에 재측정하지 않았다** — deps 187 MB, 435 패키지, 13,754 파일, 인스톨러 233.7 MB, DMG 269.9 MB, Electron 43 런타임 143.2 MB. A · B 수치(index 392.2 KB, record 355.3 KB, main.js 3.08 MB) 역시 재측정 전이다. 이 문서가 다루는 것은 그 수치들의 **귀속과 처방**이며, 귀속은 정정 3 외에는 발표자료가 맞다.
+**재측정하지 않은 것**: 인스톨러 다운로드 크기(발표자료 Windows NSIS 233.7 MB / macOS DMG 269.9 MB, HTTP `Content-Length`)와 Electron 43 런타임 143.2 MB. D 계층은 `app.asar` 과 unpacked 까지만 실측했다. macOS 쪽은 이 환경(win32-x64)에서 측정할 수 없다.
 
-수치 재측정은 측정 하네스(`scripts/measure-bundle.mjs`) 도입 시 이 문서에 BEFORE 표로 추가한다.
+**정적 분석에 머무는 것**: "프로덕션 413개는 빌드 타임 전용" — 패키징된 앱을 실행해 확인해야 확정된다.

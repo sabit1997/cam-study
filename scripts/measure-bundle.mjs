@@ -299,6 +299,33 @@ function measureInstaller() {
     return { skipped: "MEASURE_INSTALLER=1 이 아니어서 건너뜀" };
   }
   console.log("── D: electron-builder --dir ─────────────");
+
+  // 직전 패키징 출력을 지운다 — 다만 이것으로 아래 문제가 해결되지는 않는다.
+  //
+  // electron-builder 의 directories.output 기본값은 `dist` 인데 Vite 의 outDir 도
+  // `dist` 다. 그리고 build.files 에 "dist/**/*" 가 있다. electron-builder 는
+  // 한 번의 실행 안에서 Electron 런타임을 dist/win-unpacked/ 로 먼저 풀고 그
+  // 다음에 asar 를 조립하므로, 조립 시점의 glob 이 자기가 방금 만든
+  // dist/win-unpacked/** 를 잡아 app.asar 안에 Electron 런타임을 통째로 다시
+  // 집어넣는다.
+  //
+  // 실측(4ebbf85, win32-x64): app.asar 524.06 MB
+  //   = 프로덕션 deps 186.81 + 우리 코드 4.4 + 중복된 Electron 런타임 약 333
+  // 깨끗한 빌드에서도 재현되므로 이 정리 코드로는 막히지 않는다. 근본 원인은
+  // package.json build.directories.output 이 dist 와 겹치는 설정이다.
+  // → docs/bundle-size.md "D · 인스톨러" 참고.
+  //
+  // 그래도 지우는 이유: 지우지 않으면 중복이 세대마다 누적된다.
+  const staleOutputs = ["win-unpacked", "mac-arm64", "mac", "linux-unpacked"].map((d) =>
+    path.join(ROOT, "dist", d)
+  );
+  for (const stale of staleOutputs) {
+    if (fs.existsSync(stale)) {
+      console.log(`   직전 패키징 출력 제거: ${path.relative(ROOT, stale)}`);
+      fs.rmSync(stale, { recursive: true, force: true });
+    }
+  }
+
   try {
     sh("npx electron-builder --dir", { stdio: "inherit" });
   } catch (e) {
