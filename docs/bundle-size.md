@@ -239,6 +239,49 @@ electron-builder 는 한 번의 실행 안에서 Electron 런타임을 `dist/win
 
 ---
 
+## AFTER — 적용된 개선
+
+각 항목을 독립 브랜치로 분리해 서로의 효과가 섞이지 않게 했다. 모두 clean tree 에서 측정했다.
+
+| 브랜치 | 계층 | 지표 | BEFORE | AFTER | |
+| --- | --- | --- | --- | --- | --- |
+| `perf/bundle-diet-minify` | B | main.js raw | 2.94 MB | **1.75 MB** | −40.5 % |
+| | | main.js gzip | 591.7 KB | 496.1 KB | −16.2 % |
+| `perf/bundle-diet-zod-lazy` | A | **초기 로드 raw** | 518.5 KB | **408.4 KB** | **−21.2 %** |
+| | | 초기 로드 gzip | 162.0 KB | 127.9 KB | −21.0 % |
+| | | 초기 청크 수 | 7 | 3 | |
+| `perf/bundle-diet-deadcode` | C | 프로덕션 패키지 | 435 | **410** | −25 |
+| | | 프로덕션 용량 | 186.81 MB | 185.81 MB | −1.00 MB |
+| | | 프로덕션 파일 | 13,755 | 13,345 | −410 |
+
+### 각 항목에서 배운 것
+
+**minify (B)** — `scripts/build-electron.js` 에 `minify: true` 한 줄. 발표자료의 예상(−42 %)과 거의 같다. 다만 유닛 테스트는 TS 소스를 돌려서 minify 된 산출물을 훑지 않는다. `src-electron/express-server.ts` 가 electron 에 의존하지 않는다는 점을 이용해, 같은 esbuild 설정으로 minify 만 켜고/끄고 번들해 순수 node 에서 띄워 응답을 비교했다 — 정적 서빙 · Express 5 SPA 폴백 · JSON 파싱 · 한글 에러 메시지 모두 동일했다.
+
+**zod lazy (A)** — `src/App.tsx` 의 정적 import 두 줄을 lazy 로 바꾼 것이 전부다. zod 121.7 KB 가 `ai-action-runner` lazy 청크로 옮겨갔다.
+
+여기서 측정 방식이 판단을 가를 수 있다는 것을 실제로 겪었다. **`index` 청크는 355.7 → 373.0 KB 로 커졌다.** Rollup 이 재청킹해 `config`·`useQuery`·`middleware`·`window-state` 를 `index` 로 합쳤기 때문이다. 청크 하나만 봤다면 개선을 회귀로 오판했을 것이다. 그래서 초기 로드 세트를 1순위 지표로 올렸다.
+
+덧붙여 `useCommandPalette` 를 `AppShell` 로 끌어올렸다. 이 훅의 keydown 리스너를 lazy 컴포넌트 안에 두면 청크가 내려오기 전까지 Cmd+K 가 죽는다. 훅은 작고 zod 를 끌지 않아 정적으로 둬도 대가가 없다.
+
+**데드코드 (C)** — `@uiw/react-color`(전이 의존성까지 25개), `components/statics-section.tsx`, `app/**`(Next.js 잔재 6개). 셋 다 이미 모듈 그래프 밖이라 A 는 변하지 않는다.
+
+`app/favicon.ico` 는 지우지 않고 `public/` 으로 옮겼다. `index.html` 이 `/favicon.ico` 를 참조하는데 `public/` 에 없어서 **빌드 산출물에 favicon 이 빠져 있었다** — 즉 favicon 이 404 였다. 옮기면서 고쳐진다.
+
+### 아직 하지 않은 것
+
+| 항목 | 기대 효과 | 막는 것 |
+| --- | --- | --- |
+| `app.asar` 중복 Electron 런타임 제거 | 약 −333 MB | `directories.output` 을 `dist` 밖으로 옮기고 패키징 재검증 |
+| 빌드 타임 전용 413개 배제 | 약 −184 MB | `ignoredProductionDependencies` + 패키징된 앱에서 `MODULE_NOT_FOUND` 부재 확인 |
+| recharts → 자체 SVG | record 청크 −325 KB | 발표자료 개선안 5. 공수 1~2일 |
+| express → node:http + SSE | main.js −1.2 MB (minify 후 기준 재산정 필요) | 발표자료 개선안 6. SSE 재작성 리스크 |
+| size-limit CI 게이트 | 회귀 방지 | 위 항목들이 정리된 뒤 예산을 정해야 의미가 있다 |
+
+**패키징된 앱 검증이 공통으로 남아 있다.** minify 와 데드코드 제거 모두 dev 에서는 통과했지만, 이 작업의 주된 실패 모드는 패키징 후에만 드러난다 — 방해요소 tracker(`get-windows`)와 설정 저장(`electron-store`)을 실제 앱에서 확인해야 한다.
+
+---
+
 ## 발표자료 정정
 
 발표자료의 **측정 체계와 BEFORE 수치 자체는 유효하다.** 아래는 그 위에 얹힌 개선 처방과 일부 귀속의 오류다. 정정의 성격은 세 가지다.
