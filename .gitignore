@@ -56,4 +56,7 @@ window-fixture.json
 bundle-out/
 dist-analyze/
 
+# electron-builder 출력 (directories.output)
+/release
+
 /docs
