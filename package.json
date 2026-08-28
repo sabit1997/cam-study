@@ -26,7 +26,14 @@
     "bundle:evidence": "node scripts/capture-bundle-evidence.mjs",
     "bundle:devtools": "node scripts/capture-devtools.mjs",
     "timing:snapshot": "node scripts/measure-load-timing.mjs snapshot",
-    "timing:compare": "node scripts/measure-load-timing.mjs compare"
+    "timing:compare": "node scripts/measure-load-timing.mjs compare",
+    "timing:compare:authed": "node scripts/measure-load-timing.mjs compare --authed",
+    "revisit:compare": "node scripts/measure-revisit.mjs",
+    "static-cache:compare": "node scripts/measure-static-cache.mjs",
+    "render:before": "node scripts/measure-render.mjs before",
+    "render:after": "node scripts/measure-render.mjs after",
+    "render:compare": "node scripts/measure-render.mjs --compare",
+    "ui:evidence": "node scripts/capture-ui-evidence.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.18.0",

@@ -406,6 +406,132 @@ ai-action-describe   3.3 KB
 
 > 인스톨러 124.83 MB 를 발표자료의 233.7 MB 와 직접 빼면 안 된다. 그쪽은 CI 릴리스 빌드(v1.2.0)의 HTTP `Content-Length` 이고 이쪽은 로컬 빌드다 — 서명·압축 조건이 다르다. **통제된 before/after 인스톨러 비교는 아직 하지 않았다.** 하려면 `main` 에서도 로컬로 같은 명령을 돌려야 한다.
 
+## 라운드 2 — 임계 경로 밖으로
+
+1라운드가 임계 경로에서 zod 를 들어내는 일이었다면, 2라운드는 **첫 로드 이후**를 건드린다. 라우트 청크, 재방문, 앱 재실행, 그리고 리렌더. 항목마다 브랜치를 나눠 clean tree 에서 쟀다.
+
+| 브랜치 | 무엇을 | BEFORE | AFTER | |
+| --- | --- | --- | --- | --- |
+| `perf/bundle-diet-tooltip` | `home` 청크 raw | 113.6 KB | **68.6 KB** | −39.6 % |
+| | `home` 청크 gzip | 36.6 KB | 21.2 KB | −42.1 % |
+| `perf/bundle-diet-qs` | **임계 경로 raw** | 408.4 KB | **368.7 KB** | **−9.7 %** |
+| | 홈 진입 FCP | 4820 ms | **4420 ms** | −400 ms |
+| | 창 표시 | 7057 ms | **6596 ms** | −461 ms |
+| `perf/font-local` | cross-origin 전송량 | 48.2 KB | **0.1 KB** | 외부 의존 소멸 |
+| | CDN 3 s 지연 시 FCP | 5020 ms | **해당 경로 없음** | |
+| `perf/sw-cache-first` | 재방문 서버 요청 | 14 | **2** | −85.7 % |
+| | 재방문 서버 전송량 | 653.7 KB | **16.1 KB** | −97.5 % |
+| | 오프라인에서 앱 셸 | **0/5** | **5/5** | |
+| `perf/static-cache-headers` | 앱 재실행 시 304 왕복 | 12 | **1** | −11 |
+| | Vercel `/assets` 정책 | `max-age=0` | `immutable` | 배포 후 검증 |
+| `perf/render-round2` | idle 렌더 시간 | 23.6 ms | **1.5 ms** | −93.6 % |
+| | focus 렌더 시간 | 3503.5 ms | **2710 ms** | −22.6 % |
+| | resize 최대 커밋 | 284.3 ms | **186 ms** | −34.6 % |
+| `chore/dead-code-round2` | 도달 불가 컴포넌트 | 12개 | **0** | |
+| | JS 청크 수 | 24 | **22** | 리다이렉트 전용 라우트 |
+
+### 각 항목에서 배운 것
+
+**radix tooltip (A)** — 트리거가 창마다 3개뿐인데 `@radix-ui/react-tooltip` 이 `home` 청크에 45 KB 를 얹고 있었다. 게다가 `window-dock.tsx` 는 같은 모양의 툴팁을 이미 직접 그리고 있었다 — 같은 UI 를 두 방식으로 유지하던 셈이다.
+
+radix 가 해주던 것 중 두 가지는 직접 구현해야 했다. 창 컨테이너가 `overflow-hidden` 이라 타이틀바 위로 뜨는 툴팁이 잘리므로 포털이 필요하고, 창이 화면 왼쪽 끝에 붙으면 가운데 정렬이 화면 밖으로 나가므로 렌더 후 실제 폭을 재서 한 번 보정해야 한다.
+
+**시간은 줄지 않았다.** 7회 교차 측정에서 FCP +84 ms, 창 표시 −13 ms — 전부 잡음 아래다. `home` 은 라우트 청크라 임계 경로가 아니고, 요청 수가 그대로여서 zod lazy 때의 기전(왕복 감소)이 여기엔 없다. 크기와 의존성은 실재하는 이득이지만 **속도를 주장할 근거는 없다.**
+
+이 항목에서 하네스의 구멍도 드러났다. 기존 `timing:compare` 는 비인증 상태를 재는데, `/` 가 sign-in 으로 튕기므로 `home` 청크를 아예 받지 않는다. 그 청크만 줄이는 개선은 차이가 **0 으로 나오는 것이 당연**했다. `--authed` 모드를 넣었다.
+
+**qs (A)** — 중첩 객체·배열·커스텀 구분자를 지원하는 범용 직렬화기인데, 이 앱이 넘기는 것은 평평한 값 세 개(`date`·`done`·`order`)뿐이다. 그 기능이 하나도 쓰이지 않은 채 임계 경로에 실려 있었다.
+
+교체 전에 테스트를 먼저 썼다. 기대값은 전부 **교체 전 qs 가 실제로 내던 문자열**이고, 9개가 qs 구현으로 통과하는 것을 확인한 뒤 구현을 바꿨다. 이 파일은 "새 구현이 맞는가" 가 아니라 "예전과 같은가" 를 묻는다. `URLSearchParams` 는 공백을 `+` 로, qs 는 `%20` 으로 낸다는 차이가 있어 그냥 바꾸면 안 됐다.
+
+이번 라운드에서 **시간 개선이 잡음을 넘은 유일한 항목**이다. 임계 경로를 줄였기 때문이다.
+
+`load` 시점 JS 요청 수가 3 → 4 로 늘어 보이는데 회귀가 아니다. 회차별 원값을 보면 before 도 3~4 를 오간다(3이 7회, 4가 2회 / after 는 4가 6회, 3이 3회). after 가 빨라져서 `load` 안쪽에 sign-in 라우트 청크가 더 자주 들어온 것 — 결과이지 원인이 아니다.
+
+**Inter 로컬화 (A)** — `index.html` 이 `fonts.googleapis.com` 의 스타일시트를 `<link rel=stylesheet>` 로 걸고 있었다. 렌더 블로킹이다.
+
+세 조건으로 범위를 좁혔다.
+
+| 조건 | FCP |
+| --- | --- |
+| normal | 3824 ms |
+| slow (CDN 응답 3초 지연) | **5020 ms** |
+| offline (CDN 차단) | 3800 ms |
+
+정상일 때는 FCP 에 영향이 없다 — JS 실행이 훨씬 늦게 끝나서 685 ms 짜리 CSS 가 그 뒤에 숨는다. offline 이 normal 과 같다는 것이 같은 이야기다. **이 변경은 평상시를 빠르게 하는 것이 아니라 우리가 제어할 수 없는 외부 응답을 임계 경로에서 들어내는 것이다.**
+
+데스크탑에서는 이유가 하나 더 있다. 오프라인이면 폰트가 아예 적용되지 않는다. 프라이버시도 그렇다 — 앱을 열 때마다 사용자 IP 가 Google 로 갔다. README 가 "무엇을 애초에 받지 않는지" 를 다루는 앱에서 이건 어긋난다.
+
+파일은 하나면 됐다. Inter v20 은 가변 폰트라 400·500·600·700 이 전부 같은 woff2 를 가리킨다(Google 이 내려주는 CSS 에서 확인). latin subset 48.3 KB.
+
+**서비스 워커 (재방문·오프라인)** — 예전 구현은 모든 GET 을 network-first 로 처리하면서 install 에서는 `"/"` 하나만 캐시했다. 그래서 해시가 박힌 불변 자산까지 매번 네트워크를 치면서, 정작 오프라인에서는 index.html 만 나오고 JS·CSS 는 503 이었다. **껍데기만 뜨고 앱은 동작하지 않는 상태** — 오프라인 지원이라 부를 수 없다.
+
+`/assets/**` 를 cache-first 로 바꿨다. 파일명에 콘텐츠 해시가 있어 내용이 바뀌면 URL 이 바뀌므로 캐시된 응답이 낡을 수 없다. 그 외는 network-first 로 두어 `index.html` 이 항상 최신 자산 해시를 가져오게 한다.
+
+오프라인 화면이 이번 라운드에서 가장 분명한 증거다. before 는 **백지에 "Offline" 텍스트만**, after 는 상단바와 배경이 그려진다(`bundle-out/revisit/offline-*.png`).
+
+다만 after 도 완전하지 않다. `Failed to fetch dynamically imported module: .../sign-in-*.js` 가 뜬다 — 오프라인에서 `AuthBootstrap` 이 `refresh()` 실패를 인증 만료로 취급해 로그아웃시키고 `/sign-in` 으로 보내는데, 그 라우트 청크가 캐시에 없어서다. 네트워크 실패와 401 을 구분해야 하는 **정합성 이슈**라 성능 항목과 분리했다.
+
+**정적 캐시 헤더 (데스크탑·웹)** — `express.static` 의 기본값은 `Cache-Control: public, max-age=0` 이다. 헤더가 없는 것이 아니라 "캐시는 하되 쓰기 전에 매번 물어보라" 다. 그래서 앱을 켤 때마다 자산 하나하나에 조건부 요청이 오간다. 본문은 304 라 안 오지만 왕복은 그대로 일어난다.
+
+배포본을 직접 찔러보니 웹도 같았다.
+
+```
+GET https://cam-study.vercel.app/assets/index-DO18IwY1.js
+Cache-Control: public, max-age=0, must-revalidate
+```
+
+`/assets` 에 1년 `immutable` 을 명시했다. 줄어드는 것은 바이트가 아니라 왕복 횟수다 — 두 라벨 모두 전송 본문은 1.4 KB 로 같고 요청이 13 → 2 로 준다.
+
+**리렌더 (렌더링)** — 세 가지가 같은 성격이라 함께 묶었다. 화면이 그대로인데 다시 그리는 경우들이다.
+
+상단바 시계가 `Navigation` 안에 있어서 1초마다 상단바 전체가 다시 그려졌다. 상단바는 라우트와 무관하게 항상 마운트돼 있으므로 앱이 켜져 있는 내내 초당 한 번씩 일어나는 일이다. 창 콘텐츠에 `memo` 가 없어서 창을 한 번 클릭할 때마다 654줄짜리 `Timer` 가 통째로 다시 그려졌다. 좌표 동기화 effect 는 좌표가 그대로여도 새 객체를 넣어 리렌더를 유발했다.
+
+**데드코드** — 어느 진입점에서도 import 되지 않는 컴포넌트 12개. 직접 도달 불가 8개를 지우면 `mypage-button`·`rectangle-button`·`circle-button`·`input-with-label` 4개가 함께 고아가 된다. `year-month-selector`·`loading`·`error` 는 `my-stats-page` 가 쓰고 있어 남겼다 — import 문 기준으로 확인했다.
+
+`/my-page/statistics` 와 `/my-page/theme-setting` 은 `<Navigate>` 한 줄짜리 컴포넌트였다. lazy 페이지로 두면 리다이렉트 한 번을 위해 청크를 내려받는 왕복이 생긴다. 라우트에서 바로 `<Navigate>` 를 준다 — JS 청크 24 → 22 개.
+
+### 측정에서 걸린 함정 여덟 개
+
+이번 라운드에서 실제로 겪은 것들이다. **여섯 개는 개선을 회귀로, 또는 회귀를 개선으로 보이게 만들었다.** 수치를 인용하기 전에 이 목록을 훑는 편이 좋다.
+
+**1. 리소스 타이밍은 cross-origin 전송량을 보고하지 않는다.** `Timing-Allow-Origin` 이 없으면 `transferSize` 가 0 이고 항목 자체가 안 잡히기도 한다. Google Fonts 를 로컬로 옮기는 변경에서 리소스 타이밍은 595.3 → 642.0 KB "증가" 로 보고했는데, CDP `encodedDataLength` 로 세니 658.6 → 657.2 KB 였다. before 의 CDN 폰트 48.8 KB 가 통째로 빠져 있었다. **외부 요청을 없애는 개선일수록 이 함정에 정확히 걸린다.**
+
+**2. 클라이언트 계측은 서비스 워커 경유 요청을 구분하지 못한다.** SW 가 캐시에서 준 응답과 SW 가 네트워크로 다시 나간 요청이 잘 구분되지 않고 `encodedDataLength` 도 0 으로 보고되는 경우가 있다. CDP 로 재니 before/after 가 똑같이 나왔고, **서버가 받은 요청**을 세자 −12 건이 드러났다.
+
+**3. `context.setOffline` 은 서비스 워커의 fetch 를 막지 못한다.** 페이지의 요청만 막는다. 오프라인 구간에 요청이 1~2건 실제로 서버에 도달하고 있었고, 그 상태의 "오프라인에서도 떴다" 는 결론은 성립하지 않는다. 서버에서 연결을 끊어야 SW 가 보는 세상이 진짜 오프라인이 된다.
+
+**4. Playwright 의 `context.route` 를 하나라도 등록하면 브라우저 캐시가 우회된다.** 모든 요청이 인터셉트 경로를 타기 때문이다. 캐시 헤더 효과를 재는 측정에서 304 가 0건이 나왔다. API 를 서버에서 직접 처리하도록 바꿔야 했다.
+
+**5. `express.static` 은 헤더를 안 주는 게 아니다.** `public, max-age=0` 을 준다. before 를 "헤더 없음" 으로 재현했더니 Chrome 이 조건부 요청조차 보내지 않아 304 가 0건이 됐고, 비교 자체가 무너졌다.
+
+**6. Profiler 의 커밋 횟수는 주 지표가 아니다.** `<Profiler id="App">` 이 트리 전체를 감싸고 있어서, 어디가 얼마나 다시 그려지든 커밋은 1회로 잡힌다. 시계를 별도 컴포넌트로 내려도 커밋 횟수는 그대로고 줄어드는 것은 **범위**다. 그건 `totalDuration`·`maxDuration` 에 나타난다(23.6 → 1.5 ms). 처음에 "idle 에서 커밋이 줄어야 한다" 를 자가점검에 넣었다가 ⚠ 를 받고 기준을 고쳤다.
+
+**7. 서비스 워커 효과는 2차 방문이 아니라 3차 방문에서 정착한다.** 1차 방문의 자산 대부분은 SW 가 `controller` 가 되기 전에 이미 로드돼 `cache-first` 핸들러를 거치지 않고, 따라서 캐시에도 들어가지 않는다. 캐시는 2차 방문에서야 채워진다. 2차로 재면 −1 건, 3차로 재면 −12 건이다.
+
+**8. `startsWith("/api")` 는 `/apis/` 소스 경로를 삼킨다.** dev 서버가 모듈로 서빙하는 `/apis/services/...` 가 JSON 으로 반환되면서 앱이 통째로 죽는다. `vite.config.mts` 의 프록시 정규식에도 같은 주의가 적혀 있었는데 하네스에서 같은 실수를 반복했다.
+
+### 이번 라운드에 늘어난 측정 도구
+
+```bash
+npm run timing:compare:authed   # 로그인 상태로 홈까지 진입해 라우트 청크를 잰다
+npm run revisit:compare         # 재방문·오프라인 (서비스 워커)
+npm run static-cache:compare    # 앱 재실행 시 조건부 요청 (캐시 헤더)
+npm run ui:evidence <label>     # 화면이 그대로인지 스크린샷으로 확인
+npm run dev:web                 # ↓ 리렌더 측정에는 dev 서버가 필요하다
+npm run render:before / render:after / render:compare
+```
+
+| 도구 | 무엇을 재는가 | 주의 |
+| --- | --- | --- |
+| `timing:compare --authed` | 홈 라우트까지의 FCP·load·**창 표시** 시각 | API 지연을 고정 40 ms 로 둔다. RTT 를 그대로 물리면 왕복이 창 표시 시각을 지배해 청크 크기 효과가 묻힌다 — 절대값을 실서버 기준으로 읽으면 안 된다 |
+| `revisit:compare` | 재방문 **서버** 요청 수·바이트, 오프라인에서 앱 셸이 뜨는지 | 정적 서버가 `no-store` 를 주므로 HTTP 캐시가 배제된 **SW 만의 기여분**이다 |
+| `static-cache:compare` | 앱 재실행 시 조건부 요청(304) 왕복 | 반대로 여기는 SW 를 차단하고 HTTP 캐시만 본다 |
+| `render:compare` | idle·focus·resize 세 시나리오의 렌더 시간 | dev 서버가 필요하다(`__perf` 는 DEV 전용). 절대 시간은 프로덕션보다 느리므로 상대 비교만 인용한다 |
+| `ui:evidence` | 툴팁 기하, 실제로 나간 API URL | 로그인 쿠키를 주입하고 `/api/*` 를 가로채므로 실서버에 요청이 가지 않는다 |
+
+---
+
 ### 아직 하지 않은 것
 
 | 항목 | 기대 효과 | 막는 것 |
@@ -413,9 +539,12 @@ ai-action-describe   3.3 KB
 | ~~`app.asar` 중복 Electron 런타임 제거~~ | ~~약 −333 MB~~ | **완료** — `directories.output: "release"`, 524.06 → 164.32 MB |
 | 빌드 타임 전용 413개 배제 | 약 −160 MB | `ignoredProductionDependencies` + 패키징된 앱에서 `MODULE_NOT_FOUND` 부재 확인. asar 에 `node_modules` 10,383 항목이 아직 남아 있다 |
 | 통제된 인스톨러 before/after | — | `main` 에서 로컬 NSIS 빌드를 떠야 비교가 성립한다 |
-| recharts → 자체 SVG | record 청크 −325 KB | 발표자료 개선안 5. 공수 1~2일 |
+| recharts → 자체 SVG | record 청크 −325 KB | 발표자료 개선안 5. 공수 1~2일. `my-stats-page` 가 그리는 것은 `BarChart` 둘뿐이라 대체 자체는 어렵지 않다 |
 | express → node:http + SSE | main.js −1.2 MB (minify 후 기준 재산정 필요) | 발표자료 개선안 6. SSE 재작성 리스크 |
 | size-limit CI 게이트 | 회귀 방지 | 위 항목들이 정리된 뒤 예산을 정해야 의미가 있다 |
+| Vercel `immutable` 헤더 실측 | 웹 재방문 왕복 제거 | 배포 후에야 검증된다. `curl -I .../assets/index-*.js` 한 줄이면 확인된다 |
+| 오프라인에서 인증 유지 | 오프라인 앱 셸 완성 | 성능이 아니라 정합성 이슈. `AuthBootstrap` 이 네트워크 실패를 401 과 같게 취급해 로그아웃시키고, 캐시에 없는 `sign-in` 청크를 요청하다 실패한다 |
+| `font/DungGeunMo.woff2` (946 KB) 처리 | 저장소 용량 | `tailwind.config.ts` 에 `dunggeunmo` 패밀리가 등록돼 있지만 `--font-dunggeunmo` 를 정의하는 곳이 없어 지금은 작동하지 않는다. 번들에는 안 들어가므로 성능 영향은 0 — 살릴지 지울지는 의도의 문제라 남겨뒀다 |
 
 **패키징된 앱 검증이 공통으로 남아 있다.** minify 와 데드코드 제거 모두 dev 에서는 통과했지만, 이 작업의 주된 실패 모드는 패키징 후에만 드러난다 — 방해요소 tracker(`get-windows`)와 설정 저장(`electron-store`)을 실제 앱에서 확인해야 한다.
 
