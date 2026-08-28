@@ -170,10 +170,12 @@ try {
     },
   ]);
 
+  // search 까지 기록한다. 쿼리 문자열 생성기를 바꿀 때(qs → URLSearchParams) 실제
+  // 앱이 내보내는 URL 이 같은지가 유닛 테스트 밖에서 확인되는 유일한 지점이다.
   const apiCalls = [];
   await context.route(`${base}/api/**`, async (route) => {
     const url = new URL(route.request().url());
-    apiCalls.push(`${route.request().method()} ${url.pathname}`);
+    apiCalls.push(`${route.request().method()} ${url.pathname}${url.search}`);
     await route.fulfill({
       status: 200,
       contentType: "application/json",
