@@ -103,7 +103,9 @@ if (COMPARE) {
   md += `- before: \`${before.commit}\` · after: \`${after.commit}\`\n`;
   md += `- 측정일: ${after.measuredAt}\n`;
   md += `- dev 서버(Vite) · CPU ${CPU_THROTTLE}× · 창 ${WINDOW_FIXTURE.length}개 · Profiler id="App"\n`;
-  md += `- 절대 시간은 dev 빌드라 프로덕션보다 느리다. **커밋 횟수**가 주 지표다 — React 동작이라 빌드와 무관하다.\n\n`;
+  md += `- 절대 시간은 dev 빌드라 프로덕션보다 느리다. 같은 조건에서 두 라벨을 재므로 **상대 비교**만 인용한다.\n`;
+  md += `- 주 지표는 커밋 **횟수**가 아니라 totalDuration·maxDuration 이다. Profiler 가 App 전체를 감싸고 있어 트리 어디가 얼마나 다시 그려지든 커밋은 1회로 잡힌다 — 줄어드는 것은 범위이고, 그건 시간에 나타난다.\n`;
+  md += `- 카운터가 한쪽에만 있으면 그 코드에 카운터가 없다는 뜻이지 값이 0 이라는 뜻이 아니다. \`window.setPos.changed\` 는 after 에서 추가된 것이다.\n\n`;
 
   for (const scenario of SCENARIOS) {
     md += `## ${scenario}\n\n`;
