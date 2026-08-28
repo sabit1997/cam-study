@@ -373,12 +373,46 @@ ai-action-describe   3.3 KB
 
 `app/favicon.ico` 는 지우지 않고 `public/` 으로 옮겼다. `index.html` 이 `/favicon.ico` 를 참조하는데 `public/` 에 없어서 **빌드 산출물에 favicon 이 빠져 있었다** — 즉 favicon 이 404 였다. 옮기면서 고쳐진다.
 
+### 패키징 검증 (통합 브랜치)
+
+세 개선을 `perf/bundle-integration` 으로 합쳐 한 번에 검증했다. 이 작업의 주된 실패 모드는 dev 가 아니라 패키징 후에 드러나기 때문이다.
+
+**먼저 패키징이 아예 깨져 있었다.** `directories.output` 이 없어 기본값 `dist` 를 쓰는데 Vite 의 `outDir` 도 `dist` 이고 `files` 에 `dist/**/*` 가 있다. electron-builder 가 자기 출력을 자기 입력 glob 으로 다시 잡아 파일 목록이 어긋난다.
+
+```
+⨯ ENOENT: no such file or directory, open 'dist\assets\ai-action-describe-B1bRkrwp.js'
+```
+
+없다고 한 파일의 해시가 그 시점 `dist` 에 있던 것(`CHhhlIq8`)과 다르다. **크기 문제로만 알고 있었는데 빌드를 죽이고 있었다.** `directories.output` 을 `release` 로 옮겨 해결했다.
+
+| 항목 | 고치기 전 | 고친 뒤 |
+| --- | --- | --- |
+| `app.asar` | 524.06 MB | **164.32 MB** |
+| asar 내 `win-unpacked` 항목 | 75 | **0** |
+| `win-unpacked` 전체 | 882.63 MB | 524 MB |
+
+**패키징된 앱 실행 결과** (`release/win-unpacked/외요의 캠스터디.exe`):
+
+| 확인 항목 | 결과 |
+| --- | --- |
+| 기동 · 창 표시 | ✓ (`bundle-out/packaged/app-window.png`) |
+| `MODULE_NOT_FOUND` / `Cannot find module` | **없음** |
+| 처리되지 않은 예외 | 없음 (electron-updater 건 제외, 아래) |
+| `electron-store` | ✓ **로그인 세션과 창 배치가 복원됐다** |
+| `electron-updater` | `--dir` 빌드에는 `app-update.yml` 이 없어 실패가 정상. 그 지점까지 실행되고 정상적으로 에러를 낸 것이 minify 된 코드가 살아있다는 증거다. NSIS 빌드에서는 `app-update.yml` 이 정상 생성된다 |
+| NSIS 인스톨러 | ✓ `release/CamStudySetup.exe` **124.83 MB** |
+
+**아직 사용자 손이 필요한 것**: 방해요소 tracker(`get-windows`)는 실제로 공부 세션을 시작하고 다른 앱으로 전환해야 검증된다. `get-windows` 는 esbuild `external` 이자 `asarUnpack` 대상이라 이 작업에서 가장 깨지기 쉬운 지점이다.
+
+> 인스톨러 124.83 MB 를 발표자료의 233.7 MB 와 직접 빼면 안 된다. 그쪽은 CI 릴리스 빌드(v1.2.0)의 HTTP `Content-Length` 이고 이쪽은 로컬 빌드다 — 서명·압축 조건이 다르다. **통제된 before/after 인스톨러 비교는 아직 하지 않았다.** 하려면 `main` 에서도 로컬로 같은 명령을 돌려야 한다.
+
 ### 아직 하지 않은 것
 
 | 항목 | 기대 효과 | 막는 것 |
 | --- | --- | --- |
-| `app.asar` 중복 Electron 런타임 제거 | 약 −333 MB | `directories.output` 을 `dist` 밖으로 옮기고 패키징 재검증 |
-| 빌드 타임 전용 413개 배제 | 약 −184 MB | `ignoredProductionDependencies` + 패키징된 앱에서 `MODULE_NOT_FOUND` 부재 확인 |
+| ~~`app.asar` 중복 Electron 런타임 제거~~ | ~~약 −333 MB~~ | **완료** — `directories.output: "release"`, 524.06 → 164.32 MB |
+| 빌드 타임 전용 413개 배제 | 약 −160 MB | `ignoredProductionDependencies` + 패키징된 앱에서 `MODULE_NOT_FOUND` 부재 확인. asar 에 `node_modules` 10,383 항목이 아직 남아 있다 |
+| 통제된 인스톨러 before/after | — | `main` 에서 로컬 NSIS 빌드를 떠야 비교가 성립한다 |
 | recharts → 자체 SVG | record 청크 −325 KB | 발표자료 개선안 5. 공수 1~2일 |
 | express → node:http + SSE | main.js −1.2 MB (minify 후 기준 재산정 필요) | 발표자료 개선안 6. SSE 재작성 리스크 |
 | size-limit CI 게이트 | 회귀 방지 | 위 항목들이 정리된 뒤 예산을 정해야 의미가 있다 |
