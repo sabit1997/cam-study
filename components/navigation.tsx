@@ -7,6 +7,41 @@ import { useEffect, useState } from "react";
 import { IoBarChartOutline, IoLogOutOutline, IoMoonOutline, IoSunnyOutline } from "react-icons/io5";
 import { useThemeStore } from "@/stores/theme-state";
 
+/**
+ * 상단바 시계.
+ *
+ * 별도 컴포넌트인 이유는 하나다. 이 값은 1초마다 바뀌는데, Navigation 안에 두면
+ * 그 1초마다 상단바 전체가 다시 그려진다. 상단바는 라우트와 무관하게 항상 마운트돼
+ * 있으므로 앱이 켜져 있는 내내 초당 한 번씩 일어나는 일이다.
+ *
+ * 상태를 쓰는 가장 작은 컴포넌트로 내려두면 리렌더가 이 <span> 하나로 좁혀진다.
+ */
+const Clock = ({ color }: { color: string }) => {
+  const [currentTime, setCurrentTime] = useState("");
+
+  useEffect(() => {
+    const updateTime = () => {
+      setCurrentTime(
+        new Date().toLocaleTimeString("ko-KR", {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+          hour12: false,
+        })
+      );
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <span style={{ fontSize: 11, color, fontVariantNumeric: "tabular-nums" }}>
+      {currentTime}
+    </span>
+  );
+};
+
 const Navigation = () => {
   const user = useUserStore((state) => state.user);
   const logoutUser = useUserStore((state) => state.logout);
@@ -18,24 +53,9 @@ const Navigation = () => {
   const { mutate: logoutMutate } = useLogout();
 
   const [mounted, setMounted] = useState(false);
-  const [currentTime, setCurrentTime] = useState("");
 
   useEffect(() => {
     setMounted(true);
-    const updateTime = () => {
-      const now = new Date();
-      setCurrentTime(
-        now.toLocaleTimeString("ko-KR", {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: false,
-        })
-      );
-    };
-    updateTime();
-    const interval = setInterval(updateTime, 1000);
-    return () => clearInterval(interval);
   }, []);
 
   const handleLogout = () => {
@@ -119,9 +139,7 @@ const Navigation = () => {
             <span>내 통계</span>
           </Link>
 
-          <span style={{ fontSize: 11, color: isDarkMode ? "#9ca3af" : "#6b7280", fontVariantNumeric: "tabular-nums" }}>
-            {currentTime}
-          </span>
+          <Clock color={isDarkMode ? "#9ca3af" : "#6b7280"} />
 
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <div

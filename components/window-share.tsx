@@ -1,5 +1,5 @@
 
-import { useRef, useState, useEffect, useCallback } from "react";
+import { memo, useRef, useState, useEffect, useCallback } from "react";
 import { FiMonitor, FiEye, FiEyeOff, FiX } from "react-icons/fi";
 import {
   getStreamById,
@@ -14,7 +14,7 @@ interface WindowShareProps {
   onAspectRatioDetected?: (ratio: number) => void;
 }
 
-export default function WindowShare({ windowId, onAspectRatioDetected }: WindowShareProps) {
+function WindowShare({ windowId, onAspectRatioDetected }: WindowShareProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const trackRef = useRef<MediaStreamTrack | null>(null);
@@ -211,3 +211,11 @@ export default function WindowShare({ windowId, onAspectRatioDetected }: WindowS
     </div>
   );
 }
+
+/**
+ * 창 컨테이너(window.tsx)는 드래그·리사이즈·포커스 이동마다 다시 그려진다.
+ * memo 가 없으면 그 리렌더가 여기까지 그대로 내려온다 — 창을 한 번 클릭할 때마다
+ * 이 컴포넌트 전체가 다시 그려진다는 뜻이다. props(windowId·window·setState 함수)는
+ * 전부 안정적이라 memo 가 실제로 막아준다.
+ */
+export default memo(WindowShare);

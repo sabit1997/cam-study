@@ -186,13 +186,26 @@ const AddWindow = ({ window, vw, vh }: AddWindowProps) => {
   }, [contentRatio]); // eslint-disable-line react-hooks/exhaustive-deps -- rnd 인스턴스 ref는 React 관리 밖이므로 제외 안전
 
   // Sync from the store/viewport only when not interacting.
+  //
+  // 값이 같아도 새 객체를 넣으면 React 는 상태가 바뀐 것으로 보고 다시 그린다.
+  // 리사이즈 한 번에 이 effect 가 창 개수만큼 돌고, 그중 상당수는 좌표가 그대로다
+  // (clampWindowPosition 이 경계에서 같은 값을 돌려주는 경우가 흔하다).
+  // useViewportSize 가 이미 쓰는 "값이 같으면 이전 참조" 패턴을 여기도 적용한다.
   useEffect(() => {
     if (dragging.current || resizing.current) return;
     const clamped = clampWindowPosition(pxX, pxY, pxW, pxH, vw, vh);
     // window prop 이 글로벌 window 를 shadow 하므로 globalThis 사용
     globalThis.__perf?.count("window.setPos");
-    setPos(clamped);
-    setSz({ w: pxW, h: pxH });
+    setPos((prev) =>
+      prev.x === clamped.x && prev.y === clamped.y
+        ? prev
+        : (globalThis.__perf?.count("window.setPos.changed"), clamped)
+    );
+    setSz((prev) =>
+      prev.w === pxW && prev.h === pxH
+        ? prev
+        : (globalThis.__perf?.count("window.setSz.changed"), { w: pxW, h: pxH })
+    );
   }, [pxX, pxY, pxW, pxH, vw, vh]);
 
   useEffect(() => {
@@ -286,23 +299,29 @@ const AddWindow = ({ window, vw, vh }: AddWindowProps) => {
         }
       : { lockAspectRatio: false as const };
 
-  const windowContent: Partial<Record<Window["type"], React.ReactNode>> = {
-    camera: (
-      <CameraView
-        windowId={window.id}
-        onAspectRatioDetected={setContentRatio}
-      />
-    ),
-    youtube: <YouTubePlayer window={window} />,
-    window: (
-      <WindowShare
-        windowId={window.id}
-        onAspectRatioDetected={setContentRatio}
-      />
-    ),
-    todo: <Todos window={window} />,
-    // windowId를 넘겨야 명령 팔레트가 "이 창의 타이머"를 지목할 수 있다(utils/timer-bridge.ts).
-    timer: <Timer windowId={window.id} />,
+  // 예전에는 여섯 타입의 element 를 전부 만든 객체에서 하나만 꺼내 썼다. 나머지
+  // 다섯은 만들자마자 버려진다. 이 컴포넌트는 드래그·리사이즈·포커스 이동마다 다시
+  // 그려지므로 그 낭비가 매번 반복된다. 필요한 것만 만든다.
+  const renderContent = () => {
+    switch (type) {
+      case "camera":
+        return (
+          <CameraView windowId={id} onAspectRatioDetected={setContentRatio} />
+        );
+      case "youtube":
+        return <YouTubePlayer window={window} />;
+      case "window":
+        return (
+          <WindowShare windowId={id} onAspectRatioDetected={setContentRatio} />
+        );
+      case "todo":
+        return <Todos window={window} />;
+      // windowId를 넘겨야 명령 팔레트가 "이 창의 타이머"를 지목할 수 있다(utils/timer-bridge.ts).
+      case "timer":
+        return <Timer windowId={id} />;
+      default:
+        return null;
+    }
   };
 
   return (
@@ -526,7 +545,7 @@ const AddWindow = ({ window, vw, vh }: AddWindowProps) => {
           style={{ display: isMinimized ? "none" : undefined }}
         >
           <Suspense fallback={<div className="w-full h-full bg-white dark:bg-[#161822]" />}>
-            {windowContent[type] ?? null}
+            {renderContent()}
           </Suspense>
           {!isLocked && (
             <div className="absolute bottom-0 right-0 w-5 h-5 pointer-events-none z-10">
