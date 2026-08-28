@@ -38,8 +38,6 @@ const HomePage = lazy(() => import("@/pages/home"));
 const SignInPage = lazy(() => import("@/pages/sign-in"));
 const SignUpPage = lazy(() => import("@/pages/sign-up"));
 const RecordPage = lazy(() => import("@/pages/my-page/record"));
-const StatisticsPage = lazy(() => import("@/pages/my-page/statistics"));
-const ThemeSettingPage = lazy(() => import("@/pages/my-page/theme-setting"));
 const DistractionSettingsPage = lazy(() => import("@/pages/my-page/distraction"));
 const DownloadPage = lazy(() => import("@/pages/download"));
 
@@ -161,21 +159,15 @@ function AppShell() {
                   </RequireAuth>
                 }
               />
+              {/* 옛 경로 두 개는 기록 페이지로 흡수됐다. lazy 페이지로 두면 리다이렉트
+                  한 줄을 위해 청크를 내려받는 왕복이 생기므로 여기서 바로 보낸다. */}
               <Route
                 path="/my-page/statistics"
-                element={
-                  <RequireAuth>
-                    <StatisticsPage />
-                  </RequireAuth>
-                }
+                element={<Navigate to="/my-page/record" replace />}
               />
               <Route
                 path="/my-page/theme-setting"
-                element={
-                  <RequireAuth>
-                    <ThemeSettingPage />
-                  </RequireAuth>
-                }
+                element={<Navigate to="/my-page/record" replace />}
               />
               <Route
                 path="/my-page/distraction"
