@@ -30,7 +30,6 @@
   },
   "dependencies": {
     "@google/genai": "^2.18.0",
-    "@radix-ui/react-tooltip": "^1.2.7",
     "@tanstack/react-query": "^5.74.3",
     "axios": "^1.8.4",
     "electron-store": "^11.0.2",
