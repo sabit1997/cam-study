@@ -19,9 +19,32 @@ declare const __AI_PROXY_URL__: string | undefined;
 const AI_PROXY_URL: string =
   (typeof __AI_PROXY_URL__ !== "undefined" ? __AI_PROXY_URL__ : process.env.AI_PROXY_URL) ?? "";
 
+/**
+ * 정적 응답의 캐시 정책.
+ *
+ * 데스크탑 앱은 이 Express 가 로컬에서 dist 를 서빙한다. express.static 의 기본값은
+ * `Cache-Control: public, max-age=0` 이다 — 캐시는 하되 쓰기 전에 매번 물어보라는 뜻이라,
+ * 앱을 켤 때마다 자산마다 조건부 요청이 오간다. 본문은 304 로 안 오지만 왕복은 그대로다.
+ *
+ * /assets 아래는 파일명에 콘텐츠 해시가 들어 있어(Vite 기본값) 내용이 바뀌면 URL 이
+ * 바뀐다. 그래서 immutable 로 못박아도 낡은 파일을 잡고 있을 수가 없다.
+ * index.html 은 반대다 — 새 배포의 자산 해시를 담고 있으므로 항상 재검증해야 한다.
+ * no-cache 는 "캐시하지 말라" 가 아니라 "쓰기 전에 물어보라" 다.
+ */
+const ONE_YEAR_SECONDS = 31_536_000;
+
+function setStaticCacheHeaders(res: express.Response, filePath: string) {
+  const normalized = filePath.replace(/\\/g, "/");
+  if (normalized.includes("/assets/")) {
+    res.setHeader("Cache-Control", `public, max-age=${ONE_YEAR_SECONDS}, immutable`);
+    return;
+  }
+  res.setHeader("Cache-Control", "no-cache");
+}
+
 export function createExpressApp(staticDir: string) {
   const app = express();
-  app.use(express.static(staticDir));
+  app.use(express.static(staticDir, { setHeaders: setStaticCacheHeaders }));
 
   // express.json()을 전역으로 걸면 request 스트림이 소비되어 아래 프록시가
   // 백엔드로 body를 못 넘긴다(→ 504). JSON 파싱이 실제로 필요한 라우트에만 적용.
@@ -193,7 +216,9 @@ export function createExpressApp(staticDir: string) {
   );
 
   // SPA 폴백. Express 5에서는 app.get("*")가 라우트 등록 시 예외를 던진다.
+  // 이 경로도 index.html 을 주므로 static 과 같은 재검증 정책을 따른다.
   app.use((_req, res) => {
+    res.setHeader("Cache-Control", "no-cache");
     res.sendFile(path.join(staticDir, "index.html"));
   });
 
