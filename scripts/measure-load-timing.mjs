@@ -29,7 +29,12 @@ import { execFileSync } from "node:child_process";
 import { chromium } from "playwright";
 
 const ROOT = path.join(import.meta.dirname, "..");
-const OUT_DIR = path.join(ROOT, "bundle-out", "timing");
+// 인증/비인증은 재는 대상이 다르므로 결과를 섞지 않는다
+const OUT_DIR = path.join(
+  ROOT,
+  "bundle-out",
+  process.argv.includes("--authed") ? "timing-authed" : "timing"
+);
 const LABELS = ["before", "after"];
 
 const MODE = process.argv[2];
@@ -48,6 +53,39 @@ const RUNS = Number(
   (process.argv.find((a) => a.startsWith("--runs=")) ?? "").split("=")[1] ?? 7
 );
 const WARMUP = 1;
+
+/**
+ * 인증 모드.
+ *
+ * 기본(비인증)은 `/` 에서 sign-in 으로 튕기므로 홈 라우트 청크를 아예 받지 않는다.
+ * 그래서 `home` 청크만 줄이는 개선은 이 모드에서 잴 수 없다 — 실제로 radix tooltip
+ * 제거가 그랬다. 임계 경로(index/react/jsx-runtime)는 1 바이트도 안 변하고 `home` 만
+ * 113.6 → 68.6 KB 로 줄었는데, 비인증 측정에서는 차이가 0 으로 나온다.
+ *
+ * `--authed` 는 로그인 쿠키를 주입하고 `/api/*` 를 가로채 홈까지 진입시킨다. 실제
+ * 백엔드에는 요청이 가지 않는다(capture-ui-evidence.mjs 와 같은 방식).
+ *
+ * API 응답 지연은 고정 40 ms 로 둔다. 스로틀의 RTT(562.5 ms)를 그대로 물리면 창이
+ * 뜨는 시각을 API 왕복이 지배해 청크 크기 효과가 묻힌다. 두 라벨에 같은 값이 걸리므로
+ * 비교에는 영향이 없고, 절대값을 "실서버 기준 홈 진입 시간" 으로 읽으면 안 된다는
+ * 뜻이다.
+ */
+const AUTHED = process.argv.includes("--authed");
+const API_DELAY_MS = 40;
+
+/** 창 목록 픽스처 — capture-ui-evidence.mjs 와 같은 구성 */
+const WINDOW_FIXTURE = [
+  { id: 9001, type: "todo", x: 420, y: 260, width: 360, height: 480, zIndex: 1, userId: "timing", createdAt: "2026-01-01T00:00:00.000Z" },
+  { id: 9002, type: "timer", x: 1180, y: 0, width: 320, height: 380, zIndex: 2, userId: "timing", createdAt: "2026-01-01T00:00:00.000Z" },
+];
+
+function mockApi(pathname) {
+  if (pathname === "/api/windows") return WINDOW_FIXTURE;
+  if (/^\/api\/windows\/\d+\/todos$/.test(pathname)) return [];
+  if (pathname === "/api/timer/today") return { totalSeconds: 0, dailyHourGoal: 0, pomoCycles: 0 };
+  if (pathname === "/api/timer/goal") return { hour: 0 };
+  return {};
+}
 
 // ─────────────── 헬퍼 (perf-measure.mjs 와 동일 규약) ───────────────
 const sorted = (a) => [...a].filter((x) => typeof x === "number").sort((x, y) => x - y);
@@ -194,7 +232,55 @@ function serve(dir) {
 
 async function runOnce(browser, base) {
   // 컨텍스트마다 캐시가 분리되므로 회차마다 새로 만든다 (DevTools 의 Disable cache 에 해당)
-  const context = await browser.newContext();
+  const context = await browser.newContext(
+    // SW 가 fetch 를 가로채면 아래 route 와 겹친다
+    AUTHED ? { serviceWorkers: "block" } : {}
+  );
+
+  if (AUTHED) {
+    // 로그인 상태는 쿠키 하나로 결정된다(stores/user-state.tsx)
+    await context.addCookies([
+      {
+        name: "cam-study-user",
+        value: encodeURIComponent(JSON.stringify({ userId: 1, username: "timing" })),
+        domain: "127.0.0.1",
+        path: "/",
+      },
+    ]);
+    await context.route(`${base}/api/**`, async (route) => {
+      const url = new URL(route.request().url());
+      await new Promise((r) => setTimeout(r, API_DELAY_MS));
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify(mockApi(url.pathname)),
+      });
+    });
+    // 창이 실제로 화면에 나타난 시각. load 나 FCP 는 스켈레톤만 그려도 찍히므로
+    // "앱을 쓸 수 있게 된 시점" 과 다르다. 홈 라우트 청크 크기가 여기에 드러난다.
+    await context.addInitScript(() => {
+      window.__windowsReadyAt = null;
+      const start = () => {
+        if (document.querySelector("[data-window-id]")) {
+          window.__windowsReadyAt = performance.now();
+          return;
+        }
+        const observer = new MutationObserver(() => {
+          if (window.__windowsReadyAt == null && document.querySelector("[data-window-id]")) {
+            window.__windowsReadyAt = performance.now();
+            observer.disconnect();
+          }
+        });
+        observer.observe(document.documentElement, { childList: true, subtree: true });
+      };
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", start);
+      } else {
+        start();
+      }
+    });
+  }
+
   const page = await context.newPage();
   const cdp = await context.newCDPSession(page);
   await cdp.send("Network.enable");
@@ -211,6 +297,12 @@ async function runOnce(browser, base) {
       )
       .catch(() => {});
 
+    if (AUTHED) {
+      await page
+        .waitForSelector("[data-window-id]", { timeout: 60_000 })
+        .catch(() => {});
+    }
+
     return await page.evaluate(() => {
       const nav = performance.getEntriesByType("navigation")[0];
       const fcp = performance
@@ -222,6 +314,7 @@ async function runOnce(browser, base) {
         fcp: fcp ? fcp.startTime : null,
         domContentLoaded: nav ? nav.domContentLoadedEventEnd : null,
         load: nav ? nav.loadEventEnd : null,
+        windowsReady: window.__windowsReadyAt ?? null,
         requests: res.length,
         jsRequests: js.length,
         transferBytes: res.reduce((s, r) => s + (r.transferSize || 0), 0),
@@ -276,6 +369,10 @@ const METRICS = [
   { key: "fcp", name: "FCP (첫 콘텐츠 페인트)", fmt: ms, primary: true },
   { key: "domContentLoaded", name: "DOMContentLoaded", fmt: ms, primary: true },
   { key: "load", name: "load", fmt: ms, primary: true },
+  // 창이 실제로 뜬 시각. 라우트 청크 크기가 드러나는 유일한 지표라 인증 모드의 주 지표다.
+  ...(AUTHED
+    ? [{ key: "windowsReady", name: "창 표시 (홈 진입 완료)", fmt: ms, primary: true }]
+    : []),
   { key: "requests", name: "요청 수", fmt: (v) => (v == null ? "—" : String(Math.round(v))) },
   { key: "jsRequests", name: "JS 요청 수", fmt: (v) => (v == null ? "—" : String(Math.round(v))) },
   { key: "transferBytes", name: "전송량", fmt: kb },
@@ -306,6 +403,13 @@ let md = `# 첫 로드 시간 비교 (${RUNS}회 중앙값)\n\n`;
 md += `- before: \`${meta.before.commit ?? "—"}\` · after: \`${meta.after.commit ?? "—"}\`\n`;
 md += `- 측정일: ${raw.measuredAt}\n`;
 md += `- 스로틀: Fast 3G (${(NET.downloadThroughput / 1024).toFixed(0)} KB/s · RTT ${NET.latency} ms) · CPU ${CPU_THROTTLE}×\n`;
+md += `- 모드: **${AUTHED ? "인증 (홈 라우트까지 진입)" : "비인증 (sign-in 에서 멈춤)"}**\n`;
+if (AUTHED) {
+  md += `  - 로그인 쿠키를 주입하고 \`/api/*\` 를 고정 ${API_DELAY_MS} ms 지연으로 가로챈다. 실제 백엔드에는 요청이 가지 않는다.\n`;
+  md += `  - API 지연을 RTT(${NET.latency} ms)가 아니라 ${API_DELAY_MS} ms 로 둔 이유: 왕복이 창 표시 시각을 지배하면 청크 크기 효과가 묻힌다. 두 라벨에 같은 값이 걸리므로 비교에는 영향이 없지만, 절대값을 실서버 기준 홈 진입 시간으로 읽으면 안 된다.\n`;
+} else {
+  md += `  - \`/\` 가 sign-in 으로 튕기므로 홈 라우트 청크(\`home\`)는 받지 않는다. 그 청크만 줄이는 개선은 이 모드에서 차이가 0 으로 나온다 — \`--authed\` 로 재야 한다.\n`;
+}
 md += `- 회차마다 before/after 를 교차 실행하고 순서를 뒤집었다. 컨텍스트를 매번 새로 만들어 캐시를 비웠다.\n\n`;
 
 md += `| 지표 | before 중앙값 | after 중앙값 | 차이 | before 잡음(max−min) | after 잡음 |\n`;
@@ -362,18 +466,41 @@ for (const m of METRICS.filter((x) => x.primary)) {
     hint: "차이가 잡음 아래다 — 이 지표로는 빨라졌다고 말할 수 없다",
   });
 }
-checks.push({
-  name: "전송량이 두 라벨에서 비슷",
-  expected: "±5 %",
-  got: `${kb(stats.transferBytes.before.median)} / ${kb(stats.transferBytes.after.median)}`,
-  ok:
-    stats.transferBytes.before.median && stats.transferBytes.after.median
-      ? Math.abs(
-          stats.transferBytes.after.median / stats.transferBytes.before.median - 1
-        ) < 0.05
-      : false,
-  hint: "총 전송량이 크게 다르면 임계 경로 효과와 총량 효과가 섞인다",
-});
+if (AUTHED) {
+  // 인증 모드에서는 전송량이 줄어드는 것이 곧 개선이다(라우트 청크가 작아졌다는 뜻).
+  // 비인증 모드의 "비슷해야 한다" 규칙을 그대로 쓰면 성공을 실패로 읽는다.
+  const b = stats.transferBytes.before.median;
+  const a = stats.transferBytes.after.median;
+  checks.push({
+    name: "전송량 변화 (판정 아님 · 정보)",
+    expected: "라우트 청크 감소분만큼",
+    got: b && a ? `${kb(b)} → ${kb(a)} (${(((a - b) / b) * 100).toFixed(1)} %)` : "—",
+    ok: true,
+    hint: "",
+  });
+  checks.push({
+    name: "창이 실제로 떴다",
+    expected: "두 라벨 모두 windowsReady 기록",
+    got: `${stats.windowsReady.before.vals.filter((v) => v != null).length}/${RUNS} · ${stats.windowsReady.after.vals.filter((v) => v != null).length}/${RUNS}`,
+    ok:
+      stats.windowsReady.before.vals.every((v) => v != null) &&
+      stats.windowsReady.after.vals.every((v) => v != null),
+    hint: "쿠키 주입이나 /api mock 이 실패해 sign-in 으로 튕겼을 가능성",
+  });
+} else {
+  checks.push({
+    name: "전송량이 두 라벨에서 비슷",
+    expected: "±5 %",
+    got: `${kb(stats.transferBytes.before.median)} / ${kb(stats.transferBytes.after.median)}`,
+    ok:
+      stats.transferBytes.before.median && stats.transferBytes.after.median
+        ? Math.abs(
+            stats.transferBytes.after.median / stats.transferBytes.before.median - 1
+          ) < 0.05
+        : false,
+    hint: "총 전송량이 크게 다르면 임계 경로 효과와 총량 효과가 섞인다",
+  });
+}
 
 md += `## 자가 점검\n\n| 항목 | 기대 | 관측 | 결과 | 힌트 |\n|---|---|---|---|---|\n`;
 for (const c of checks) {
@@ -496,11 +623,11 @@ async function renderPng() {
   td.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
   .foot{margin-top:14px;color:var(--ink-muted);font-size:11px}
 </style>
-<h1>첫 로드 시간 — before / after (${RUNS}회)</h1>
+<h1>첫 로드 시간 — before / after (${RUNS}회)${AUTHED ? " · 인증 모드" : ""}</h1>
 <div class="meta">
   before <code>${esc(meta.before.commit ?? "—")}</code> · after <code>${esc(meta.after.commit ?? "—")}</code> ·
   Fast 3G (${(NET.downloadThroughput / 1024).toFixed(0)} KB/s · RTT ${NET.latency} ms) · CPU ${CPU_THROTTLE}× ·
-  회차마다 교차 실행 · 캐시 없음
+  회차마다 교차 실행 · 캐시 없음${AUTHED ? ` · 로그인 쿠키 주입, /api mock ${API_DELAY_MS} ms` : " · 비인증(sign-in 에서 멈춤)"}
 </div>
 <div class="legend">
   <span><span class="swatch before"></span>before</span>
