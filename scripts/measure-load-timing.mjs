@@ -284,6 +284,27 @@ async function runOnce(browser, base) {
   const page = await context.newPage();
   const cdp = await context.newCDPSession(page);
   await cdp.send("Network.enable");
+
+  /**
+   * 전송량은 CDP 로 센다. 리소스 타이밍(performance.getEntriesByType) 은
+   * cross-origin 응답의 transferSize 를 보고하지 않는다 — Timing-Allow-Origin 이
+   * 없으면 0 이고, 항목 자체가 안 잡히기도 한다.
+   *
+   * 이걸 모르고 재다가 정반대 결론을 낼 뻔했다. Google Fonts 를 로컬로 옮기는
+   * 변경에서 리소스 타이밍은 595.3 → 642.0 KB "증가" 로 보고했는데, CDP 로 세니
+   * 658.6 → 657.2 KB 였다. before 의 CDN 폰트 48.8 KB 가 통째로 빠져 있었던 것이다.
+   * 외부 요청을 없애는 개선일수록 이 함정에 정확히 걸린다.
+   */
+  const wire = { bytes: 0, requests: 0, jsRequests: 0 };
+  const urlById = new Map();
+  cdp.on("Network.requestWillBeSent", (e) => urlById.set(e.requestId, e.request.url));
+  cdp.on("Network.loadingFinished", (e) => {
+    wire.bytes += e.encodedDataLength;
+    wire.requests += 1;
+    const url = urlById.get(e.requestId) ?? "";
+    if (url.split("?")[0].endsWith(".js")) wire.jsRequests += 1;
+  });
+
   await cdp.send("Network.emulateNetworkConditions", NET);
   await cdp.send("Emulation.setCPUThrottlingRate", { rate: CPU_THROTTLE });
 
@@ -303,7 +324,7 @@ async function runOnce(browser, base) {
         .catch(() => {});
     }
 
-    return await page.evaluate(() => {
+    const timing = await page.evaluate(() => {
       const nav = performance.getEntriesByType("navigation")[0];
       const fcp = performance
         .getEntriesByType("paint")
@@ -315,12 +336,17 @@ async function runOnce(browser, base) {
         domContentLoaded: nav ? nav.domContentLoadedEventEnd : null,
         load: nav ? nav.loadEventEnd : null,
         windowsReady: window.__windowsReadyAt ?? null,
-        requests: res.length,
-        jsRequests: js.length,
-        transferBytes: res.reduce((s, r) => s + (r.transferSize || 0), 0),
         jsDecodedBytes: js.reduce((s, r) => s + (r.decodedBodySize || 0), 0),
+        // 대조용. cross-origin 이 빠지므로 아래 wire 값과 갈리면 외부 요청이 있다는 뜻이다.
+        perfTransferBytes: res.reduce((s, r) => s + (r.transferSize || 0), 0),
       };
     });
+    return {
+      ...timing,
+      requests: wire.requests,
+      jsRequests: wire.jsRequests,
+      transferBytes: wire.bytes,
+    };
   } finally {
     await cdp.send("Emulation.setCPUThrottlingRate", { rate: 1 }).catch(() => {});
     await context.close();
@@ -452,6 +478,24 @@ checks.push({
   ok: RUNS >= 5,
   hint: "중앙값이 의미를 갖기엔 부족하다",
 });
+// 두 계측이 갈리는 폭이 곧 cross-origin 응답의 크기다. 리소스 타이밍은 그것을
+// 보고하지 않으므로, 이 줄이 "외부에서 무엇을 얼마나 받고 있는가" 를 드러낸다.
+{
+  const gap = (label) => {
+    const wireMed = median(results[label].map((r) => r.transferBytes));
+    const perfMed = median(results[label].map((r) => r.perfTransferBytes));
+    return wireMed != null && perfMed != null ? wireMed - perfMed : null;
+  };
+  const gapBefore = gap("before");
+  const gapAfter = gap("after");
+  checks.push({
+    name: "cross-origin 전송량 (wire − 리소스타이밍)",
+    expected: "0 이면 외부 의존 없음",
+    got: `before ${kb(gapBefore)} · after ${kb(gapAfter)}`,
+    ok: true, // 판정이 아니라 정보 — 외부 의존을 없애는 변경에서 이 값이 줄어든다
+    hint: "",
+  });
+}
 // 핵심 점검: 차이가 잡음보다 큰가. 아니면 "빨라졌다" 고 말할 수 없다.
 for (const m of METRICS.filter((x) => x.primary)) {
   const b = stats[m.key].before;
