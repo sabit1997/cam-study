@@ -657,5 +657,15 @@ ${strips}
   console.log(`→ ${path.relative(ROOT, dest)}`);
 }
 
-await renderPng();
+// PNG 는 부록이다. 9회 × 2라벨을 돌린 뒤 Chrome 을 한 번 더 띄우다 실패한 적이
+// 있는데(재현되지 않는 일시적 실패였다), 그때 raw.json 과 summary.md 는 이미
+// 저장돼 있는데도 프로세스가 0이 아닌 코드로 죽었다. 측정을 다시 돌리게 만들
+// 이유가 없다 — 실패를 알리되 결과는 지킨다.
+try {
+  await renderPng();
+} catch (error) {
+  console.error(`⚠ PNG 렌더 실패 (수치는 아래 파일에 남아 있다): ${error.message}`);
+  console.error(`  다시 구우려면: node scripts/measure-load-timing.mjs compare 를 재실행하거나`);
+  console.error(`  ${path.relative(ROOT, path.join(OUT_DIR, "timing.html"))} 를 브라우저에서 열어 캡처하세요.`);
+}
 console.log(`→ ${path.relative(ROOT, path.join(OUT_DIR, "summary.md"))}`);
