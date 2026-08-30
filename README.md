@@ -129,6 +129,11 @@ CamStudy가 Gemini에 실제로 보내는 것은 위 표의 마지막 세 항목
 
 ## 🛠️ 개발 환경 설치 및 실행
 
+### 요구 환경
+
+- Node.js **20.19+** 또는 **22.12+** (`vite`, `electron-builder`가 요구)
+- macOS 실기(데스크탑 빌드/실측용)
+
 ### 의존성 설치
 
 ```bash
@@ -156,6 +161,28 @@ npm run build:app
 ```
 
 빌드 결과물은 `dist/` 폴더에 생성됩니다.
+
+### 성능 측정 (자동 파이프라인)
+
+번들 크기와 Electron 앱 크기의 회귀를 사람 손 없이 잰다. 원인·계획 문서는 `docs/lightening-*.md` 참고.
+
+**웹 번들 (dist/*.js, 초기 로딩 네트워크/콘솔/coverage)**
+
+```bash
+npm run perf:bundle:before      # 변경 전 스냅샷
+npm run perf:bundle:after       # 변경 후 스냅샷
+npm run perf:bundle:diff        # 회귀 리포트 (임계값 +5% 초과 시 exit 1)
+```
+
+**Electron 앱 (.app 총합, asar/unpacked/Frameworks/로케일 breakdown)**
+
+```bash
+npm run perf:electron:before
+npm run perf:electron:after
+npm run perf:electron:diff
+```
+
+결과: `perf-out/bundle/`, `perf-out/electron/` 아래 `summary.md`, `diff.md`, 원시 JSON.
 
 ## 📝 프로젝트 구조
 

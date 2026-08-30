@@ -50,6 +50,7 @@ CLAUDE.md
 /.omx
 perf-auth.json
 perf-out/
+release/
 window-fixture.json
 
 /docs
