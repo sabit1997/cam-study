@@ -241,6 +241,29 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: "dist",
       emptyOutDir: true,
+      rollupOptions: {
+        output: {
+          // tanstack query 는 QueryClientProvider 를 통해 eager 로 참조되므로
+          // 항상 로드된다. 별도 청크로 격리하지 않으면 index 진입 청크에 통째로
+          // 편입돼 lazy 로 뺀 다른 코드(예: zod)의 감량이 지워진다.
+          // (docs/lightening-analysis.md §3)
+          //
+          // Rolldown 은 rollup 의 함수형 manualChunks 대신 advancedChunks.groups
+          // 스펙만 지원한다.
+          advancedChunks: {
+            groups: [
+              {
+                name: "tanstack-query",
+                test: /node_modules[\\/]@tanstack[\\/]/,
+              },
+              // recharts 격리는 rolldown 청크링과 궁합이 안 맞는다.
+              // 시도했더니 recharts 청크가 공용 vendor 로 오인돼 홈 로딩에서
+              // preload 되면서 홈 transfer +42% 회귀. 원상 복구 후 별도 이슈로
+              // "record 페이지 내에서 recharts 를 dynamic import" 스파이크.
+            ],
+          },
+        },
+      },
     },
     server: {
       port: 3000,
