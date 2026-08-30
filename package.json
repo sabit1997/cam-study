@@ -20,20 +20,29 @@
     "preview": "vite preview",
     "perf:auth": "node perf-auth-setup.mjs",
     "perf:before": "node perf-measure.mjs before",
-    "perf:after": "node perf-measure.mjs after"
+    "perf:after": "node perf-measure.mjs after",
+    "perf:bundle:before": "node scripts/perf-measure-bundle.mjs before",
+    "perf:bundle:after": "node scripts/perf-measure-bundle.mjs after",
+    "perf:bundle:diff": "node scripts/perf-measure-bundle.mjs diff",
+    "perf:electron:before": "node scripts/perf-measure-electron.mjs before",
+    "perf:electron:after": "node scripts/perf-measure-electron.mjs after",
+    "perf:electron:diff": "node scripts/perf-measure-electron.mjs diff"
   },
   "dependencies": {
-    "@google/genai": "^2.18.0",
-    "@radix-ui/react-tooltip": "^1.2.7",
-    "@tanstack/react-query": "^5.74.3",
-    "@uiw/react-color": "^2.5.4",
     "axios": "^1.8.4",
     "electron-store": "^11.0.2",
     "electron-updater": "^6.8.9",
     "express": "^5.2.1",
     "get-windows": "^9.3.0",
     "http-proxy-middleware": "^4.2.0",
-    "qs": "^6.14.0",
+    "qs": "^6.14.0"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^4.1.0",
+    "@google/genai": "^2.18.0",
+    "@radix-ui/react-tooltip": "^1.2.7",
+    "@tanstack/react-query": "^5.74.3",
+    "@uiw/react-color": "^2.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-error-boundary": "^6.1.2",
@@ -45,10 +54,7 @@
     "sonner": "^2.0.7",
     "use-debounce": "^10.0.4",
     "zod": "^4.4.3",
-    "zustand": "^5.0.3"
-  },
-  "devDependencies": {
-    "@electron/rebuild": "^4.1.0",
+    "zustand": "^5.0.3",
     "@eslint/eslintrc": "^3",
     "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4.1.4",
@@ -86,6 +92,7 @@
     "productName": "외요의 캠스터디",
     "asar": true,
     "npmRebuild": false,
+    "electronLanguages": ["ko", "en", "en-US"],
     "files": [
       "package.json",
       "dist-electron/**/*",

@@ -7,7 +7,6 @@ import {
   useLocation,
 } from "react-router-dom";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { ErrorBoundary } from "react-error-boundary";
 import { Toaster } from "sonner";
 import { getQueryClient } from "@/apis/query-client";
@@ -15,14 +14,32 @@ import { setGlobalQueryClient } from "@/apis/request";
 import { useUserStore } from "@/stores/user-state";
 import Navigation from "@/components/navigation";
 import GlobalInitializer from "@/components/global-Initializer";
-import ScreenPickerModal from "@/components/modals/screen-picker-modal";
-import AiActionRunner from "@/components/ai/ai-action-runner";
-import CommandPalette from "@/components/ai/command-palette";
 import ServiceWorkerRegister from "@/components/service-worker-register";
-import UpdateNotifier from "@/components/update-notifier";
 import ErrorFallback from "@/components/error-boundary";
 import AuthService from "@/apis/services/auth-services/service";
 import { onRenderProbe } from "@/dev/perfProbe";
+
+// AI 러너와 명령 팔레트는 사용자 인터랙션 이전엔 UI 미노출이라 lazy.
+// 정적 임포트로 두면 utils/ai-action-validate → types/ai-actions 를 통해
+// zod 스키마가 index 청크에 편승한다 (docs/lightening-analysis.md §1).
+const AiActionRunner = lazy(() => import("@/components/ai/ai-action-runner"));
+const CommandPalette = lazy(() => import("@/components/ai/command-palette"));
+
+// 화면 선택 모달과 업데이트 뱃지도 이벤트 발화 전에는 UI 미노출.
+// eager 로 두면 각각의 react-icons / hook 종속이 index 청크에 편승한다.
+const ScreenPickerModal = lazy(
+  () => import("@/components/modals/screen-picker-modal")
+);
+const UpdateNotifier = lazy(() => import("@/components/update-notifier"));
+
+// Devtools 는 dev 빌드에서만 렌더된다. lazy 로 감싸 프로덕션 청크에서 완전히 분리.
+const ReactQueryDevtools = import.meta.env.DEV
+  ? lazy(() =>
+      import("@tanstack/react-query-devtools").then((m) => ({
+        default: m.ReactQueryDevtools,
+      }))
+    )
+  : null;
 
 const HomePage = lazy(() => import("@/pages/home"));
 const SignInPage = lazy(() => import("@/pages/sign-in"));
@@ -95,9 +112,11 @@ function AppShell() {
       <GlobalInitializer />
       <ServiceWorkerRegister />
       <AuthBootstrap>
-        <ScreenPickerModal />
-        <AiActionRunner />
-        <CommandPalette />
+        <Suspense fallback={null}>
+          <ScreenPickerModal />
+          <AiActionRunner />
+          <CommandPalette />
+        </Suspense>
         <Navigation />
         <ErrorBoundary FallbackComponent={ErrorFallback}>
           <Suspense fallback={null}>
@@ -173,7 +192,9 @@ function AppShell() {
         </ErrorBoundary>
       </AuthBootstrap>
       <Toaster position="bottom-right" richColors />
-      <UpdateNotifier />
+      <Suspense fallback={null}>
+        <UpdateNotifier />
+      </Suspense>
     </>
   );
 }
@@ -194,7 +215,11 @@ export default function App() {
       ) : (
         router
       )}
-      <ReactQueryDevtools initialIsOpen={false} />
+      {ReactQueryDevtools ? (
+        <Suspense fallback={null}>
+          <ReactQueryDevtools initialIsOpen={false} />
+        </Suspense>
+      ) : null}
     </QueryClientProvider>
   );
 }
