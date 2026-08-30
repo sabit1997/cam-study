@@ -21,7 +21,7 @@ import { onRenderProbe } from "@/dev/perfProbe";
 
 // AI 러너와 명령 팔레트는 사용자 인터랙션 이전엔 UI 미노출이라 lazy.
 // 정적 임포트로 두면 utils/ai-action-validate → types/ai-actions 를 통해
-// zod 스키마가 index 청크에 편승한다 (docs/lightening-analysis.md §1).
+// zod 스키마가 index 청크에 편승한다 (docs/lightening-web-bundle.md §1.2).
 const AiActionRunner = lazy(() => import("@/components/ai/ai-action-runner"));
 const CommandPalette = lazy(() => import("@/components/ai/command-palette"));
 
