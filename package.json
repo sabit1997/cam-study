@@ -103,7 +103,8 @@
       "node_modules/get-windows/**/*"
     ],
     "directories": {
-      "buildResources": "buildResources"
+      "buildResources": "buildResources",
+      "output": "release"
     },
     "afterPack": "./scripts/afterPackMac.js",
     "mac": {
