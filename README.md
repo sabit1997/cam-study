@@ -191,6 +191,23 @@ VITE_APP_MODE=local npm run build:app
 
 `server` 모드로 쌓인 데이터와 `local` 모드 데이터는 완전히 분리됩니다 (마이그레이션 없음).
 
+### 배포 설정
+
+이 리포는 현재 **로컬 모드**로 배포되도록 세팅돼 있습니다.
+
+**Vercel (다운로드 페이지 + 로컬 웹앱)** — 프로젝트 Environment Variables:
+
+| 변수 | 값 | 필수? |
+| --- | --- | --- |
+| `VITE_APP_MODE` | `local` | 필수 |
+| `YOUTUBE_API_KEY` | (본인 키) | 선택 — 유튜브 창 영상 제목이 예쁘게 뽑히려면 |
+
+로컬 모드에서는 Gemini/백엔드 프록시가 필요 없어 `GEMINI_API_KEY` 등은 지정 안 해도 됩니다. 서버 모드로 되돌리려면 `VITE_APP_MODE`를 지우고 `GEMINI_API_KEY`·`YOUTUBE_API_KEY`를 넣습니다.
+
+**GitHub Actions (`.github/workflows/release.yml`)** — 데스크탑 인스톨러 릴리즈. `v*.*.*` 태그 push 시 macOS(arm64) + Windows(x64) 로컬 모드 빌드를 GitHub Releases에 첨부합니다. 서버 모드로 되돌리려면 두 잡의 `env: VITE_APP_MODE: local`을 지우고 `AI_PROXY_URL`을 다시 걸어야 합니다.
+
+Vercel 자동 배포와 GitHub Actions 릴리즈는 서로 독립입니다 — Vercel은 main 브랜치 push에, 릴리즈 워크플로우는 태그 push에 트리거됩니다.
+
 ### 성능 측정 (자동 파이프라인)
 
 번들 크기와 Electron 앱 크기의 회귀를 사람 손 없이 잰다. 원인·계획 문서는 `docs/lightening-*.md` 참고.
