@@ -158,23 +158,25 @@ export default class TimerService {
     let currentMonthTotal = 0;
     let previousMonthTotal = 0;
     const byDate = new Map<string, number>();
+    // 통계 UI(components/my-stats-page.tsx)가 대문자 요일 키(MONDAY..SUNDAY)로
+    // 조회하므로 그 계약에 맞춘다.
     const weekdayStats: Record<string, number> = {
-      Sunday: 0,
-      Monday: 0,
-      Tuesday: 0,
-      Wednesday: 0,
-      Thursday: 0,
-      Friday: 0,
-      Saturday: 0,
+      SUNDAY: 0,
+      MONDAY: 0,
+      TUESDAY: 0,
+      WEDNESDAY: 0,
+      THURSDAY: 0,
+      FRIDAY: 0,
+      SATURDAY: 0,
     };
     const weekdayNames = [
-      "Sunday",
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-      "Saturday",
+      "SUNDAY",
+      "MONDAY",
+      "TUESDAY",
+      "WEDNESDAY",
+      "THURSDAY",
+      "FRIDAY",
+      "SATURDAY",
     ];
 
     for (const s of sessions) {

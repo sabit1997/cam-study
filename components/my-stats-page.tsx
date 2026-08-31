@@ -25,6 +25,7 @@ import YearMonthSelector from "./year-month-selector";
 import { Loading } from "./loading";
 import { Error } from "./error";
 import { useThemeStore } from "@/stores/theme-state";
+import { IS_LOCAL_MODE } from "@/utils/app-mode";
 
 const DAY_ORDER = [
   "MONDAY",
@@ -251,25 +252,27 @@ export default function MyStatsPage() {
               목표 설정
             </button>
 
-            <button
-              type="button"
-              onClick={handleLogout}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-                fontSize: 12,
-                color: textSecondary,
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                padding: "4px 8px",
-                borderRadius: 6,
-              }}
-            >
-              <IoLogOutOutline size={15} />
-              <span>로그아웃</span>
-            </button>
+            {IS_LOCAL_MODE ? null : (
+              <button
+                type="button"
+                onClick={handleLogout}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  fontSize: 12,
+                  color: textSecondary,
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  padding: "4px 8px",
+                  borderRadius: 6,
+                }}
+              >
+                <IoLogOutOutline size={15} />
+                <span>로그아웃</span>
+              </button>
+            )}
           </>
         )}
       </div>
