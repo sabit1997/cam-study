@@ -17,6 +17,14 @@ import path from "path";
 import { startExpressServer } from "./express-server";
 import { registerTrackerIpc } from "./tracker";
 
+// 앱 모드. 로컬 모드에서는 AI/전역 단축키 등 AI 관련 데스크탑 훅을 뜨우지 않는다.
+declare const __APP_MODE__: string | undefined;
+const APP_MODE =
+  typeof __APP_MODE__ !== "undefined"
+    ? __APP_MODE__
+    : (process.env.VITE_APP_MODE ?? "server");
+const IS_LOCAL_MODE = APP_MODE === "local";
+
 // macOS 26 (Tahoe) workaround: V8 JIT 완전 비활성화
 // main 프로세스는 LSEnvironment.NODE_OPTIONS=--jitless 로 처리, renderer는 여기서 처리
 if (process.platform === "darwin") {
@@ -458,7 +466,11 @@ app.whenReady().then(async () => {
   setupAutoUpdater();
   registerTrackerIpc();
   void createWindow().catch((err) => console.error("창 생성 실패:", err));
-  registerCommandPaletteShortcut();
+  // 로컬 모드에서는 명령 팔레트 자체가 렌더러에서 은닉되므로, 전역 단축키로
+  // OS가 Cmd+Shift+K를 뺏는 부작용만 남는다. 등록을 건너뛴다.
+  if (!IS_LOCAL_MODE) {
+    registerCommandPaletteShortcut();
+  }
 });
 
 app.on("activate", () => {

@@ -33,10 +33,18 @@ if (!ytKey) {
 
 // AI 해석을 넘길 웹 배포본 주소. API 키 자체는 절대 주입하지 않는다.
 const aiProxyUrl = process.env.AI_PROXY_URL ?? "";
-if (!aiProxyUrl) {
+
+// 앱 모드. 렌더러(vite)와 동일한 VITE_APP_MODE를 읽어 데스크탑 사이드도 맞춘다.
+const appMode =
+  (process.env.VITE_APP_MODE ?? "").toLowerCase() === "local" ? "local" : "server";
+
+if (appMode === "server" && !aiProxyUrl) {
   console.warn(
     "[build-electron] 경고: AI_PROXY_URL이 설정되지 않아 데스크탑에서 AI 명령이 동작하지 않습니다."
   );
+}
+if (appMode === "local") {
+  console.log("[build-electron] 로컬 모드로 빌드합니다. AI/백엔드 프록시는 비활성.");
 }
 
 esbuild
@@ -63,6 +71,7 @@ esbuild
     define: {
       __YOUTUBE_API_KEY__: JSON.stringify(ytKey),
       __AI_PROXY_URL__: JSON.stringify(aiProxyUrl),
+      __APP_MODE__: JSON.stringify(appMode),
     },
   })
   .then(() => {

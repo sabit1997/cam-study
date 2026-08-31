@@ -19,6 +19,14 @@ declare const __AI_PROXY_URL__: string | undefined;
 const AI_PROXY_URL: string =
   (typeof __AI_PROXY_URL__ !== "undefined" ? __AI_PROXY_URL__ : process.env.AI_PROXY_URL) ?? "";
 
+// 앱 모드. 로컬 모드에서는 AI/백엔드 프록시 라우트를 아예 등록하지 않는다.
+declare const __APP_MODE__: string | undefined;
+const APP_MODE =
+  typeof __APP_MODE__ !== "undefined"
+    ? __APP_MODE__
+    : (process.env.VITE_APP_MODE ?? "server");
+const IS_LOCAL_MODE = APP_MODE === "local";
+
 export function createExpressApp(staticDir: string) {
   const app = express();
   app.use(express.static(staticDir));
@@ -56,6 +64,17 @@ export function createExpressApp(staticDir: string) {
       res.status(500).json({ error: "영상 정보를 가져오는 데 실패했습니다." });
     }
   });
+
+  // 로컬 모드에서는 AI/백엔드 프록시가 필요 없다 — 렌더러의 도메인 서비스가
+  // 로컬 어댑터로 대체돼 /api/* 호출이 발생하지 않는다. 정적 서빙만 하는 서버.
+  if (IS_LOCAL_MODE) {
+    // SPA 폴백만 남기고 반환. Express 5에서는 app.get("*")가 라우트 등록 시
+    // 예외를 던지므로 app.use로 매치한다.
+    app.use((_req, res) => {
+      res.sendFile(path.join(staticDir, "index.html"));
+    });
+    return app;
+  }
 
   // AI 해석 → 웹 배포본으로 프록시. 반드시 아래의 포괄 /api 프록시보다 위에 있어야 한다.
   app.post("/api/ai-interpret", express.json(), async (req, res) => {
