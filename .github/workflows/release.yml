@@ -45,18 +45,18 @@ jobs:
       - name: Electron 빌드 (macOS arm64)
         run: npx electron-builder --mac --arm64 --publish never
 
-      - name: dist 디렉터리 확인 (macOS)
-        run: ls -la dist/
+      - name: release 디렉터리 확인 (macOS)
+        run: ls -la release/
 
       - name: macOS 아티팩트 업로드
         uses: actions/upload-artifact@v4
         with:
           name: installers-mac
           path: |
-            dist/*.dmg
-            dist/*.zip
-            dist/*.yml
-            dist/*.blockmap
+            release/*.dmg
+            release/*.zip
+            release/*.yml
+            release/*.blockmap
 
   build-windows:
     runs-on: windows-latest
@@ -89,18 +89,18 @@ jobs:
       - name: Electron 빌드 (Windows x64)
         run: npx electron-builder --win --x64 --publish never
 
-      - name: dist 디렉터리 확인 (Windows)
-        run: dir dist\
+      - name: release 디렉터리 확인 (Windows)
+        run: dir release\
 
       - name: Windows 아티팩트 업로드
         uses: actions/upload-artifact@v4
         with:
           name: installers-windows
           path: |
-            dist/*.exe
-            dist/*.zip
-            dist/*.yml
-            dist/*.blockmap
+            release/*.exe
+            release/*.zip
+            release/*.yml
+            release/*.blockmap
 
   release:
     needs: [build-mac, build-windows]
