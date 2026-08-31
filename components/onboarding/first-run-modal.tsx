@@ -17,6 +17,7 @@ import {
   isOnboardingPending,
 } from "@/utils/onboarding-gate";
 import { commandPaletteShortcut } from "@/utils/platform-shortcut";
+import { IS_LOCAL_MODE } from "@/utils/app-mode";
 import type { AiAction } from "@/types/ai-actions";
 
 /**
@@ -77,7 +78,7 @@ const hasDesktopTracker = (): boolean =>
 
 const isDesktopApp = (): boolean => isBrowser() && Boolean(window.electronAPI);
 
-export default function FirstRunModal() {
+function FirstRunModalInner() {
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
   const user = useUserStore((state) => state.user);
   // WindowZone과 같은 queryKey라 요청이 추가로 나가지 않고 캐시를 공유한다.
@@ -733,3 +734,10 @@ const ghostButton = (color: string): React.CSSProperties => ({
   fontSize: 14,
   cursor: "pointer",
 });
+
+// 로컬 모드에서는 AI 온보딩 대화가 없다. 훅 규칙을 어기지 않도록 얇은 게이트만 두고
+// 내부 컴포넌트에서 훅을 호출한다.
+export default function FirstRunModal() {
+  if (IS_LOCAL_MODE) return null;
+  return <FirstRunModalInner />;
+}

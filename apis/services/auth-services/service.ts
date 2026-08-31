@@ -1,47 +1,9 @@
-import request from "@/apis/request";
-import { AxiosMethod } from "@/types/axios";
-import { AuthEndPoints } from "../config";
+import { IS_LOCAL_MODE } from "@/utils/app-mode";
+import AuthServiceRemote from "./service.remote";
+import AuthServiceLocal from "./service.local";
 
-export interface AuthRequest {
-  email: string;
-  password: string;
-}
+// 로컬 모드 스위처. 로컬 구현은 즉시 성공하는 no-op이고,
+// 실제 호출은 App.tsx 가드로 이미 차단돼 있다.
+const AuthService = IS_LOCAL_MODE ? AuthServiceLocal : AuthServiceRemote;
 
-interface AuthRequestWithName extends AuthRequest {
-  username: string;
-}
-
-export default class AuthService {
-  public static readonly signup = (
-    data: AuthRequestWithName
-  ): Promise<string> => {
-    return request({
-      url: AuthEndPoints.signup(),
-      method: AxiosMethod.POST,
-      data,
-    });
-  };
-
-  public static readonly login = (
-    data: AuthRequest
-  ): Promise<{ userId: number; username: string }> => {
-    return request({
-      url: AuthEndPoints.login(),
-      method: AxiosMethod.POST,
-      data,
-    });
-  };
-  public static readonly logout = (): Promise<string> => {
-    return request({
-      url: AuthEndPoints.logout(),
-      method: AxiosMethod.POST,
-    });
-  };
-
-  public static readonly refresh = (): Promise<unknown> => {
-    return request({
-      url: AuthEndPoints.refresh(),
-      method: AxiosMethod.POST,
-    });
-  };
-}
+export default AuthService;

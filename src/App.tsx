@@ -116,8 +116,12 @@ function AppShell() {
       <AuthBootstrap>
         <Suspense fallback={null}>
           <ScreenPickerModal />
-          <AiActionRunner />
-          <CommandPalette />
+          {IS_LOCAL_MODE ? null : (
+            <>
+              <AiActionRunner />
+              <CommandPalette />
+            </>
+          )}
         </Suspense>
         <Navigation />
         <ErrorBoundary FallbackComponent={ErrorFallback}>
