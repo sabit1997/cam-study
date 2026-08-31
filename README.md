@@ -162,6 +162,35 @@ npm run build:app
 
 빌드 결과물은 `dist/` 폴더에 생성됩니다.
 
+### 로컬 전용 모드 빌드 (서버·AI 없이 개인용)
+
+백엔드 서버 없이 로그인·회원가입 절차를 건너뛰고 데이터를 이 기기에만 저장하는 모드입니다. AI/온보딩·유튜브 검색 등 Gemini에 의존하는 기능은 UI에서 숨겨집니다.
+
+```bash
+# 웹 (Vercel/정적 호스팅)
+VITE_APP_MODE=local npm run build:web
+
+# 데스크탑 (Electron)
+VITE_APP_MODE=local npm run build:app
+```
+
+**모드 별 차이**
+
+| 항목 | server (기본) | local |
+| --- | --- | --- |
+| 로그인/회원가입 | 필요 | 스킵 (익명 단일 유저) |
+| 창·투두·타이머 | api.oeyo-cam.site | 이 기기 저장소 |
+| AI 명령/온보딩/유튜브 검색 | 사용 가능 | UI 은닉 |
+| Cmd+Shift+K 전역 팔레트 | 활성 | 비활성 |
+| 자동 업데이트 | GitHub Releases | GitHub Releases (동일) |
+
+**로컬 데이터 위치**
+
+- 데스크탑: `electron-store`가 관리하는 유저 데이터 디렉터리 (`~/Library/Application Support/외요의 캠스터디/app-data.json` 등)
+- 웹: 브라우저 `localStorage`
+
+`server` 모드로 쌓인 데이터와 `local` 모드 데이터는 완전히 분리됩니다 (마이그레이션 없음).
+
 ### 성능 측정 (자동 파이프라인)
 
 번들 크기와 Electron 앱 크기의 회귀를 사람 손 없이 잰다. 원인·계획 문서는 `docs/lightening-*.md` 참고.
