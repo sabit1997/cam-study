@@ -153,6 +153,55 @@ ipcMain.handle("update:check-state", () => {
   return null;
 });
 
+// ── 로컬 KV 저장소 IPC (electron-store) ─────────────────────────────────────
+// 로컬 모드에서 도메인 데이터(windows, todos, timer 세션)를 저장한다.
+// electron-store는 ESM 전용이라 tracker와 같은 방식으로 동적 import 한다.
+interface AppStore {
+  get(key: string): unknown;
+  set(key: string, value: unknown): void;
+  delete(key: string): void;
+  store: Record<string, unknown>;
+}
+
+let cachedAppStore: AppStore | null = null;
+
+const loadAppStore = async (): Promise<AppStore> => {
+  if (cachedAppStore) return cachedAppStore;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const mod = (await import("electron-store")) as any;
+  const Store = (mod.default ?? mod) as new (opts: {
+    name: string;
+    defaults?: Record<string, unknown>;
+  }) => AppStore;
+  cachedAppStore = new Store({ name: "app-data", defaults: {} });
+  return cachedAppStore;
+};
+
+ipcMain.handle("store:get", async (_e, key: unknown) => {
+  if (typeof key !== "string") return undefined;
+  const store = await loadAppStore();
+  return store.get(key);
+});
+
+ipcMain.handle("store:set", async (_e, key: unknown, value: unknown) => {
+  if (typeof key !== "string") return;
+  const store = await loadAppStore();
+  store.set(key, value);
+});
+
+ipcMain.handle("store:remove", async (_e, key: unknown) => {
+  if (typeof key !== "string") return;
+  const store = await loadAppStore();
+  store.delete(key);
+});
+
+ipcMain.handle("store:keys", async (_e, prefix: unknown) => {
+  const store = await loadAppStore();
+  const all = Object.keys(store.store);
+  if (typeof prefix !== "string" || prefix.length === 0) return all;
+  return all.filter((k) => k.startsWith(prefix));
+});
+
 // 렌더러에서 "재시작 후 업데이트 설치" 요청 처리
 ipcMain.on("update:restart", () => {
   if (process.platform === "darwin") {

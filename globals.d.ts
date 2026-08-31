@@ -36,6 +36,17 @@ declare global {
         setLabel(appName: string, label: AppLabel): Promise<void>;
         removeLabel(appName: string): Promise<void>;
       };
+      /**
+       * 로컬 KV 저장소 (electron-store). 로컬 모드에서 도메인 데이터를 여기에 저장한다.
+       * 웹 배포에는 preload가 실행되지 않아 이 필드가 없으므로 utils/local-store가
+       * 유무로 어댑터를 고른다.
+       */
+      store?: {
+        get(key: string): Promise<unknown>;
+        set(key: string, value: unknown): Promise<void>;
+        remove(key: string): Promise<void>;
+        keys(prefix?: string): Promise<string[]>;
+      };
     };
   }
 }

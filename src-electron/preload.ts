@@ -39,6 +39,22 @@ contextBridge.exposeInMainWorld("electronAPI", {
   checkUpdateState: () => ipcRenderer.invoke("update:check-state"),
 
   /**
+   * 로컬 KV 저장소 (electron-store). 로컬 모드에서 도메인 데이터를 여기에 저장한다.
+   * 웹 배포에는 preload가 실행되지 않으므로 이 필드가 없다 — 렌더러는 window.electronAPI.store
+   * 유무로 어댑터를 고른다 (utils/local-store).
+   */
+  store: {
+    get: (key: string): Promise<unknown> =>
+      ipcRenderer.invoke("store:get", key),
+    set: (key: string, value: unknown): Promise<void> =>
+      ipcRenderer.invoke("store:set", key, value),
+    remove: (key: string): Promise<void> =>
+      ipcRenderer.invoke("store:remove", key),
+    keys: (prefix?: string): Promise<string[]> =>
+      ipcRenderer.invoke("store:keys", prefix),
+  },
+
+  /**
    * 딴짓 감지 트래커.
    *
    * 렌더러가 타이머 시작 시 startSession을, 정지 시 stopSession을 부른다.
