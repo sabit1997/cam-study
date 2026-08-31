@@ -7,6 +7,7 @@ import axios, {
 } from "axios";
 import { QueryClient } from "@tanstack/react-query";
 import { useUserStore } from "@/stores/user-state";
+import { IS_LOCAL_MODE } from "@/utils/app-mode";
 import { toast } from "sonner";
 
 let globalQueryClient: QueryClient | null = null;
@@ -59,6 +60,13 @@ const processQueue = (error?: unknown, tokenResponse?: AxiosResponse) => {
 client.interceptors.response.use(
   (response: AxiosResponse) => response,
   async (err: AxiosError) => {
+    // 로컬 모드에서는 서버가 없으므로 refresh/logout 리다이렉트를 건다 무의미하다.
+    // 도메인 서비스는 Phase 2에서 로컬 어댑터로 대체된다 — 여기 도달하는 axios 에러는
+    // 잔여 호출뿐이니 그대로 reject해서 호출부가 처리하게 둔다.
+    if (IS_LOCAL_MODE) {
+      return Promise.reject(err);
+    }
+
     const status = err.response?.status;
     const orig = err.config as InternalAxiosRequestConfig & {
       _retry?: boolean;

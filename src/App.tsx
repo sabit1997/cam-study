@@ -17,6 +17,7 @@ import GlobalInitializer from "@/components/global-Initializer";
 import ServiceWorkerRegister from "@/components/service-worker-register";
 import ErrorFallback from "@/components/error-boundary";
 import AuthService from "@/apis/services/auth-services/service";
+import { IS_LOCAL_MODE } from "@/utils/app-mode";
 import { onRenderProbe } from "@/dev/perfProbe";
 
 // AI 러너와 명령 팔레트는 사용자 인터랙션 이전엔 UI 미노출이라 lazy.
@@ -57,10 +58,11 @@ function AuthBootstrap({ children }: { children: React.ReactNode }) {
   const isAuthenticated = useUserStore((s) => s.isAuthenticated);
   const logout = useUserStore((s) => s.logout);
   const [wasAuthenticated] = useState(isAuthenticated);
-  const [isReady, setIsReady] = useState(!wasAuthenticated);
+  // 로컬 모드에서는 서버 refresh가 없다. 시드된 유저로 즉시 준비 완료.
+  const [isReady, setIsReady] = useState(IS_LOCAL_MODE || !wasAuthenticated);
 
   useEffect(() => {
-    if (!wasAuthenticated) return;
+    if (IS_LOCAL_MODE || !wasAuthenticated) return;
 
     let active = true;
     AuthService.refresh()
