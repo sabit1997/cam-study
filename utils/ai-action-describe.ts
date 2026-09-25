@@ -60,13 +60,10 @@ const label = (action: AiAction): { icon: string; text: string } => {
       return { icon: "▶", text: "유튜브 영상 재생" };
 
     case "SEARCH_YOUTUBE":
-      // 실제로는 승인 UI로 팔레트가 후보 선택 창을 띄우므로 이 라벨은 폴백이다.
-      // clarify가 있으면 취향 질문, 없으면 바로 검색 실행.
+      // 실제로는 팔레트가 검색 결과 승인 창을 대신 띄우므로 이 라벨은 폴백이다.
       return {
         icon: "🔎",
-        text: action.clarify
-          ? `유튜브 검색 — "${preview(action.query)}" (취향 질문)`
-          : `유튜브 검색 — "${preview(action.query)}" ${action.count}개`,
+        text: `유튜브 검색 — "${preview(action.query)}" ${action.count}개`,
       };
 
     case "START_POMODORO":

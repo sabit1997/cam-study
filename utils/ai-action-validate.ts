@@ -151,38 +151,6 @@ const checkBusinessRules = (actions: AiAction[]): string[] => {
             `${at}: 검색 개수는 ${AI_LIMITS.SEARCH_COUNT_MIN}~${AI_LIMITS.SEARCH_COUNT_MAX} 사이여야 합니다.`
           );
         }
-        if (action.clarify) {
-          const opts = action.clarify.options;
-          if (
-            opts.length < AI_LIMITS.CLARIFY_OPTIONS_MIN ||
-            opts.length > AI_LIMITS.CLARIFY_OPTIONS_MAX
-          ) {
-            reasons.push(
-              `${at}: 취향 선택지는 ${AI_LIMITS.CLARIFY_OPTIONS_MIN}~${AI_LIMITS.CLARIFY_OPTIONS_MAX}개여야 합니다.`
-            );
-          }
-          opts.forEach((opt, i) => {
-            const optAt = `${at} 선택지 ${i + 1}`;
-            const label = opt.label.trim();
-            const optQuery = opt.query.trim();
-            if (label.length === 0) {
-              reasons.push(`${optAt}: 라벨이 비어 있습니다.`);
-            }
-            if (label.length > AI_LIMITS.CLARIFY_LABEL_MAX) {
-              reasons.push(
-                `${optAt}: 라벨은 ${AI_LIMITS.CLARIFY_LABEL_MAX}자를 넘을 수 없습니다.`
-              );
-            }
-            if (optQuery.length === 0) {
-              reasons.push(`${optAt}: 검색어가 비어 있습니다.`);
-            }
-            if (optQuery.length > AI_LIMITS.SEARCH_QUERY_MAX) {
-              reasons.push(
-                `${optAt}: 검색어는 ${AI_LIMITS.SEARCH_QUERY_MAX}자를 넘을 수 없습니다.`
-              );
-            }
-          });
-        }
         break;
       }
 

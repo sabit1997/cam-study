@@ -21,9 +21,4 @@ export const AI_LIMITS = {
   /** 한 번에 요청할 유튜브 후보 개수 상한. 승인 UI가 감당할 개수. */
   SEARCH_COUNT_MIN: 1,
   SEARCH_COUNT_MAX: 8,
-  /** clarify 옵션 개수 — 칩 UI로 보여줄 수 있는 최소/최대 */
-  CLARIFY_OPTIONS_MIN: 2,
-  CLARIFY_OPTIONS_MAX: 4,
-  /** clarify 옵션 label 길이 — 칩 한 줄에 들어가야 한다 */
-  CLARIFY_LABEL_MAX: 12,
 } as const;
