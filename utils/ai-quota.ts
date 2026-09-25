@@ -19,6 +19,14 @@ const STORAGE_KEY = "aiQuota";
 
 export const SESSION_BUDGET = 20;
 
+/**
+ * dev 빌드에서는 quota를 아예 세지 않는다.
+ * 로컬에서 새 프롬프트/파이프라인을 반복 테스트할 때 20 포인트가 금방 소진돼 실사용 검증이 막히기 때문.
+ * vitest는 DEV=true라 그대로면 유닛 테스트가 quota 로직을 검증할 수 없다 — MODE로 test를 걸러낸다.
+ * 프로덕션 번들에서는 이 상수가 false로 folding 되면서 관련 분기와 로직이 tree-shake 된다.
+ */
+const IS_DEV = import.meta.env.DEV && import.meta.env.MODE !== "test";
+
 export const WEIGHTS: Record<AiPurpose, number> = {
   command: 1,
   "record-query": 1,
@@ -74,6 +82,7 @@ const writeState = (state: QuotaState): void => {
 };
 
 export const getRemaining = (now: Date = new Date()): number => {
+  if (IS_DEV) return SESSION_BUDGET;
   const state = readState(now);
   return Math.max(0, SESSION_BUDGET - state.used);
 };
@@ -93,6 +102,11 @@ export const consume = (
   purpose: AiPurpose,
   now: Date = new Date()
 ): ConsumeResult => {
+  if (IS_DEV) {
+    // dev 우회: 소비 없이 항상 성공. purpose는 시그니처 호환용.
+    void purpose;
+    return { ok: true, remaining: SESSION_BUDGET };
+  }
   const state = readState(now);
   const cost = WEIGHTS[purpose];
   const nextUsed = state.used + cost;
