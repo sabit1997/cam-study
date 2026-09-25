@@ -34,12 +34,13 @@ describe("toGeminiJsonSchema", () => {
     expect(widgets).not.toContain("camera");
   });
 
-  it("액션 5종이 모두 실려 나간다", () => {
+  it("액션 6종이 모두 실려 나간다", () => {
     const serialized = JSON.stringify(schema);
     for (const type of [
       "CREATE_WINDOW",
       "ADD_TODO",
       "PLAY_YOUTUBE",
+      "SEARCH_YOUTUBE",
       "START_POMODORO",
       "START_STOPWATCH",
     ]) {
@@ -50,5 +51,24 @@ describe("toGeminiJsonSchema", () => {
   it("객체 구조(properties/required)는 보존한다", () => {
     expect(findAll(schema, "properties").length).toBeGreaterThan(0);
     expect(findAll(schema, "required").length).toBeGreaterThan(0);
+  });
+
+  it("SEARCH_YOUTUBE의 nullish clarify는 anyOf에 null 변형을 갖는다", () => {
+    // nullish 필드가 { anyOf: [..., { type: "null" }] } 로 바뀌어야 Gemini
+    // responseJsonSchema가 받아들인다. anyOf 자체는 지원 목록에 있어 그대로 남는다.
+    // clarify라는 이름을 가진 노드는 SEARCH_YOUTUBE 스키마에만 있으므로 그 노드가 있음을 먼저 확인.
+    const clarifyNodes = findAll(schema, "clarify");
+    expect(clarifyNodes.length).toBeGreaterThan(0);
+    const clarify = clarifyNodes[0];
+    const anyOf = (clarify as Record<string, unknown>).anyOf as unknown[];
+    expect(Array.isArray(anyOf)).toBe(true);
+    // z.nullish()는 z.optional().nullable()과 동치라 anyOf에 { type: "null" }이 반드시 포함된다.
+    const hasNull = anyOf.some(
+      (variant) =>
+        typeof variant === "object" &&
+        variant !== null &&
+        (variant as Record<string, unknown>).type === "null"
+    );
+    expect(hasNull).toBe(true);
   });
 });

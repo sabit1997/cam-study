@@ -53,12 +53,14 @@ type Phase =
     };
 
 /**
- * 팔레트가 검색 흐름으로 라우팅할 문장을 감지한다.
+ * 팔레트가 검색 흐름으로 바로 라우팅하는 문장 패턴.
  *
- * 왜 서버(LLM)에 맡기지 않는가:
- * - LLM에게 "이건 검색이야 아니면 명령이야"를 물으면 두 번 호출이 되고 quota를 두 배로 태운다.
- * - 짧은 키워드 매칭이 발표 데모의 대표 문장 "강의 3개 찾아서 담아줘"를 안정적으로 잡는다.
- * - 매칭 실패 시 자연스럽게 기존 ai-interpret 경로로 흘러가므로 다른 명령은 영향받지 않는다.
+ * 왜 정규식 fast-path를 남겨두는가:
+ * - 확신 있는 검색 요청("강의 3개 찾아줘")에서는 interpret를 건너뛰어 LLM 1회 호출을 아낀다.
+ * - 이 정규식에 안 걸리는 요청("ASMR 추가해줘", "lo-fi 좀 넣어줘")은 자연스럽게 interpret로
+ *   흘러가 SEARCH_YOUTUBE 액션으로 해석되며(server/ai-prompt.ts), 그 시점의 runYoutubeFlow가
+ *   같은 검색 파이프라인을 태운다.
+ * - 결과적으로 라우팅 방법이 두 개(fast-path + LLM)지만 둘 다 같은 endpoint로 수렴한다.
  */
 const YOUTUBE_SEARCH_RE = /(유튜브|영상|강의)[^]*?(찾아|검색|추천|담아|틀어)/;
 
@@ -160,8 +162,13 @@ export default function CommandPalette() {
     []
   );
 
+  /**
+   * 검색어와 개수로 유튜브 파이프라인을 태운다.
+   * count를 명시적으로 받으면 그 값을, 없으면 query 문장에서 "N개" 표현을 뽑는다.
+   * (interpret가 SEARCH_YOUTUBE로 해석해 부를 때는 count가 이미 액션에 들어 있다.)
+   */
   const runYoutubeFlow = useCallback(
-    async (generation: number, query: string) => {
+    async (generation: number, query: string, count?: number) => {
       // 유튜브 검색은 quota를 두 배로 먹는다(youtube-search purpose).
       const reservation = consumeQuota("youtube-search");
       setQuotaRemaining(reservation.remaining);
@@ -173,8 +180,8 @@ export default function CommandPalette() {
         return;
       }
       setPhase({ status: "searching-youtube" });
-      const count = extractCount(query);
-      const outcome = await searchAndFilter(query, count);
+      const finalCount = count ?? extractCount(query);
+      const outcome = await searchAndFilter(query, finalCount);
       if (generation !== requestId.current) return;
       if (outcome.ok) {
         setPhase({
@@ -258,6 +265,14 @@ export default function CommandPalette() {
             status: "rejected",
             reasons: ["무엇을 하라는 건지 이해하지 못했어요. 다르게 말해보시겠어요?"],
           });
+          return;
+        }
+        // interpret가 SEARCH_YOUTUBE를 돌려주면 승인 UI가 다른 검색 파이프라인으로 넘긴다.
+        // 검증 규칙상 배치에 단독으로만 존재하므로 첫 액션만 확인한다.
+        // Phase 2에서 clarify UI가 들어오기 전까지는 clarify가 있어도 base query로 바로 검색.
+        const [first] = validation.actions;
+        if (first.type === "SEARCH_YOUTUBE") {
+          void runYoutubeFlow(generation, first.query, first.count);
           return;
         }
         setPhase({ status: "review", actions: validation.actions, source: "server" });

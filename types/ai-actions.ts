@@ -33,6 +33,15 @@ const refSchema = z
   .nullish();
 
 /**
+ * SEARCH_YOUTUBE의 clarify에 들어가는 개별 선택지.
+ * label은 칩에 보일 짧은 이름("빗소리"), query는 그 옵션 선택 시 실제 검색어.
+ */
+const clarifyOptionSchema = z.strictObject({
+  label: z.string(),
+  query: z.string(),
+});
+
+/**
  * 스키마는 "모양이 맞는가"만 본다. "값이 말이 되는가"는 여기서 검사하지 않는다.
  * 포모도로 9999분도 스키마 입장에서는 완벽하게 유효한 정수다.
  * 값의 타당성은 utils/ai-action-validate.ts(2단계 검증)가 맡는다.
@@ -55,6 +64,21 @@ export const aiActionSchema = z.discriminatedUnion("type", [
     type: z.literal("PLAY_YOUTUBE"),
     ref: refSchema,
     url: z.string(),
+  }),
+  // LLM은 검색 의도와 (모호할 때는) 취향 선택지만 만든다. videoId나 URL은
+  // 절대 만들지 않는다 — 실제 영상은 서버가 YouTube Data API로 가져온다.
+  // clarify가 있으면 팔레트가 옵션 칩을 띄우고, 사용자가 고른 옵션의 query로
+  // 다시 검색한다. clarify.query가 이미 구체적이면(예: "빗소리 ASMR 3개") null.
+  z.strictObject({
+    type: z.literal("SEARCH_YOUTUBE"),
+    query: z.string(),
+    count: z.number().int(),
+    clarify: z
+      .strictObject({
+        question: z.string(),
+        options: z.array(clarifyOptionSchema),
+      })
+      .nullish(),
   }),
   z.strictObject({
     type: z.literal("START_POMODORO"),

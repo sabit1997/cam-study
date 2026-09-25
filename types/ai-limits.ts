@@ -16,4 +16,14 @@ export const AI_LIMITS = {
   /** 포모도로 분 단위 범위 — 9999분 타이머로 UI가 깨지는 것을 막는다 */
   MIN_MINUTES: 1,
   MAX_MINUTES: 180,
+  /** SEARCH_YOUTUBE 검색어 길이. 너무 짧으면 무의미하고 너무 길면 API가 거부한다. */
+  SEARCH_QUERY_MAX: 100,
+  /** 한 번에 요청할 유튜브 후보 개수 상한. 승인 UI가 감당할 개수. */
+  SEARCH_COUNT_MIN: 1,
+  SEARCH_COUNT_MAX: 8,
+  /** clarify 옵션 개수 — 칩 UI로 보여줄 수 있는 최소/최대 */
+  CLARIFY_OPTIONS_MIN: 2,
+  CLARIFY_OPTIONS_MAX: 4,
+  /** clarify 옵션 label 길이 — 칩 한 줄에 들어가야 한다 */
+  CLARIFY_LABEL_MAX: 12,
 } as const;
