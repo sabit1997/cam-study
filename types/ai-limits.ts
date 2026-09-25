@@ -16,4 +16,13 @@ export const AI_LIMITS = {
   /** 포모도로 분 단위 범위 — 9999분 타이머로 UI가 깨지는 것을 막는다 */
   MIN_MINUTES: 1,
   MAX_MINUTES: 180,
+  /** SEARCH_YOUTUBE 검색어 길이. 너무 짧으면 무의미하고 너무 길면 API가 거부한다. */
+  SEARCH_QUERY_MAX: 100,
+  /**
+   * 한 번에 요청할 유튜브 후보 개수 상한.
+   * YouTube Data API의 maxResults 상한은 50이라 이론상 더 올릴 수 있지만, 승인 UI가
+   * 세로 스크롤 목록이라 25 정도가 사용자가 훑기 편한 실용 한도.
+   */
+  SEARCH_COUNT_MIN: 1,
+  SEARCH_COUNT_MAX: 25,
 } as const;

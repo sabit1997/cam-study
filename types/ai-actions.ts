@@ -56,6 +56,14 @@ export const aiActionSchema = z.discriminatedUnion("type", [
     ref: refSchema,
     url: z.string(),
   }),
+  // LLM은 검색 의도(query·count)만 만든다. videoId나 URL은 절대 만들지 않고,
+  // 실제 영상은 서버가 YouTube Data API로 가져온다. 취향 질문 단계는 없다 —
+  // 사용자가 준 입력을 그대로 검색해서 결과를 보여준다.
+  z.strictObject({
+    type: z.literal("SEARCH_YOUTUBE"),
+    query: z.string(),
+    count: z.number().int(),
+  }),
   z.strictObject({
     type: z.literal("START_POMODORO"),
     workMins: z.number().int(),

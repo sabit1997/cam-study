@@ -72,6 +72,17 @@ const checkBusinessRules = (actions: AiAction[]): string[] => {
     reasons.push(`한 번에 실행할 수 있는 동작은 최대 ${AI_LIMITS.MAX_ACTIONS}개입니다.`);
   }
 
+  // SEARCH_YOUTUBE는 승인 UI(취향 질문/후보 선택)가 배치 흐름과 달라 단독으로만 허용한다.
+  // 다른 액션과 섞이면 승인 시점의 상태 관리가 복잡해진다.
+  // "포모도로 켜고 ASMR" 같은 복합 명령은 이후 확장 대상.
+  const searchYoutubeCount = actions.filter((a) => a.type === "SEARCH_YOUTUBE").length;
+  if (searchYoutubeCount > 0 && actions.length > 1) {
+    reasons.push("유튜브 검색 동작은 다른 동작과 함께 실행할 수 없습니다.");
+  }
+  if (searchYoutubeCount > 1) {
+    reasons.push("유튜브 검색은 한 번에 하나만 요청할 수 있습니다.");
+  }
+
   let windowCount = 0;
   let todoCount = 0;
   /** 이 배치 안에서 CREATE_WINDOW로 만들어진 ref만 기록한다 */
@@ -118,6 +129,28 @@ const checkBusinessRules = (actions: AiAction[]): string[] => {
         // ref 없는 재생은 실행기가 새 유튜브 창을 만든다(열려 있는 창은 마운트 시
         // 1회만 목록을 읽어서 나중에 추가해도 안 보인다). 그래서 창 개수로 함께 센다.
         if (!action.ref) windowCount += 1;
+        break;
+      }
+
+      case "SEARCH_YOUTUBE": {
+        // 값 검증만 한다. URL/videoId는 아예 없는 스키마이므로 여기서 새로 검증할 게 없다.
+        const query = action.query.trim();
+        if (query.length === 0) {
+          reasons.push(`${at}: 검색어가 비어 있습니다.`);
+        }
+        if (query.length > AI_LIMITS.SEARCH_QUERY_MAX) {
+          reasons.push(
+            `${at}: 검색어는 ${AI_LIMITS.SEARCH_QUERY_MAX}자를 넘을 수 없습니다.`
+          );
+        }
+        if (
+          action.count < AI_LIMITS.SEARCH_COUNT_MIN ||
+          action.count > AI_LIMITS.SEARCH_COUNT_MAX
+        ) {
+          reasons.push(
+            `${at}: 검색 개수는 ${AI_LIMITS.SEARCH_COUNT_MIN}~${AI_LIMITS.SEARCH_COUNT_MAX} 사이여야 합니다.`
+          );
+        }
         break;
       }
 

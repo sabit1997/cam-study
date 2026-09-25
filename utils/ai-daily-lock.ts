@@ -19,6 +19,14 @@
 
 const STORAGE_KEY = "ai-daily-lock:v1";
 
+/**
+ * dev 빌드에서는 daily-lock을 아예 걸지도 확인하지도 않는다.
+ * 로컬 테스트 중 서버가 우연히 던진 429가 다음 시도들까지 계속 잠그면 개발이 막힌다.
+ * vitest는 DEV=true라 그대로면 유닛 테스트가 lock 로직을 검증할 수 없다 — MODE로 test를 걸러낸다.
+ * 프로덕션 번들에서는 이 상수가 false로 fold 되며 분기가 tree-shake 된다.
+ */
+const IS_DEV = import.meta.env.DEV && import.meta.env.MODE !== "test";
+
 /** 락 대상 엔드포인트. reason 라벨과 무관하게 endpoint 단위로 관리한다. */
 export type LockableEndpoint = "interpret" | "youtube-search";
 
@@ -71,6 +79,7 @@ export const setDailyLock = (
   retryAfterSec?: number,
   now: number = Date.now()
 ): void => {
+  if (IS_DEV) return;
   const waitMs =
     retryAfterSec && retryAfterSec > 0
       ? retryAfterSec * 1000
@@ -88,6 +97,7 @@ export const getDailyLockUntil = (
   endpoint: LockableEndpoint,
   now: number = Date.now()
 ): number | null => {
+  if (IS_DEV) return null;
   const shape = readAll();
   const expiresAt = shape[endpoint];
   if (typeof expiresAt !== "number") return null;

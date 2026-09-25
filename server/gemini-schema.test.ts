@@ -34,12 +34,13 @@ describe("toGeminiJsonSchema", () => {
     expect(widgets).not.toContain("camera");
   });
 
-  it("액션 5종이 모두 실려 나간다", () => {
+  it("액션 6종이 모두 실려 나간다", () => {
     const serialized = JSON.stringify(schema);
     for (const type of [
       "CREATE_WINDOW",
       "ADD_TODO",
       "PLAY_YOUTUBE",
+      "SEARCH_YOUTUBE",
       "START_POMODORO",
       "START_STOPWATCH",
     ]) {
@@ -51,4 +52,5 @@ describe("toGeminiJsonSchema", () => {
     expect(findAll(schema, "properties").length).toBeGreaterThan(0);
     expect(findAll(schema, "required").length).toBeGreaterThan(0);
   });
+
 });
