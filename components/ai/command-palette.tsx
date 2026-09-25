@@ -19,6 +19,9 @@ import {
 import { runAiActions } from "./ai-action-runner";
 import AiAnswerPanel from "./ai-answer-panel";
 import YoutubeApprovalPanel from "./youtube-approval-panel";
+import YoutubeClarifyPanel, {
+  type ClarifyOption,
+} from "./youtube-clarify-panel";
 import type { AiAction } from "@/types/ai-actions";
 
 /**
@@ -44,6 +47,15 @@ type Phase =
   | { status: "running" }
   // 조회 액션 실행 결과. 답변 마크다운을 인라인 카드로 보여준다.
   | { status: "answered"; answer: string }
+  // SEARCH_YOUTUBE에 clarify가 붙어 왔을 때, 사용자가 옵션을 고르기 전 중간 상태.
+  // 옵션은 이미 서버에서 다 만들어져서 왔으므로 이 단계에서는 LLM 호출이 없다.
+  | {
+      status: "clarifying";
+      question: string;
+      options: ClarifyOption[];
+      baseQuery: string;
+      count: number;
+    }
   | { status: "searching-youtube" }
   | {
       status: "youtube-review";
@@ -269,9 +281,19 @@ export default function CommandPalette() {
         }
         // interpret가 SEARCH_YOUTUBE를 돌려주면 승인 UI가 다른 검색 파이프라인으로 넘긴다.
         // 검증 규칙상 배치에 단독으로만 존재하므로 첫 액션만 확인한다.
-        // Phase 2에서 clarify UI가 들어오기 전까지는 clarify가 있어도 base query로 바로 검색.
         const [first] = validation.actions;
         if (first.type === "SEARCH_YOUTUBE") {
+          // clarify가 있으면 취향 질문 칩을 먼저 띄운다 — LLM 추가 호출 없이 옵션은 이미 준비돼 있다.
+          if (first.clarify) {
+            setPhase({
+              status: "clarifying",
+              question: first.clarify.question,
+              options: first.clarify.options,
+              baseQuery: first.query,
+              count: first.count,
+            });
+            return;
+          }
           void runYoutubeFlow(generation, first.query, first.count);
           return;
         }
@@ -321,6 +343,27 @@ export default function CommandPalette() {
     },
     [handleClose]
   );
+
+  /**
+   * clarifying → 검색 파이프라인.
+   * 새 세대 번호를 발급해 이전에 진행 중이던 응답이 뒤늦게 도착해도 무시되게 한다.
+   */
+  const handleClarifyPick = useCallback(
+    (pickedQuery: string) => {
+      if (phase.status !== "clarifying") return;
+      const generation = ++requestId.current;
+      void runYoutubeFlow(generation, pickedQuery, phase.count);
+    },
+    [phase, runYoutubeFlow]
+  );
+
+  /** clarifying → "직접 입력"으로 돌아가 사용자가 새 문장을 치도록 한다. */
+  const handleEditFromClarify = useCallback(() => {
+    // 세대 번호는 굳이 올리지 않는다 — 다음 submit이 자기 요청으로 올려 관리한다.
+    setPhase({ status: "input" });
+    setQuery("");
+    inputRef.current?.focus();
+  }, []);
 
   const confirm = useCallback(async () => {
     if (phase.status !== "review") return;
@@ -628,6 +671,18 @@ export default function CommandPalette() {
           <AiAnswerPanel
             markdown={phase.answer}
             onClose={handleClose}
+            isDarkMode={isDarkMode}
+          />
+        )}
+
+        {phase.status === "clarifying" && (
+          <YoutubeClarifyPanel
+            question={phase.question}
+            options={phase.options}
+            baseQuery={phase.baseQuery}
+            onPick={handleClarifyPick}
+            onEditQuery={handleEditFromClarify}
+            onCancel={handleClose}
             isDarkMode={isDarkMode}
           />
         )}
