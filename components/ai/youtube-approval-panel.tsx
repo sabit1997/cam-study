@@ -109,7 +109,17 @@ export default function YoutubeApprovalPanel({
           {sourceLabel(source)}
         </p>
       )}
-      <ul style={{ listStyle: "none", margin: "0 0 12px", padding: 0 }}>
+      <ul
+        style={{
+          listStyle: "none",
+          margin: "0 0 12px",
+          padding: 0,
+          // 후보가 많아지면(count 상한 25) 모달이 뷰포트를 넘어 재생 버튼이 잘리기 때문에
+          // 목록만 내부 스크롤로 감싼다. 헤더·안내·확정 버튼은 항상 보이도록 남긴다.
+          maxHeight: "50vh",
+          overflowY: "auto",
+        }}
+      >
         {candidates.map((c) => {
           const checked = selected.has(c.videoId);
           return (
