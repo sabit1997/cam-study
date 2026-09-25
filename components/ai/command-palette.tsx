@@ -64,12 +64,15 @@ type Phase =
  */
 const YOUTUBE_SEARCH_RE = /(유튜브|영상|강의)[^]*?(찾아|검색|추천|담아|틀어)/;
 
-/** 문장에서 "숫자 개" 표현을 뽑아 검색할 후보 수로 삼는다. 못 찾으면 3개. */
+/**
+ * 문장에서 "숫자 개" 표현을 뽑아 검색할 후보 수로 삼는다. 못 찾으면 기본은 넉넉히 15개.
+ * 상한은 AI_LIMITS.SEARCH_COUNT_MAX와 맞춘다 — 이 라우트도 검증기와 같은 규칙을 따른다.
+ */
 const extractCount = (text: string): number => {
   const match = text.match(/(\d+)\s*개/);
-  if (!match) return 3;
+  if (!match) return 15;
   const n = parseInt(match[1], 10);
-  return Math.max(1, Math.min(8, n));
+  return Math.max(1, Math.min(25, n));
 };
 
 export default function CommandPalette() {
@@ -506,7 +509,7 @@ export default function CommandPalette() {
           {phase.status === "running" && "실행 중입니다."}
           {phase.status === "rejected" && phase.reasons.join(" ")}
           {phase.status === "answered" && "답변이 준비됐어요."}
-          {phase.status === "searching-youtube" && "유튜브 강의를 검색하는 중입니다."}
+          {phase.status === "searching-youtube" && "유튜브 영상을 검색하는 중입니다."}
           {phase.status === "youtube-review" &&
             `${phase.candidates.length}개의 후보 영상을 검토하세요.`}
         </div>
@@ -548,7 +551,7 @@ export default function CommandPalette() {
             {phase.status === "interpreting"
               ? "해석하는 중…"
               : phase.status === "searching-youtube"
-                ? "유튜브 강의를 찾는 중…"
+                ? "유튜브 영상을 찾는 중…"
                 : "실행하는 중…"}
           </p>
         )}

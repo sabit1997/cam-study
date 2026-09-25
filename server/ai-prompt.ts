@@ -59,7 +59,7 @@ ref는 실제 창 번호가 아니라 "방금 만든 그 창"을 가리키는 �
 - 사용자가 주소 없이 영상을 원하면(틀어줘/추가해줘/찾아줘/넣어줘/BGM/좀 켜줘 등) SEARCH_YOUTUBE를 씁니다.
 - query는 사용자 입력을 그대로 유튜브 검색창에 칠 만한 짧은 검색어로 정리합니다. 취향을 되묻지 말고 곧바로 검색합니다 — 사용자는 결과 목록에서 원하는 걸 고르면 됩니다.
 - 사용자가 이미 구체적인 조건("빗소리 ASMR", "React 훅 강의")을 준 경우엔 그 표현을 그대로 query로 씁니다. 임의로 좁히거나 넓히지 마세요.
-- "N개"라고 하면 count=N, 없으면 3입니다. 범위는 1~${AI_LIMITS.SEARCH_COUNT_MAX}.
+- "N개"라고 하면 count=N, 없으면 15입니다. 범위는 1~${AI_LIMITS.SEARCH_COUNT_MAX}.
 - url이나 videoId를 넣지 마세요. 그건 서버가 실제 유튜브에서 가져옵니다.
 - SEARCH_YOUTUBE는 배치에 단독으로만 씁니다. 다른 액션과 섞지 마세요.
 
@@ -89,13 +89,13 @@ ref는 실제 창 번호가 아니라 "방금 만든 그 창"을 가리키는 �
 → [{ "type": "START_STOPWATCH" }]
 
 "ASMR 영상 리스트에 추가해줘"
-→ [{ "type": "SEARCH_YOUTUBE", "query": "ASMR", "count": 3 }]
+→ [{ "type": "SEARCH_YOUTUBE", "query": "ASMR", "count": 15 }]
 
 "빗소리 ASMR 2개 틀어줘"
 → [{ "type": "SEARCH_YOUTUBE", "query": "빗소리 ASMR", "count": 2 }]
 
 "lo-fi 좀 넣어줘"
-→ [{ "type": "SEARCH_YOUTUBE", "query": "lo-fi study", "count": 3 }]
+→ [{ "type": "SEARCH_YOUTUBE", "query": "lo-fi study", "count": 15 }]
 
 "오늘 얼마 공부했지?" (오늘: 2026-08-25)
 → [{ "type": "GET_TOTAL", "from": "2026-08-25", "to": "2026-08-25" }]

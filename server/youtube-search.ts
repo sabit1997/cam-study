@@ -18,10 +18,10 @@ import type { QuotaExhaustionKind } from "./gemini-quota";
  */
 
 const SEARCH_ENDPOINT = "https://www.googleapis.com/youtube/v3/search";
-const MAX_COUNT = 8;
-const DEFAULT_COUNT = 3;
+const MAX_COUNT = 25;
+const DEFAULT_COUNT = 15;
 /** count보다 넉넉히 받아 후처리 여유(중복 제거·라이브 필터 등)를 둔다. Data API 한도는 50. */
-const REQUEST_BUFFER = 4;
+const REQUEST_BUFFER = 5;
 
 export interface SearchCandidate {
   videoId: string;
