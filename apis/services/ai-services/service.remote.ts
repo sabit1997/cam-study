@@ -1,7 +1,35 @@
 import request from "@/apis/request";
 import { AxiosMethod } from "@/types/axios";
 import type { AiAction } from "@/types/ai-actions";
+import { useTurnstileStore } from "@/stores/turnstile-state";
 import { AiEndPoints } from "../config";
+
+/**
+ * 데스크탑 앱(Electron 렌더러)이면 true. Electron은 앱 내부 express-server를 거쳐
+ * Vercel에 프록시하는데, 그 프록시 요청은 Origin이 없어 서버가 Turnstile을 요구하지
+ * 않는다. 그래서 앱은 토큰 획득 절차 자체를 스킵한다.
+ */
+const runningInElectron = (): boolean =>
+  typeof window !== "undefined" && Boolean(window.electronAPI);
+
+/**
+ * 웹이면 Turnstile 토큰을 발급받아 헤더 객체로 반환한다. 앱이면 빈 객체.
+ * 토큰 발급이 실패하면 그대로 throw — 호출부에서 사용자 안내로 이어져야 한다.
+ */
+const turnstileHeaders = async (): Promise<Record<string, string>> => {
+  if (runningInElectron()) return {};
+  const token = await useTurnstileStore.getState().getToken();
+  return { "cf-turnstile-token": token };
+};
+
+/**
+ * 요청이 나간 뒤(성공·실패 무관) 스토어 토큰을 비우고 위젯 재발급을 트리거한다.
+ * Turnstile 토큰은 siteverify에 한 번 쓰면 무효이므로 재사용 금지.
+ */
+const consumeTurnstile = (): void => {
+  if (runningInElectron()) return;
+  useTurnstileStore.getState().consumeToken();
+};
 
 /**
  * 온보딩 채팅 전용 타입.
@@ -86,16 +114,22 @@ export default class AiService {
    * `purpose`는 서버 thinkingLevel과 클라이언트 quota 가중치의 분기 축이다.
    * 기본값은 "command"라 값이 없으면 그대로 명령 해석으로 취급된다.
    */
-  public static readonly interpret = (
+  public static readonly interpret = async (
     payload: InterpretRequest | string
   ): Promise<InterpretResponse> => {
     const body: InterpretRequest =
       typeof payload === "string" ? { text: payload } : payload;
-    return request<InterpretResponse>({
-      url: AiEndPoints.interpret(),
-      method: AxiosMethod.POST,
-      data: body,
-    });
+    const headers = await turnstileHeaders();
+    try {
+      return await request<InterpretResponse>({
+        url: AiEndPoints.interpret(),
+        method: AxiosMethod.POST,
+        data: body,
+        headers,
+      });
+    } finally {
+      consumeTurnstile();
+    }
   };
 
   /**
@@ -105,14 +139,20 @@ export default class AiService {
    * 임베드 가능 여부까지 다시 확인한다(utils/youtube-pipeline.ts). LLM이 지어낸
    * 존재하지 않는 videoId는 임베드 검사에서 걸린다.
    */
-  public static readonly youtubeSearch = (
+  public static readonly youtubeSearch = async (
     payload: YoutubeSearchRequest
   ): Promise<YoutubeSearchResponse> => {
-    return request<YoutubeSearchResponse>({
-      url: AiEndPoints.youtubeSearch(),
-      method: AxiosMethod.POST,
-      data: payload,
-    });
+    const headers = await turnstileHeaders();
+    try {
+      return await request<YoutubeSearchResponse>({
+        url: AiEndPoints.youtubeSearch(),
+        method: AxiosMethod.POST,
+        data: payload,
+        headers,
+      });
+    } finally {
+      consumeTurnstile();
+    }
   };
 
   /**
@@ -130,16 +170,21 @@ export default class AiService {
     messages: ChatMessage[],
     callbacks: OnboardingChatCallbacks
   ): Promise<void> => {
+    const extraHeaders = await turnstileHeaders();
     const response = await fetch(`/api${AiEndPoints.onboardingChat()}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         Accept: "text/event-stream",
+        ...extraHeaders,
       },
       body: JSON.stringify({ messages }),
       credentials: "include",
       signal: callbacks.signal,
     });
+    // SSE는 응답 시작 시점에 토큰 검증이 끝난다. 스트림 청크가 여러 개 오는 동안
+    // 토큰을 붙잡아둘 필요가 없으므로 fetch 반환 직후 소비 처리.
+    consumeTurnstile();
 
     if (!response.ok) {
       // SSE로 열리지 않았다 — 게이트에서 걸린 것.

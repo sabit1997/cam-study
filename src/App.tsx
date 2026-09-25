@@ -33,6 +33,13 @@ const ScreenPickerModal = lazy(
 );
 const UpdateNotifier = lazy(() => import("@/components/update-notifier"));
 
+// Turnstile 위젯은 웹 배포에서만 마운트한다. 앱은 앱 내부 express-server 프록시가
+// 서버-투-서버로 Vercel을 호출하고, 그 경로는 서버가 Turnstile을 요구하지 않는다.
+// lazy로 감싸 @marsidev/react-turnstile 청크가 앱 시작 크리티컬 패스에 들어가지 않게 한다.
+const TurnstileProvider = lazy(
+  () => import("@/components/turnstile-provider")
+);
+
 // Devtools 는 dev 빌드에서만 렌더된다. lazy 로 감싸 프로덕션 청크에서 완전히 분리.
 const ReactQueryDevtools = import.meta.env.DEV
   ? lazy(() =>
@@ -115,6 +122,9 @@ function AppShell() {
       <ServiceWorkerRegister />
       <AuthBootstrap>
         <Suspense fallback={null}>
+          {typeof window !== "undefined" && !window.electronAPI ? (
+            <TurnstileProvider />
+          ) : null}
           <ScreenPickerModal />
           <AiActionRunner />
           <CommandPalette />
