@@ -1,5 +1,6 @@
 import { streamOnboardingChat } from "../server/onboarding-chat";
 import { createRateLimiter } from "../server/rate-limit";
+import { verifyTurnstileToken } from "../server/turnstile";
 
 /**
  * 웹(Vercel) 배포용 어댑터 — SSE 스트림.
@@ -30,13 +31,6 @@ const ALLOWED_ORIGINS = (
   .map((o) => o.trim())
   .filter(Boolean);
 
-const SESSION_COOKIE_NAMES = (
-  process.env.SESSION_COOKIE_NAMES ?? "AccessToken,RefreshToken"
-)
-  .split(",")
-  .map((n) => n.trim())
-  .filter(Boolean);
-
 const limiter = createRateLimiter({ limit: 10, windowMs: 60_000 });
 
 const jsonResponse = (status: number, body: object): Response =>
@@ -44,17 +38,6 @@ const jsonResponse = (status: number, body: object): Response =>
     status,
     headers: { "Content-Type": "application/json; charset=utf-8" },
   });
-
-const cookieNames = (cookieHeader: string | null): string[] =>
-  (cookieHeader ?? "")
-    .split(";")
-    .map((p) => p.split("=")[0]?.trim() ?? "")
-    .filter(Boolean);
-
-const hasSessionCookie = (names: string[]): boolean => {
-  const expected = SESSION_COOKIE_NAMES.map((n) => n.toLowerCase());
-  return names.some((n) => expected.includes(n.toLowerCase()));
-};
 
 const clientIp = (request: Request): string => {
   // Vercel Edge는 x-forwarded-for에 실제 클라이언트 IP를 실어 준다.
@@ -73,8 +56,19 @@ export default async function handler(request: Request): Promise<Response> {
     return jsonResponse(403, { error: "허용되지 않은 요청입니다." });
   }
 
-  if (!hasSessionCookie(cookieNames(request.headers.get("cookie")))) {
-    return jsonResponse(401, { error: "로그인이 필요한 기능입니다." });
+  // 브라우저 요청은 Turnstile 필수. 앱 프록시(Origin 없음)는 이 층을 건너뛴다.
+  if (origin) {
+    const token = request.headers.get("cf-turnstile-token");
+    const verdict = await verifyTurnstileToken(token, clientIp(request));
+    if (!verdict.success) {
+      return jsonResponse(403, {
+        error: "봇 검증에 실패했습니다. 잠시 후 다시 시도해주세요.",
+        reason: "turnstile",
+        ...(verdict.errorCodes
+          ? { turnstileErrors: verdict.errorCodes }
+          : {}),
+      });
+    }
   }
 
   const verdict = limiter(clientIp(request), Date.now());
