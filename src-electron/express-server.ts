@@ -19,7 +19,8 @@ declare const __AI_PROXY_URL__: string | undefined;
 const AI_PROXY_URL: string =
   (typeof __AI_PROXY_URL__ !== "undefined" ? __AI_PROXY_URL__ : process.env.AI_PROXY_URL) ?? "";
 
-// 앱 모드. 로컬 모드에서는 AI/백엔드 프록시 라우트를 아예 등록하지 않는다.
+// 앱 모드. 로컬 모드에서도 AI 프록시 라우트는 등록해 웹 배포본으로 넘긴다.
+// 로컬 모드에서 스킵되는 것은 백엔드(인증/투두/타이머 등) 캐치올 프록시 뿐이다.
 declare const __APP_MODE__: string | undefined;
 const APP_MODE =
   typeof __APP_MODE__ !== "undefined"
@@ -65,18 +66,13 @@ export function createExpressApp(staticDir: string) {
     }
   });
 
-  // 로컬 모드에서는 AI/백엔드 프록시가 필요 없다 — 렌더러의 도메인 서비스가
-  // 로컬 어댑터로 대체돼 /api/* 호출이 발생하지 않는다. 정적 서빙만 하는 서버.
-  if (IS_LOCAL_MODE) {
-    // SPA 폴백만 남기고 반환. Express 5에서는 app.get("*")가 라우트 등록 시
-    // 예외를 던지므로 app.use로 매치한다.
-    app.use((_req, res) => {
-      res.sendFile(path.join(staticDir, "index.html"));
-    });
-    return app;
-  }
-
-  // AI 해석 → 웹 배포본으로 프록시. 반드시 아래의 포괄 /api 프록시보다 위에 있어야 한다.
+  // AI 해석 → 웹 배포본으로 프록시. 로컬 모드에서도 등록한다.
+  // 반드시 아래의 포괄 /api 프록시보다 위에 있어야 한다.
+  //
+  // 이 요청은 Node axios가 보내므로 Origin 헤더가 붙지 않는다. 상류
+  // (api/ai-interpret.ts)는 Origin 없는 요청을 서버-투-서버로 취급해 Turnstile
+  // 검증을 건너뛰고 IP 레이트리밋만 적용한다. 앱은 서명된 인스톨러로 배포되어
+  // 어뷰징 진입 장벽이 이미 있다는 정책적 판단.
   app.post("/api/ai-interpret", express.json(), async (req, res) => {
     if (!AI_PROXY_URL) {
       res.status(500).json({
@@ -90,13 +86,7 @@ export function createExpressApp(staticDir: string) {
         `${AI_PROXY_URL.replace(/\/$/, "")}/api/ai-interpret`,
         req.body,
         {
-          headers: {
-            "Content-Type": "application/json",
-            // 상류(api/ai-interpret.ts)는 세션 쿠키가 있는 요청만 받는다.
-            // 렌더러가 보낸 쿠키를 그대로 넘겨야 그 게이트를 통과한다.
-            // Origin은 붙이지 않는다 — 상류는 Origin 없는 서버-투-서버 호출을 허용한다.
-            ...(req.headers.cookie ? { Cookie: req.headers.cookie } : {}),
-          },
+          headers: { "Content-Type": "application/json" },
           validateStatus: () => true,
         }
       );
@@ -123,10 +113,7 @@ export function createExpressApp(staticDir: string) {
         `${AI_PROXY_URL.replace(/\/$/, "")}/api/youtube-search`,
         req.body,
         {
-          headers: {
-            "Content-Type": "application/json",
-            ...(req.headers.cookie ? { Cookie: req.headers.cookie } : {}),
-          },
+          headers: { "Content-Type": "application/json" },
           validateStatus: () => true,
         }
       );
@@ -156,7 +143,6 @@ export function createExpressApp(staticDir: string) {
           headers: {
             "Content-Type": "application/json",
             Accept: "text/event-stream",
-            ...(req.headers.cookie ? { Cookie: req.headers.cookie } : {}),
           },
           validateStatus: () => true,
         }
@@ -191,6 +177,17 @@ export function createExpressApp(staticDir: string) {
       }
     }
   });
+
+  // 로컬 모드에서는 백엔드(인증/투두/타이머 등) 캐치올 프록시가 필요 없다 —
+  // 렌더러의 도메인 서비스가 로컬 어댑터로 대체돼 /api/auth 등의 호출이 발생하지 않는다.
+  // SPA 폴백만 남기고 반환한다.
+  if (IS_LOCAL_MODE) {
+    // Express 5에서는 app.get("*")가 라우트 등록 시 예외를 던지므로 app.use로 매치한다.
+    app.use((_req, res) => {
+      res.sendFile(path.join(staticDir, "index.html"));
+    });
+    return app;
+  }
 
   // 나머지 /api/* → 백엔드 프록시 (Cookie 헤더 자동 포워딩)
   // 패키징된 Electron은 http://localhost:<랜덤포트>에서 실행돼 클라이언트
