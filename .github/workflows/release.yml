@@ -11,9 +11,9 @@ permissions:
 jobs:
   build-mac:
     runs-on: macos-15
-    # 데스크탑 릴리즈는 로컬 모드로 빌드한다. 서버/AI 프록시 없이 이 기기에만
-    # 데이터를 저장한다. 서버 모드로 돌리려면 VITE_APP_MODE를 지우고 AI_PROXY_URL을
-    # 다시 걸어야 한다.
+    # 데스크탑 릴리즈는 로컬 모드로 빌드한다. 도메인 데이터는 이 기기에만 저장하고
+    # AI 요청만 웹 배포본(AI_PROXY_URL)으로 프록시한다. Gemini API 키는 앱 번들에
+    # 절대 들어가지 않는다(.env.example 참고).
     env:
       VITE_APP_MODE: local
     steps:
@@ -38,6 +38,9 @@ jobs:
           # YOUTUBE_API_KEY는 로컬 모드에서도 유용하다 — /api/check-youtube이
           # 유튜브 창의 임베드 검증·제목 조회를 그대로 담당한다.
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          # 앱은 AI 요청을 이 주소로 프록시한다. Origin이 붙지 않는 서버-투-서버
+          # 호출이라 상류가 Turnstile 없이도 받아준다.
+          AI_PROXY_URL: https://www.oeyo-cam.site
 
       - name: 웹 빌드 (Vite)
         run: npm run build:web
@@ -82,6 +85,7 @@ jobs:
         run: npm run build:ts
         env:
           YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+          AI_PROXY_URL: https://www.oeyo-cam.site
 
       - name: 웹 빌드 (Vite)
         run: npm run build:web

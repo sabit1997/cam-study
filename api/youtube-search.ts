@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { searchYoutube } from "../server/youtube-search";
 import { createRateLimiter } from "../server/rate-limit";
+import { verifyTurnstileToken } from "../server/turnstile";
 
 /**
  * 웹(Vercel) 배포용 어댑터. server/youtube-search가 실제 로직을 담고,
@@ -17,13 +18,6 @@ const ALLOWED_ORIGINS = (
   .map((o) => o.trim())
   .filter(Boolean);
 
-const SESSION_COOKIE_NAMES = (
-  process.env.SESSION_COOKIE_NAMES ?? "AccessToken,RefreshToken"
-)
-  .split(",")
-  .map((n) => n.trim())
-  .filter(Boolean);
-
 // 검색은 명령 해석보다 무거우니 분당 5건.
 const limiter = createRateLimiter({ limit: 5, windowMs: 60_000 });
 
@@ -33,15 +27,11 @@ const clientIp = (req: VercelRequest): string => {
   return raw?.split(",")[0]?.trim() || req.socket.remoteAddress || "unknown";
 };
 
-const cookieNames = (cookieHeader: string | undefined): string[] =>
-  (cookieHeader ?? "")
-    .split(";")
-    .map((p) => p.split("=")[0]?.trim() ?? "")
-    .filter(Boolean);
-
-const hasSessionCookie = (names: string[]): boolean => {
-  const expected = SESSION_COOKIE_NAMES.map((n) => n.toLowerCase());
-  return names.some((n) => expected.includes(n.toLowerCase()));
+const headerString = (
+  value: string | string[] | undefined
+): string | undefined => {
+  if (Array.isArray(value)) return value[0];
+  return value;
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -56,10 +46,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const names = cookieNames(req.headers.cookie);
-  if (!hasSessionCookie(names)) {
-    res.status(401).json({ error: "로그인이 필요한 기능입니다." });
-    return;
+  // 브라우저 요청은 Turnstile 필수. 앱 프록시(Origin 없음)는 이 층을 건너뛴다.
+  if (origin) {
+    const token = headerString(req.headers["cf-turnstile-token"]);
+    const verdict = await verifyTurnstileToken(token, clientIp(req));
+    if (!verdict.success) {
+      res.status(403).json({
+        error: "봇 검증에 실패했습니다. 잠시 후 다시 시도해주세요.",
+        reason: "turnstile",
+        ...(verdict.errorCodes
+          ? { turnstileErrors: verdict.errorCodes }
+          : {}),
+      });
+      return;
+    }
   }
 
   const verdict = limiter(clientIp(req), Date.now());

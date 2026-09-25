@@ -162,9 +162,9 @@ npm run build:app
 
 빌드 결과물은 `dist/` 폴더에 생성됩니다.
 
-### 로컬 전용 모드 빌드 (서버·AI 없이 개인용)
+### 로컬 전용 모드 빌드 (백엔드 없이 개인용)
 
-백엔드 서버 없이 로그인·회원가입 절차를 건너뛰고 데이터를 이 기기에만 저장하는 모드입니다. AI/온보딩·유튜브 검색 등 Gemini에 의존하는 기능은 UI에서 숨겨집니다.
+로그인·회원가입 절차를 건너뛰고 도메인 데이터(창·투두·타이머·통계)를 이 기기에만 저장하는 모드입니다. **AI 기능(자연어 명령, 온보딩 챗, 유튜브 검색)은 계속 동작합니다** — 개발자가 주입한 하나의 Gemini 키를 Vercel 서버리스 함수로 프록시해서 모든 사용자가 공유합니다. 웹은 Cloudflare Turnstile로 봇 어뷰징을 방어하고, 앱은 서버-투-서버 프록시라 IP 레이트리밋만 걸립니다.
 
 ```bash
 # 웹 (Vercel/정적 호스팅)
@@ -176,12 +176,12 @@ VITE_APP_MODE=local npm run build:app
 
 **모드 별 차이**
 
-| 항목 | server (기본) | local |
+| 항목 | server (사용 안 함) | local (기본 배포) |
 | --- | --- | --- |
 | 로그인/회원가입 | 필요 | 스킵 (익명 단일 유저) |
 | 창·투두·타이머 | api.oeyo-cam.site | 이 기기 저장소 |
-| AI 명령/온보딩/유튜브 검색 | 사용 가능 | UI 은닉 |
-| Cmd+Shift+K 전역 팔레트 | 활성 | 비활성 |
+| AI 명령/온보딩/유튜브 검색 | 세션 쿠키 인증 | Vercel 프록시 + Turnstile(웹) / IP 레이트리밋(앱) |
+| Cmd+Shift+K 전역 팔레트 | 활성 | 활성 |
 | 자동 업데이트 | GitHub Releases | GitHub Releases (동일) |
 
 **로컬 데이터 위치**
@@ -193,18 +193,23 @@ VITE_APP_MODE=local npm run build:app
 
 ### 배포 설정
 
-이 리포는 현재 **로컬 모드**로 배포되도록 세팅돼 있습니다.
+이 리포는 현재 **로컬 모드 + Vercel AI 프록시**로 배포되도록 세팅돼 있습니다.
 
-**Vercel (다운로드 페이지 + 로컬 웹앱)** — 프로젝트 Environment Variables:
+**Vercel (다운로드 페이지 + 웹앱 + AI 서버리스 함수)** — 프로젝트 Environment Variables:
 
 | 변수 | 값 | 필수? |
 | --- | --- | --- |
 | `VITE_APP_MODE` | `local` | 필수 |
-| `YOUTUBE_API_KEY` | (본인 키) | 선택 — 유튜브 창 영상 제목이 예쁘게 뽑히려면 |
+| `GEMINI_API_KEY` | (본인 Gemini 키) | AI 기능 쓰려면 필수 |
+| `GEMINI_MODEL` | 기본 `gemini-2.5-flash-lite` | 선택 |
+| `YOUTUBE_API_KEY` | (본인 키) | 유튜브 창 영상 제목·임베드 검증에 필요 |
+| `TURNSTILE_SECRET_KEY` | Cloudflare Turnstile secret | 웹에서 AI 쓰려면 필수 (미설정 시 브라우저 요청 403) |
+| `VITE_TURNSTILE_SITE_KEY` | Cloudflare Turnstile site key | 웹에서 AI 쓰려면 필수 (프론트 노출 OK) |
+| `ALLOWED_ORIGINS` | (선택, 기본값이 oeyo-cam.site) | 프리뷰 도메인 추가할 때만 |
 
-로컬 모드에서는 Gemini/백엔드 프록시가 필요 없어 `GEMINI_API_KEY` 등은 지정 안 해도 됩니다. 서버 모드로 되돌리려면 `VITE_APP_MODE`를 지우고 `GEMINI_API_KEY`·`YOUTUBE_API_KEY`를 넣습니다.
+**Cloudflare Turnstile 대시보드 설정**: 사이트 등록 시 `oeyo-cam.site`, `www.oeyo-cam.site`를 도메인으로 추가하고 위젯 모드를 **Invisible**로 설정합니다. 발급된 site key/secret key를 위 두 Vercel env에 넣습니다.
 
-**GitHub Actions (`.github/workflows/release.yml`)** — 데스크탑 인스톨러 릴리즈. `v*.*.*` 태그 push 시 macOS(arm64) + Windows(x64) 로컬 모드 빌드를 GitHub Releases에 첨부합니다. 서버 모드로 되돌리려면 두 잡의 `env: VITE_APP_MODE: local`을 지우고 `AI_PROXY_URL`을 다시 걸어야 합니다.
+**GitHub Actions (`.github/workflows/release.yml`)** — 데스크탑 인스톨러 릴리즈. `v*.*.*` 태그 push 시 macOS(arm64) + Windows(x64) 로컬 모드 빌드를 GitHub Releases에 첨부합니다. `AI_PROXY_URL: https://www.oeyo-cam.site`가 하드코딩돼 있어 앱은 이 주소를 통해 Vercel의 AI 함수를 호출합니다.
 
 Vercel 자동 배포와 GitHub Actions 릴리즈는 서로 독립입니다 — Vercel은 main 브랜치 push에, 릴리즈 워크플로우는 태그 push에 트리거됩니다.
 

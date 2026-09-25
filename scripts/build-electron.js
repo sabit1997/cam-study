@@ -38,13 +38,15 @@ const aiProxyUrl = process.env.AI_PROXY_URL ?? "";
 const appMode =
   (process.env.VITE_APP_MODE ?? "").toLowerCase() === "local" ? "local" : "server";
 
-if (appMode === "server" && !aiProxyUrl) {
+if (!aiProxyUrl) {
   console.warn(
     "[build-electron] 경고: AI_PROXY_URL이 설정되지 않아 데스크탑에서 AI 명령이 동작하지 않습니다."
   );
 }
 if (appMode === "local") {
-  console.log("[build-electron] 로컬 모드로 빌드합니다. AI/백엔드 프록시는 비활성.");
+  console.log(
+    "[build-electron] 로컬 모드로 빌드합니다. 백엔드 캐치올 프록시는 비활성이지만 AI 프록시는 유지됩니다."
+  );
 }
 
 esbuild

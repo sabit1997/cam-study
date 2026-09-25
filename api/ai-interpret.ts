@@ -1,6 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { interpret, isPurpose } from "../server/ai-interpret";
 import { createRateLimiter } from "../server/rate-limit";
+import { verifyTurnstileToken } from "../server/turnstile";
 
 /**
  * 웹(Vercel) 배포용 어댑터.
@@ -21,8 +22,8 @@ import { createRateLimiter } from "../server/rate-limit";
  * - Origin 허용목록: 다른 **웹사이트**가 브라우저에서 이 엔드포인트를 쓰는 것.
  *   Origin 헤더가 없는 요청은 통과시켜야 한다(데스크탑 Express 프록시가 그렇다).
  *   따라서 curl은 막지 못한다.
- * - 세션 쿠키: 쿠키의 **존재 여부**만 본다. 암호학적 검증은 요청마다 백엔드 왕복이
- *   필요해 명령 지연을 늘린다. 위조 쿠키는 이 층을 통과하지만 다음 층에 걸린다.
+ * - Turnstile 토큰(브라우저 요청만): Cloudflare siteverify로 사람 검증. 로컬 모드에서
+ *   로그인 게이트를 대체한다. 앱 프록시는 Origin이 없어 이 층을 건너뛰고 아래 층으로 간다.
  * - IP 레이트리밋: 실질적인 방어선. 위조할 수 없는 플랫폼 헤더를 키로 쓴다.
  *   단 인메모리라 인스턴스별이다(server/rate-limit.ts의 한계 설명 참고).
  */
@@ -33,14 +34,6 @@ const ALLOWED_ORIGINS = (
 )
   .split(",")
   .map((origin) => origin.trim())
-  .filter(Boolean);
-
-/** 백엔드가 내려주는 인증 쿠키 이름 (docs/auto-login.md) */
-const SESSION_COOKIE_NAMES = (
-  process.env.SESSION_COOKIE_NAMES ?? "AccessToken,RefreshToken"
-)
-  .split(",")
-  .map((name) => name.trim())
   .filter(Boolean);
 
 /**
@@ -56,22 +49,11 @@ const clientIp = (req: VercelRequest): string => {
   return raw?.split(",")[0]?.trim() || req.socket.remoteAddress || "unknown";
 };
 
-const cookieNames = (cookieHeader: string | undefined): string[] =>
-  (cookieHeader ?? "")
-    .split(";")
-    .map((pair) => pair.split("=")[0]?.trim() ?? "")
-    .filter(Boolean);
-
-/**
- * 이름 비교는 대소문자를 무시한다.
- *
- * 이 게이트가 잘못 잠기면 로그인한 사용자 전원이 AI를 못 쓴다. 백엔드가 쿠키 이름의
- * 표기를 바꾸는 것만으로 그런 일이 벌어지는 게 가장 흔한 실패라, 표기 차이는 흡수한다.
- * 이름 자체가 다르면 SESSION_COOKIE_NAMES 환경변수로 맞춘다.
- */
-const hasSessionCookie = (names: string[]): boolean => {
-  const expected = SESSION_COOKIE_NAMES.map((name) => name.toLowerCase());
-  return names.some((name) => expected.includes(name.toLowerCase()));
+const headerString = (
+  value: string | string[] | undefined
+): string | undefined => {
+  if (Array.isArray(value)) return value[0];
+  return value;
 };
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -88,16 +70,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  const names = cookieNames(req.headers.cookie);
-  if (!hasSessionCookie(names)) {
-    // 값은 절대 남기지 않고 이름만 남긴다. 쿠키 이름이 어긋나 게이트가 잘못 잠긴 경우와
-    // 정말 비로그인 요청인 경우를 로그만 보고 구분할 수 있어야 한다.
-    console.warn(
-      "[ai-interpret] 세션 쿠키 없음 — 받은 쿠키 이름:",
-      names.length > 0 ? names.join(",") : "(없음)"
-    );
-    res.status(401).json({ error: "로그인이 필요한 기능입니다." });
-    return;
+  // 브라우저 요청은 Turnstile 필수. 앱 프록시(Origin 없음)는 여기를 건너뛰고
+  // 아래 IP 레이트리밋으로만 방어한다.
+  if (origin) {
+    const token = headerString(req.headers["cf-turnstile-token"]);
+    const verdict = await verifyTurnstileToken(token, clientIp(req));
+    if (!verdict.success) {
+      res.status(403).json({
+        error: "봇 검증에 실패했습니다. 잠시 후 다시 시도해주세요.",
+        reason: "turnstile",
+        ...(verdict.errorCodes
+          ? { turnstileErrors: verdict.errorCodes }
+          : {}),
+      });
+      return;
+    }
   }
 
   const verdict = limiter(clientIp(req), Date.now());
