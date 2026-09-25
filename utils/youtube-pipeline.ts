@@ -19,10 +19,14 @@ import { parseQuotaReason } from "@/utils/api-error";
  * 후보를 승인 UI에 먼저 보여주고 나중에 임베드 검사를 하면, 사용자가 고른 영상이
  * 나중에 "재생할 수 없음"으로 사라지는 최악의 흐름이 된다. 승인 패널에는 통과분만 뜨게 한다.
  *
- * ## LLM은 URL을 생성하지 않는다
- * server/youtube-search.ts가 그라운딩 검색으로 얻은 videoId만 반환하고,
- * 이 파일은 그 id로 임베드 검사와 화면 조립을 한다. LLM이 "youtu.be/..." 문자열을
- * 지어서 넘겨도 여기까지 오지 못한다(스키마 · 정규식 · 임베드 검사 세 층에서 걸린다).
+ * ## Data API 이후 임베드 재검사가 필요한 경우
+ * 서버(server/youtube-search.ts)가 videoEmbeddable=true로 사전 필터한 결과를 돌려주므로
+ * 방금 받은 fresh 결과는 재검사가 불필요하다. 다만 캐시나 stale에서 꺼낸 결과는
+ * 저장 시점 이후 영상이 비공개·삭제됐을 수 있어 재검사한다.
+ *
+ * ## 서버가 URL/videoId를 지어낼 수 없다
+ * server/youtube-search.ts는 YouTube Data API 응답의 실제 videoId만 반환하고,
+ * 이 파일은 그 id로 화면을 조립한다. LLM은 그 어디에도 개입하지 않는다.
  */
 
 export interface EmbedResult {
@@ -102,6 +106,19 @@ const runEmbedFilter = async (
 };
 
 /**
+ * Data API가 videoEmbeddable=true로 이미 필터한 fresh 결과는 재검사 없이 그대로 통과.
+ * check-youtube 요청 N번을 아끼고 결과 지연을 줄인다.
+ */
+const assumeEmbeddable = (
+  candidates: YoutubeSearchCandidate[]
+): FilteredCandidate[] =>
+  candidates.map((c) => ({
+    videoId: c.videoId,
+    title: c.title,
+    channel: c.channel,
+  }));
+
+/**
  * 검색 → 임베드 검사 → 통과분만 반환. 캐시·daily-lock과 통합돼 있어
  * 같은 검색어를 되풀이하거나 quota 소진 상태에서도 사용자에게 결과를 보여주려 시도한다.
  *
@@ -139,14 +156,17 @@ export const searchAndFilter = async (
     // 캐시된 후보가 전부 임베드 불가로 걸러졌으면 신선 검색으로 진행.
   }
 
-  // 3. 실제 API 호출
+  // 3. 실제 API 호출 — Data API가 이미 videoEmbeddable=true를 강제하므로 재검사 생략.
   try {
     const { candidates } = await AiService.youtubeSearch({ query, count });
     if (candidates.length > 0) {
       putCandidates(query, candidates);
     }
-    const filtered = await runEmbedFilter(candidates);
-    return { ok: true, candidates: filtered, source: "fresh" };
+    return {
+      ok: true,
+      candidates: assumeEmbeddable(candidates),
+      source: "fresh",
+    };
   } catch (error) {
     const info = parseQuotaReason(error);
     // 4. daily 소진이면 락 저장 후 stale 시도

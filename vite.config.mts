@@ -185,8 +185,8 @@ export default defineConfig(({ mode }) => {
         },
       },
       {
-        // 개발 환경(Vite) 어댑터. Gemini 그라운딩 검색을 태워 유튜브 강의 후보를 뽑는다.
-        // 배포 환경 어댑터는 api/youtube-search.ts, 데스크탑은 express-server.ts.
+        // 개발 환경(Vite) 어댑터. YouTube Data API v3 search.list를 태워 후보를 뽑는다.
+        // 배포 환경 어댑터는 api/youtube-search.ts, 데스크탑은 express-server.ts가 Vercel로 프록시.
         name: "youtube-search",
         configureServer(server) {
           server.middlewares.use(async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
@@ -198,8 +198,8 @@ export default defineConfig(({ mode }) => {
               res.writeHead(status, { "Content-Type": "application/json" });
               res.end(JSON.stringify(body));
             };
-            if (!geminiApiKey) {
-              send(500, { error: "GEMINI_API_KEY가 설정되지 않았습니다." });
+            if (!youtubeApiKey) {
+              send(500, { error: "YOUTUBE_API_KEY가 설정되지 않았습니다. .env를 확인하세요." });
               return;
             }
             try {
@@ -208,7 +208,7 @@ export default defineConfig(({ mode }) => {
               const { searchYoutube } = (await server.ssrLoadModule(
                 "/server/youtube-search.ts"
               )) as typeof import("./server/youtube-search");
-              const result = await searchYoutube(parsed, { apiKey: geminiApiKey });
+              const result = await searchYoutube(parsed, { apiKey: youtubeApiKey });
               if (!result.ok) {
                 // reason·retryAfterSec를 함께 넘겨 daily/minute/server를 클라이언트가 구분.
                 send(result.status, {

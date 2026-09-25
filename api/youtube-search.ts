@@ -7,8 +7,9 @@ import { verifyTurnstileToken } from "../server/turnstile";
  * 웹(Vercel) 배포용 어댑터. server/youtube-search가 실제 로직을 담고,
  * 여기서는 접근 통제와 HTTP 껍데기만 담당한다(api/ai-interpret.ts와 같은 패턴).
  *
- * 유튜브 검색은 그라운딩 검색을 태우므로 무료 티어 quota를 두 배 소비한다.
- * 그래서 IP 레이트리밋도 명령 해석보다 낮게 잡아뒀다.
+ * 유튜브 검색은 YouTube Data API v3 search.list를 태운다. 무료 quota는 하루 10,000
+ * 유닛(≈100회 search)라 명령 해석보다 여유 있지만, 스팸 방지 목적의 IP 레이트리밋은
+ * 그대로 유지한다.
  */
 
 const ALLOWED_ORIGINS = (
@@ -75,13 +76,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return;
   }
 
-  if (!process.env.GEMINI_API_KEY) {
-    res.status(500).json({ error: "AI API 키가 설정되지 않았습니다." });
+  if (!process.env.YOUTUBE_API_KEY) {
+    res.status(500).json({ error: "YouTube API 키가 설정되지 않았습니다." });
     return;
   }
 
   try {
-    const result = await searchYoutube(req.body);
+    const result = await searchYoutube(req.body, {
+      apiKey: process.env.YOUTUBE_API_KEY,
+    });
     if (!result.ok) {
       res.status(result.status).json({
         error: result.error,
